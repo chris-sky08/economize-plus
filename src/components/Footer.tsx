@@ -3,18 +3,16 @@
 import React from "react";
 import Link from "next/link";
 import { Instagram, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
-import { DEMO_DISCLAIMER } from "@/data/mockData";
+import { TRANSPARENCY_DISCLAIMER } from "@/data/mockData";
 
 export default function Footer() {
   return (
-    <footer className="mt-16 border-t border-slate-200 bg-brand-navy pb-20 text-slate-200 md:pb-10">
-      {/* Aviso de Transparência no Topo do Rodapé */}
+    <footer className="mt-16 border-t border-slate-200 bg-brand-navy pb-24 text-slate-200 md:pb-10">
       <div className="border-b border-white/10 bg-white/5 px-4 py-3 text-center text-xs text-slate-300">
-        {DEMO_DISCLAIMER}
+        {TRANSPARENCY_DISCLAIMER}
       </div>
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 sm:px-6">
-        {/* Coluna 1: Marca */}
         <div>
           <div className="flex items-center gap-3">
             <img
@@ -32,8 +30,8 @@ export default function Footer() {
             </div>
           </div>
           <p className="mt-4 text-xs leading-relaxed text-slate-300">
-            Plataforma comunitária para comparação gratuita de preços entre
-            mercados locais e conexão transparente entre consumidores e
+            Plataforma para comparação de preços entre mercados locais, catálogo
+            integrado ao Open Food Facts Brasil e conexão entre consumidores e
             comerciantes de bairro.
           </p>
           <div className="mt-4 flex items-center gap-2 text-xs text-brand-yellow">
@@ -42,7 +40,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Coluna 2: Para Consumidores */}
         <div>
           <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-white">
             Para Consumidores
@@ -55,12 +52,12 @@ export default function Footer() {
             </li>
             <li>
               <Link href="/lista" className="hover:text-brand-yellow">
-                Lista de Compras Inteligente
+                Lista Inteligente + Scanner EAN
               </Link>
             </li>
             <li>
               <Link href="/mercados" className="hover:text-brand-yellow">
-                Mercados Próximos no Bairro
+                Mercados Próximos por Distância
               </Link>
             </li>
             <li>
@@ -71,7 +68,6 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Coluna 3: Para Mercados e Entregadores */}
         <div>
           <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-white">
             Parceiros Locais
@@ -84,12 +80,12 @@ export default function Footer() {
             </li>
             <li>
               <Link href="/painel-parceiro" className="hover:text-brand-yellow">
-                Painel de Gestão do Mercado
+                Painel do Parceiro (Upload CSV e Encartes IA)
               </Link>
             </li>
             <li>
               <Link href="/entregas" className="hover:text-brand-yellow">
-                Entregadores Parceiros (Futura Operação)
+                Entregadores Parceiros
               </Link>
             </li>
             <li>
@@ -100,7 +96,6 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Coluna 4: Institucional, Ajuda e Contato */}
         <div>
           <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-white">
             Ajuda, Privacidade e Contato
@@ -132,11 +127,11 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-2 pt-1 text-slate-300">
               <Mail className="h-3.5 w-3.5 text-brand-yellow" />
-              <span>contato@economizemais.demo.br</span>
+              <span>contato@economizemais.com.br</span>
             </li>
             <li className="flex items-center gap-2 text-slate-300">
               <Phone className="h-3.5 w-3.5 text-brand-yellow" />
-              <span>(11) 4000-0000 (Atendimento Demonstrativo)</span>
+              <span>(11) 4000-1234</span>
             </li>
             <li className="flex items-center gap-2 text-slate-300">
               <Instagram className="h-3.5 w-3.5 text-brand-yellow" />
@@ -152,10 +147,8 @@ export default function Footer() {
 
       <div className="mx-auto max-w-7xl border-t border-white/10 px-4 pt-6 text-center text-xs text-slate-400 sm:px-6">
         <p>
-          © {new Date().getFullYear()} Economize+ — Compare. Escolha. Economize.
-          Os preços exibidos são fornecidos pelos mercados parceiros (ou
-          simulados no modo de demonstração) e podem sofrer alterações na loja
-          física.
+          © {new Date().getFullYear()} Economize+ — Compare. Escolha. Economize.{" "}
+          {TRANSPARENCY_DISCLAIMER}.
         </p>
       </div>
     </footer>

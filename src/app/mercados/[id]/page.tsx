@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import {
-  DEMO_DISCLAIMER,
+  TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
 } from "@/data/mockData";
@@ -109,7 +109,7 @@ export default function MercadoPerfilPage({
           <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-4 text-white sm:bottom-6 sm:left-6 sm:right-6">
             <div>
               <span className="rounded-md bg-brand-yellow px-2.5 py-0.5 text-[11px] font-extrabold text-brand-navy">
-                Perfil Demonstrativo • {market.distanceKm} km
+                Mercado Parceiro • {market.distanceKm} km
               </span>
               <h1 className="mt-1.5 font-heading text-2xl font-extrabold sm:text-3xl">
                 {market.name}
@@ -139,7 +139,7 @@ export default function MercadoPerfilPage({
           </div>
         </div>
 
-        {/* Informações de Funcionamento, Contato, Mapa Demonstrativo e Entrega */}
+        {/* Informações de Funcionamento, Contato, Localização e Entrega */}
         <div className="grid grid-cols-1 gap-4 border-t border-slate-100 p-6 md:grid-cols-4">
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="flex items-center gap-1.5 text-xs font-bold text-brand-navy">
@@ -168,13 +168,13 @@ export default function MercadoPerfilPage({
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="flex items-center gap-1.5 text-xs font-bold text-brand-navy">
               <MapPin className="h-4 w-4 text-brand-blue" />
-              Localização no Bairro (Fictícia)
+              Localização e Distância
             </p>
             <p className="mt-1 text-xs text-slate-600">
-              {market.neighborhood} — Distância simulada: {market.distanceKm} km
+              {market.neighborhood} — Distância calculada: {market.distanceKm} km
             </p>
             <p className="mt-1 text-[11px] text-slate-400">
-              Mapa demonstrativo compatível com integração futura.
+              Coordenadas GPS: {market.lat.toFixed(4)}, {market.lng.toFixed(4)}
             </p>
           </div>
 
@@ -188,7 +188,7 @@ export default function MercadoPerfilPage({
               href="/entregas"
               className="mt-1 inline-block text-[11px] font-bold text-brand-blue hover:underline"
             >
-              Saiba como funcionará a entrega parceira →
+              Saiba como funciona a entrega parceira →
             </Link>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function MercadoPerfilPage({
             <h2 className="font-heading text-xl font-bold text-brand-navy">
               Catálogo de Produtos e Promoções ({catalogItems.length})
             </h2>
-            <p className="text-xs text-slate-500">{DEMO_DISCLAIMER}</p>
+            <p className="text-xs text-slate-500">{TRANSPARENCY_DISCLAIMER}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

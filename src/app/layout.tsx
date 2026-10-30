@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
@@ -19,10 +19,23 @@ const poppins = Poppins({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#176BCE",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Economize+ | Compare. Escolha. Economize.",
   description:
     "Compare preços de produtos em mercados próximos, monte sua lista de compras inteligente e encontre ofertas no seu bairro com o Economize+.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Economize+",
+  },
   openGraph: {
     title: "Economize+ | Compare preços perto de você",
     description:

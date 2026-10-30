@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import {
+  Barcode,
   Clock,
   MapPin,
   Plus,
@@ -33,7 +34,6 @@ export default function ProductComparisonCard({
 }: Props) {
   const { addToList } = useApp();
 
-  // Sort available prices ascending
   const sorted = [...productPrices].sort(
     (a, b) => a.priceEntry.price - b.priceEntry.price
   );
@@ -58,7 +58,6 @@ export default function ProductComparisonCard({
   return (
     <article className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs transition hover:border-brand-blue/40 hover:shadow-md">
       <div>
-        {/* Topo do Card: Selos de Promoção, Tamanho e Demonstração */}
         <div className="flex flex-wrap items-center justify-between gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
             {bestOffer?.priceEntry.isPromo && (
@@ -72,19 +71,19 @@ export default function ProductComparisonCard({
             </span>
           </div>
 
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-            Preço fictício (Demo)
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+            <Barcode className="h-3 w-3" />
+            {product.ean}
           </span>
         </div>
 
         {hasSponsored && (
           <div className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
             <Sparkles className="h-2.5 w-2.5" />
-            Contém oferta com destaque patrocinado
+            Destaque Patrocinado
           </div>
         )}
 
-        {/* Imagem e Título */}
         <Link
           href={`/produto/${product.id}`}
           className="group mt-3 flex items-center gap-3.5"
@@ -93,7 +92,7 @@ export default function ProductComparisonCard({
             <img
               src={product.imageUrl}
               alt={`${product.name} - ${product.sizeLabel}`}
-              className="h-full w-full rounded-lg object-cover transition group-hover:scale-105"
+              className="h-full w-full rounded-lg object-contain transition group-hover:scale-105"
               loading="lazy"
             />
           </div>
@@ -106,11 +105,11 @@ export default function ProductComparisonCard({
             </h3>
             {bestOffer ? (
               <div className="mt-1 flex flex-wrap items-baseline gap-2">
-                <span className="text-lg font-extrabold text-brand-green">
+                <span className="tabular-price text-lg font-extrabold text-brand-green">
                   {formatBRL(bestOffer.priceEntry.price)}
                 </span>
                 {bestUnitPrice && (
-                  <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-green">
+                  <span className="tabular-price rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-green">
                     {bestUnitPrice.formatted}
                   </span>
                 )}
@@ -123,20 +122,18 @@ export default function ProductComparisonCard({
           </div>
         </Link>
 
-        {/* Destaque de Menor Preço e Economia */}
         {bestOffer && potentialSavings > 0.05 && (
           <div className="mt-3 flex items-center justify-between rounded-xl border border-brand-green/20 bg-emerald-50/70 px-3 py-2 text-xs">
             <span className="flex items-center gap-1.5 font-semibold text-brand-green">
               <TrendingDown className="h-4 w-4 shrink-0" />
               Menor preço: {bestOffer.market.shortName}
             </span>
-            <span className="font-bold text-brand-green">
-              Diferença de até {formatBRL(potentialSavings)}
+            <span className="tabular-price font-bold text-brand-green">
+              Economia de até {formatBRL(potentialSavings)}
             </span>
           </div>
         )}
 
-        {/* Comparativo Rápido por Mercado */}
         <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Comparativo nos mercados ({sorted.length}):
@@ -173,7 +170,7 @@ export default function ProductComparisonCard({
                     )}
                   </div>
                   <div className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-0.5">
+                    <span className="tabular-price flex items-center gap-0.5">
                       <MapPin className="h-2.5 w-2.5" />
                       {market.distanceKm} km
                     </span>
@@ -186,13 +183,13 @@ export default function ProductComparisonCard({
 
                 <div className="text-right">
                   <span
-                    className={`block text-xs font-extrabold ${
+                    className={`tabular-price block text-xs font-extrabold ${
                       isLowest ? "text-brand-green" : "text-brand-navy"
                     }`}
                   >
                     {formatBRL(priceEntry.price)}
                   </span>
-                  <span className="block text-[10px] text-slate-400">
+                  <span className="tabular-price block text-[10px] text-slate-400">
                     {unit.formatted}
                   </span>
                 </div>
@@ -202,19 +199,18 @@ export default function ProductComparisonCard({
         </div>
       </div>
 
-      {/* Botões de Ação */}
       <div className="mt-4 flex items-center gap-2 pt-1">
         <button
           type="button"
           onClick={() => addToList(product.id, 1)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2.5 text-xs font-bold text-white transition hover:bg-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2.5 text-xs font-bold text-white transition hover:bg-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-yellow"
         >
           <Plus className="h-4 w-4" />
           Adicionar à Lista
         </button>
         <Link
           href={`/produto/${product.id}`}
-          className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-brand-blue hover:text-brand-blue"
+          className="flex min-h-[44px] items-center rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-brand-blue hover:text-brand-blue"
         >
           Detalhes
         </Link>

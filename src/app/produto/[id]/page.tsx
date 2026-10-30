@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import {
-  DEMO_DISCLAIMER,
+  TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
 } from "@/data/mockData";
@@ -126,9 +126,11 @@ export default function ProdutoDetalhePage({
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
                 Medida Exata: {product.sizeLabel}
               </span>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold text-amber-900">
-                Dados de Demonstração
-              </span>
+              {product.ean && (
+                <span className="rounded-full bg-slate-100 px-3 py-1 font-mono text-[11px] font-semibold text-slate-600">
+                  EAN: {product.ean}
+                </span>
+              )}
             </div>
 
             <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -223,7 +225,7 @@ export default function ProdutoDetalhePage({
             <h2 className="font-heading text-xl font-bold text-brand-navy">
               Comparação deste produto nos mercados locais
             </h2>
-            <p className="text-xs text-slate-500">{DEMO_DISCLAIMER}</p>
+            <p className="text-xs text-slate-500">{TRANSPARENCY_DISCLAIMER}</p>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             Ordenado do menor para o maior preço

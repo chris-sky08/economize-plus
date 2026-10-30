@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import {
-  DEMO_DISCLAIMER,
+  TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
 } from "@/data/mockData";
@@ -188,7 +188,7 @@ function BuscarContent() {
                 : "Buscar Produtos e Comparar Preços"}
             </h1>
             <p className="mt-1 text-xs text-slate-500">
-              {DEMO_DISCLAIMER} • Raio atual: até{" "}
+              {TRANSPARENCY_DISCLAIMER} • Raio atual: até{" "}
               <strong>{location.maxRadiusKm} km</strong> de{" "}
               <strong>{location.neighborhood}</strong>.
             </p>

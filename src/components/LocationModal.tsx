@@ -1,15 +1,42 @@
 "use client";
 
 import React, { useState } from "react";
-import { MapPin, Navigation, ShieldCheck, X } from "lucide-react";
+import { MapPin, Navigation, Search, ShieldCheck, X } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import {
+  inferCoordinatesForRegion,
+  useUserLocation,
+} from "@/hooks/useUserLocation";
 
-const DEMO_REGIONS = [
-  { neighborhood: "Vila Mariana", city: "São Paulo", zipCode: "04101-000" },
-  { neighborhood: "Saúde", city: "São Paulo", zipCode: "04045-000" },
-  { neighborhood: "Ipiranga", city: "São Paulo", zipCode: "04208-000" },
-  { neighborhood: "Moema", city: "São Paulo", zipCode: "04077-000" },
-  { neighborhood: "Centro (Bairro Sem Mercados no Raio 1km)", city: "São Paulo", zipCode: "01001-000" },
+const QUICK_REGIONS = [
+  {
+    neighborhood: "Vila Mariana",
+    city: "São Paulo",
+    zipCode: "04101-000",
+    lat: -23.5842,
+    lng: -46.6365,
+  },
+  {
+    neighborhood: "Saúde",
+    city: "São Paulo",
+    zipCode: "04045-000",
+    lat: -23.6135,
+    lng: -46.6382,
+  },
+  {
+    neighborhood: "Ipiranga",
+    city: "São Paulo",
+    zipCode: "04208-000",
+    lat: -23.5869,
+    lng: -46.6052,
+  },
+  {
+    neighborhood: "Moema",
+    city: "São Paulo",
+    zipCode: "04077-000",
+    lat: -23.5976,
+    lng: -46.6625,
+  },
 ];
 
 export default function LocationModal() {
@@ -21,56 +48,65 @@ export default function LocationModal() {
     showToast,
   } = useApp();
 
+  const {
+    loadingGeo,
+    geoError,
+    lookupCepViaCep,
+    requestDeviceCoordinates,
+  } = useUserLocation();
+
   const [neighborhood, setNeighborhood] = useState(location.neighborhood);
   const [city, setCity] = useState(location.city);
   const [zipCode, setZipCode] = useState(location.zipCode);
+  const [coords, setCoords] = useState({
+    lat: location.lat,
+    lng: location.lng,
+  });
   const [maxRadiusKm, setMaxRadiusKm] = useState(location.maxRadiusKm);
   const [askingGeoConsent, setAskingGeoConsent] = useState(false);
-  const [loadingGeo, setLoadingGeo] = useState(false);
 
   if (!isLocationModalOpen) return null;
 
+  const handleViaCepLookup = async () => {
+    const res = await lookupCepViaCep(zipCode);
+    if (res) {
+      setNeighborhood(res.neighborhood);
+      setCity(res.city);
+      setZipCode(res.zipCode);
+      setCoords({ lat: res.lat, lng: res.lng });
+      showToast(`CEP localizado: ${res.neighborhood} - ${res.city}/${res.state}`);
+    }
+  };
+
   const handleSaveManual = (e: React.FormEvent) => {
     e.preventDefault();
+    const resolvedCoords = inferCoordinatesForRegion(neighborhood, zipCode);
     updateLocation({
       neighborhood: neighborhood.trim() || "Vila Mariana",
       city: city.trim() || "São Paulo",
       zipCode: zipCode.trim() || "04101-000",
+      lat: coords.lat || resolvedCoords.lat,
+      lng: coords.lng || resolvedCoords.lng,
       maxRadiusKm,
     });
     setIsLocationModalOpen(false);
   };
 
-  const handleConfirmGeolocation = () => {
-    if (typeof window === "undefined" || !("geolocation" in navigator)) {
-      showToast(
-        "Seu navegador não suporta geolocalização. Use a seleção manual abaixo."
-      );
+  const handleConfirmGeolocation = async () => {
+    const deviceCoords = await requestDeviceCoordinates();
+    if (deviceCoords) {
       setAskingGeoConsent(false);
-      return;
+      updateLocation({
+        neighborhood: "Sua Localização Atual (GPS)",
+        city: "São Paulo",
+        lat: deviceCoords.lat,
+        lng: deviceCoords.lng,
+        deviceLocationGranted: true,
+      });
+      setIsLocationModalOpen(false);
+    } else {
+      setAskingGeoConsent(false);
     }
-    setLoadingGeo(true);
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        setLoadingGeo(false);
-        setAskingGeoConsent(false);
-        updateLocation({
-          neighborhood: "Vila Mariana (Localização Aproximada)",
-          city: "São Paulo",
-          zipCode: "04101-000",
-          deviceLocationGranted: true,
-        });
-        setIsLocationModalOpen(false);
-      },
-      () => {
-        setLoadingGeo(false);
-        setAskingGeoConsent(false);
-        showToast(
-          "Permissão de localização não concedida. Você pode escolher seu bairro ou CEP manualmente."
-        );
-      },
-      { timeout: 6000 }
-    );
   };
 
   return (
@@ -94,22 +130,17 @@ export default function LocationModal() {
                 Onde você quer economizar?
               </h2>
               <p className="text-xs text-slate-500">
-                Mostramos apenas mercados parceiros dentro do raio escolhido.
+                Calculamos a distância real (Haversine) até cada supermercado.
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsLocationModalOpen(false)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="min-h-[44px] min-w-[44px] rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             aria-label="Fechar janela de localização"
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
-          <strong>Aviso de Demonstração:</strong> As localizações e distâncias
-          deste MVP são fictícias e não representam proximidade física real.
         </div>
 
         {/* Opção de Geolocalização com consentimento prévio explícito */}
@@ -118,10 +149,10 @@ export default function LocationModal() {
             <button
               type="button"
               onClick={() => setAskingGeoConsent(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-blue/30 bg-brand-light/70 px-4 py-3 text-sm font-semibold text-brand-blue transition hover:bg-brand-light"
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-brand-blue/30 bg-brand-light/70 px-4 py-3 text-sm font-semibold text-brand-blue transition hover:bg-brand-light"
             >
               <Navigation className="h-4 w-4" />
-              Usar localização do meu dispositivo (Opcional)
+              Calcular distância pelo GPS do meu dispositivo
             </button>
           ) : (
             <div className="rounded-xl border border-brand-blue/40 bg-brand-light/50 p-4">
@@ -132,27 +163,27 @@ export default function LocationModal() {
                     Permissão de Localização (LGPD)
                   </p>
                   <p className="mt-1">
-                    Utilizamos sua localização apenas durante a sessão para
-                    sugerir a região mais próxima. Não armazenamos coordenadas
-                    GPS precisas no servidor. Deseja autorizar?
+                    Utilizamos suas coordenadas apenas para calcular a distância
+                    em quilômetros até os mercados cadastrados. Deseja
+                    autorizar?
                   </p>
                   <div className="mt-3 flex gap-2">
                     <button
                       type="button"
                       onClick={handleConfirmGeolocation}
                       disabled={loadingGeo}
-                      className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-navy"
+                      className="min-h-[44px] rounded-lg bg-brand-blue px-3.5 py-2 text-xs font-semibold text-white hover:bg-brand-navy"
                     >
                       {loadingGeo
-                        ? "Solicitando..."
-                        : "Autorizar localização agora"}
+                        ? "Obtendo coordenadas..."
+                        : "Autorizar GPS agora"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setAskingGeoConsent(false)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      className="min-h-[44px] rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
                     >
-                      Prefiro digitar manualmente
+                      Usar CEP manualmente
                     </button>
                   </div>
                 </div>
@@ -161,13 +192,19 @@ export default function LocationModal() {
           )}
         </div>
 
-        {/* Atalhos rápidos de Bairros Demonstrativos */}
+        {geoError && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+            {geoError}
+          </div>
+        )}
+
+        {/* Atalhos rápidos de Bairros */}
         <div className="mt-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Bairros demonstrativos rápidos:
+            Regiões atendidas em São Paulo:
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {DEMO_REGIONS.map((reg) => (
+            {QUICK_REGIONS.map((reg) => (
               <button
                 key={reg.zipCode}
                 type="button"
@@ -175,6 +212,7 @@ export default function LocationModal() {
                   setNeighborhood(reg.neighborhood);
                   setCity(reg.city);
                   setZipCode(reg.zipCode);
+                  setCoords({ lat: reg.lat, lng: reg.lng });
                 }}
                 className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                   neighborhood === reg.neighborhood
@@ -195,16 +233,28 @@ export default function LocationModal() {
                 htmlFor="input-cep"
                 className="block text-xs font-semibold text-slate-700"
               >
-                CEP
+                CEP (Consulta automática ViaCEP)
               </label>
-              <input
-                id="input-cep"
-                type="text"
-                value={zipCode}
-                onChange={(e) => setZipCode(e.target.value)}
-                placeholder="04101-000"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-blue focus:outline-none"
-              />
+              <div className="mt-1 flex gap-1.5">
+                <input
+                  id="input-cep"
+                  type="text"
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  placeholder="04101-000"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-blue focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleViaCepLookup}
+                  disabled={loadingGeo}
+                  className="inline-flex items-center gap-1 rounded-xl bg-brand-light px-3 py-2 text-xs font-bold text-brand-blue hover:bg-brand-blue hover:text-white"
+                  aria-label="Buscar CEP via API ViaCEP"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  Buscar
+                </button>
+              </div>
             </div>
             <div>
               <label
@@ -242,10 +292,7 @@ export default function LocationModal() {
           </div>
 
           <div>
-            <label
-              htmlFor="input-raio"
-              className="block text-xs font-semibold text-slate-700"
-            >
+            <label className="block text-xs font-semibold text-slate-700">
               Raio máximo de distância dos mercados:{" "}
               <span className="font-bold text-brand-blue">{maxRadiusKm} km</span>
             </label>
@@ -255,7 +302,7 @@ export default function LocationModal() {
                   key={km}
                   type="button"
                   onClick={() => setMaxRadiusKm(km)}
-                  className={`rounded-xl border py-2 text-xs font-semibold transition ${
+                  className={`min-h-[44px] rounded-xl border py-2 text-xs font-semibold transition ${
                     maxRadiusKm === km
                       ? "border-brand-green bg-brand-green text-white"
                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -271,13 +318,13 @@ export default function LocationModal() {
             <button
               type="button"
               onClick={() => setIsLocationModalOpen(false)}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              className="min-h-[44px] rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-brand-navy"
+              className="min-h-[44px] rounded-xl bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-brand-navy"
             >
               Confirmar Localização
             </button>

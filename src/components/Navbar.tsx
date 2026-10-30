@@ -4,10 +4,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  AlertTriangle,
   Building2,
   CheckCircle2,
   ChevronDown,
+  Clock,
   Home,
   LayoutDashboard,
   MapPin,
@@ -19,7 +19,7 @@ import {
   User,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { DEMO_DISCLAIMER, formatBRL } from "@/data/mockData";
+import { TRANSPARENCY_DISCLAIMER, formatBRL } from "@/data/mockData";
 
 export default function Navbar() {
   const router = useRouter();
@@ -42,8 +42,9 @@ export default function Navbar() {
     .filter((i) => i.checked)
     .reduce((acc, item) => acc + item.quantity, 0);
 
-  // Calculate lowest complete or partial basket total for header badge
-  const activeMarkets = markets.filter((m) => m.status === "ativo");
+  const activeMarkets = markets.filter(
+    (m) => m.status === "ativo" && m.distanceKm <= location.maxRadiusKm
+  );
   const marketTotals = activeMarkets.map((m) => {
     let sum = 0;
     shoppingList
@@ -73,7 +74,6 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Toast Flutuante */}
       {toast && (
         <div
           role="status"
@@ -85,17 +85,19 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Faixa Superior de Aviso de Demonstração + Seletor Rápido de Perfis */}
+      {/* Faixa Superior de Transparência + Acesso Rápido de Perfis */}
       <div className="bg-brand-navy px-3 py-1.5 text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 text-brand-yellow">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            <span className="font-medium text-slate-100">{DEMO_DISCLAIMER}</span>
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-medium text-slate-100">
+              {TRANSPARENCY_DISCLAIMER}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="hidden text-slate-300 md:inline">
-              Testar visão de perfil:
+              Alternar visão:
             </span>
             <div className="flex flex-wrap gap-1">
               {(
@@ -128,7 +130,6 @@ export default function Navbar() {
       <header className="sticky top-0 z-40 bg-brand-blue shadow-sm">
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Logo Oficial Economize+ */}
             <Link
               href="/"
               className="flex items-center gap-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-yellow"
@@ -149,11 +150,10 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Botão de Localização */}
             <button
               type="button"
               onClick={() => setIsLocationModalOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-white/12 px-3 py-2 text-left text-xs text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+              className="flex min-h-[44px] items-center gap-2 rounded-xl bg-white/12 px-3 py-2 text-left text-xs text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
               aria-label="Selecionar localização ou CEP"
             >
               <MapPin className="h-4 w-4 shrink-0 text-brand-yellow" />
@@ -168,7 +168,6 @@ export default function Navbar() {
               </div>
             </button>
 
-            {/* Barra de Busca Central (Estilo Magalu / Wave Grocery) */}
             <form
               onSubmit={handleSearch}
               className="order-3 w-full lg:order-0 lg:max-w-md xl:max-w-xl"
@@ -183,24 +182,23 @@ export default function Navbar() {
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Qual produto você quer comparar? (Ex: arroz 5kg, leite, óleo...)"
+                  placeholder="Qual produto ou código EAN você quer comparar?"
                   className="w-full rounded-full border-2 border-transparent bg-white py-2.5 pr-12 pl-4 text-sm text-slate-800 placeholder-slate-400 shadow-xs focus:border-brand-yellow focus:outline-none"
                 />
                 <button
                   type="submit"
                   aria-label="Buscar e comparar produto"
-                  className="absolute right-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-brand-navy text-white transition hover:bg-brand-green"
+                  className="absolute right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy text-white transition hover:bg-brand-green"
                 >
                   <Search className="h-4 w-4" />
                 </button>
               </div>
             </form>
 
-            {/* Ações Direita: Conta + Lista de Compras Inteligente */}
             <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 href="/conta"
-                className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                className="flex min-h-[44px] items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
                   <User className="h-4 w-4" />
@@ -217,7 +215,7 @@ export default function Navbar() {
 
               <Link
                 href="/lista"
-                className="flex items-center gap-2.5 rounded-xl bg-brand-yellow px-3.5 py-2 text-brand-navy shadow-xs transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-white"
+                className="flex min-h-[44px] items-center gap-2.5 rounded-xl bg-brand-yellow px-3.5 py-2 text-brand-navy shadow-xs transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-white"
               >
                 <div className="relative">
                   <ShoppingBasket className="h-5 w-5" />
@@ -229,7 +227,7 @@ export default function Navbar() {
                   <span className="block text-[10px] font-semibold leading-none opacity-80">
                     Minha Lista
                   </span>
-                  <span className="text-xs font-extrabold">
+                  <span className="tabular-price text-xs font-extrabold">
                     {bestEstimatedTotal > 0 && isFinite(bestEstimatedTotal)
                       ? formatBRL(bestEstimatedTotal)
                       : "Ver cesta"}
@@ -240,7 +238,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Barra de Navegação e Categorias */}
         <nav
           aria-label="Menu principal e categorias"
           className="border-t border-white/15 bg-brand-navy/25 text-white"
@@ -313,14 +310,13 @@ export default function Navbar() {
         </nav>
       </header>
 
-      {/* Navegação Inferior Fixa para Celular */}
       <nav
         aria-label="Navegação rápida móvel"
         className="fixed right-0 bottom-0 left-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white py-2 shadow-lg md:hidden"
       >
         <Link
           href="/"
-          className={`flex flex-col items-center gap-0.5 text-[11px] font-medium ${
+          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
             pathname === "/" ? "text-brand-blue font-bold" : "text-slate-600"
           }`}
         >
@@ -329,7 +325,7 @@ export default function Navbar() {
         </Link>
         <Link
           href="/buscar"
-          className={`flex flex-col items-center gap-0.5 text-[11px] font-medium ${
+          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
             pathname.startsWith("/buscar")
               ? "text-brand-blue font-bold"
               : "text-slate-600"
@@ -340,7 +336,7 @@ export default function Navbar() {
         </Link>
         <Link
           href="/lista"
-          className={`relative flex flex-col items-center gap-0.5 text-[11px] font-medium ${
+          className={`relative flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
             pathname.startsWith("/lista")
               ? "text-brand-green font-bold"
               : "text-slate-600"
@@ -351,7 +347,7 @@ export default function Navbar() {
         </Link>
         <Link
           href="/mercados"
-          className={`flex flex-col items-center gap-0.5 text-[11px] font-medium ${
+          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
             pathname.startsWith("/mercados")
               ? "text-brand-blue font-bold"
               : "text-slate-600"
@@ -362,7 +358,7 @@ export default function Navbar() {
         </Link>
         <Link
           href="/conta"
-          className={`flex flex-col items-center gap-0.5 text-[11px] font-medium ${
+          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
             pathname.startsWith("/conta")
               ? "text-brand-blue font-bold"
               : "text-slate-600"

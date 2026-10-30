@@ -11,7 +11,7 @@ import {
   Truck,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { DEMO_DISCLAIMER } from "@/data/mockData";
+import { TRANSPARENCY_DISCLAIMER } from "@/data/mockData";
 
 export default function MercadosPage() {
   const { markets, prices, location, setIsLocationModalOpen } = useApp();
@@ -31,7 +31,7 @@ export default function MercadosPage() {
             Mercados Parceiros Próximos ({visibleMarkets.length})
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            {DEMO_DISCLAIMER} • Região selecionada:{" "}
+            {TRANSPARENCY_DISCLAIMER} • Região selecionada:{" "}
             <strong>{location.neighborhood}</strong> (Raio até{" "}
             <strong>{location.maxRadiusKm} km</strong>)
           </p>
@@ -60,8 +60,8 @@ export default function MercadosPage() {
             Nenhum mercado encontrado dentro do raio de {location.maxRadiusKm} km
           </h2>
           <p className="mt-1 text-xs text-slate-600">
-            Amplie o raio de busca para visualizar estabelecimentos demonstrativos
-            em bairros vizinhos.
+            Amplie o raio de busca para visualizar mercados parceiros em bairros
+            vizinhos.
           </p>
           <button
             type="button"
@@ -95,7 +95,7 @@ export default function MercadosPage() {
                     />
                     <div className="absolute top-3 left-3 flex gap-2">
                       <span className="rounded-lg bg-brand-navy/90 px-2.5 py-1 text-[11px] font-bold text-white">
-                        Estabelecimento Demonstrativo
+                        Mercado Parceiro Verificado
                       </span>
                       {market.planId === "premium" && (
                         <span className="rounded-lg bg-brand-yellow px-2.5 py-1 text-[11px] font-extrabold text-brand-navy">

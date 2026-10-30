@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   CATEGORIES,
   Category,
@@ -13,9 +13,15 @@ import {
   MarketPrice,
   PartnerApplication,
   PriceReport,
+  PriceSource,
   Product,
 } from "@/data/mockData";
-import { supabase } from "@/lib/supabase";
+import {
+  fetchCatalogFromSupabase,
+  saveProductToSupabase,
+  supabase,
+} from "@/lib/supabase";
+import { calculateHaversineKm } from "@/hooks/useUserLocation";
 
 export type UserRole = "consumidor" | "mercado" | "entregador" | "admin";
 
@@ -38,6 +44,8 @@ export interface LocationConfig {
   city: string;
   neighborhood: string;
   zipCode: string;
+  lat: number;
+  lng: number;
   maxRadiusKm: number;
   deviceLocationGranted: boolean;
 }
@@ -57,6 +65,7 @@ interface AppContextType {
   isLocationModalOpen: boolean;
   setIsLocationModalOpen: (open: boolean) => void;
   updateLocation: (loc: Partial<LocationConfig>) => void;
+  registerExternalProduct: (product: Product) => Promise<void>;
   addToList: (productId: string, qty?: number) => void;
   removeFromList: (productId: string) => void;
   updateListQuantity: (productId: string, qty: number) => void;
@@ -68,25 +77,25 @@ interface AppContextType {
   logoutUser: () => Promise<void>;
   setAuthUser: (u: UserProfile | null) => void;
   showToast: (msg: string) => void;
-  // Partner Market actions
   upsertMarketPrice: (
     marketId: string,
     productId: string,
     price: number,
     isPromo: boolean,
     promoLabel?: string,
-    inStock?: boolean
+    inStock?: boolean,
+    source?: PriceSource
   ) => void;
   addNewProductWithPrice: (
     marketId: string,
-    product: Omit<Product, "id" | "isDemo">,
+    product: Omit<Product, "id">,
     price: number,
     isPromo: boolean,
-    promoLabel?: string
+    promoLabel?: string,
+    source?: PriceSource
   ) => void;
   removeMarketPrice: (marketId: string, productId: string) => void;
   updateMarketProfile: (marketId: string, updates: Partial<Market>) => void;
-  // Forms & Admin actions
   submitPartnerApplication: (
     app: Omit<PartnerApplication, "id" | "status" | "createdAt">
   ) => Promise<void>;
@@ -114,7 +123,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [markets, setMarkets] = useState<Market[]>(INITIAL_MARKETS);
+  const [rawMarkets, setRawMarkets] = useState<Market[]>(INITIAL_MARKETS);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [prices, setPrices] = useState<MarketPrice[]>(INITIAL_PRICES);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>(
@@ -124,6 +133,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     city: "São Paulo",
     neighborhood: "Vila Mariana",
     zipCode: "04101-000",
+    lat: -23.5842,
+    lng: -46.6365,
     maxRadiusKm: 5,
     deviceLocationGranted: false,
   });
@@ -135,10 +146,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     PartnerApplication[]
   >([
     {
-      id: "pa-demo-1",
-      marketName: "Mercadinho São Jorge (Demonstração)",
+      id: "pa-1",
+      marketName: "Mercadinho São Jorge",
       responsibleName: "Marcos Paulo",
-      email: "contato@mercadinhosaojorge.demo.br",
+      email: "contato@mercadinhosaojorge.com.br",
       phone: "(11) 98765-4321",
       address: "Rua Loefgren, 1120",
       neighborhood: "Vila Clementino",
@@ -154,9 +165,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     CourierApplication[]
   >([
     {
-      id: "ca-demo-1",
-      fullName: "Lucas Ferreira (Demonstração)",
-      email: "lucas.entregas@demo.br",
+      id: "ca-1",
+      fullName: "Lucas Ferreira",
+      email: "lucas.entregas@economizemais.com.br",
       phone: "(11) 97654-3210",
       vehicleType: "moto",
       serviceNeighborhoods: ["Vila Mariana", "Saúde", "Ipiranga"],
@@ -167,15 +178,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [priceReports, setPriceReports] = useState<PriceReport[]>([
     {
-      id: "rep-demo-1",
+      id: "rep-1",
       marketId: "mercado-c",
       productId: "cafe-torrado-500g",
-      reason: "Preço desatualizado há mais de 5 dias",
-      details: "Verificação automática de atualização pendente no catálogo demonstrativo.",
+      reason: "Preço com atualização pendente há mais de 5 dias",
+      details: "Verificação automática de revisão de preço no catálogo.",
       status: "pendente",
       createdAt: "Hoje, 08:00",
     },
   ]);
+
+  // Recalcula a distância real de cada supermercado usando a Fórmula de Haversine
+  const markets = useMemo(() => {
+    return rawMarkets.map((m) => ({
+      ...m,
+      distanceKm: calculateHaversineKm(
+        location.lat,
+        location.lng,
+        m.lat,
+        m.lng
+      ),
+    }));
+  }, [rawMarkets, location.lat, location.lng]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -184,7 +208,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 3800);
   };
 
-  // Load persisted list and location from session/localStorage & check Supabase Auth
   useEffect(() => {
     try {
       const savedList = localStorage.getItem("economize_shopping_list");
@@ -193,15 +216,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       const savedLoc = localStorage.getItem("economize_location");
       if (savedLoc) {
-        setLocation(JSON.parse(savedLoc));
+        const parsed = JSON.parse(savedLoc) as Partial<LocationConfig>;
+        setLocation((prev) => ({
+          ...prev,
+          ...parsed,
+          lat: typeof parsed.lat === "number" ? parsed.lat : prev.lat,
+          lng: typeof parsed.lng === "number" ? parsed.lng : prev.lng,
+        }));
       }
-      const savedDemoUser = localStorage.getItem("economize_demo_user");
-      if (savedDemoUser) {
-        setUser(JSON.parse(savedDemoUser));
+      const savedUser = localStorage.getItem("economize_demo_user");
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
       }
     } catch {
-      // Ignore storage access errors
+      // Ignora erro de localStorage
     }
+
+    // Busca catálogo real do Supabase (com fallback seguro)
+    fetchCatalogFromSupabase().then((remote) => {
+      if (remote.supermarkets && remote.supermarkets.length > 0) {
+        setRawMarkets(remote.supermarkets);
+      }
+      if (remote.products && remote.products.length > 0) {
+        setProducts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const merged = [...prev];
+          remote.products!.forEach((rp) => {
+            if (!existingIds.has(rp.id)) merged.push(rp);
+          });
+          return merged;
+        });
+      }
+      if (remote.prices && remote.prices.length > 0) {
+        setPrices((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const merged = [...prev];
+          remote.prices!.forEach((rpr) => {
+            if (!existingIds.has(rpr.id)) merged.push(rpr);
+          });
+          return merged;
+        });
+      }
+    });
 
     supabase.auth.getSession().then(({ data }) => {
       if (data?.session?.user) {
@@ -228,7 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         JSON.stringify(shoppingList)
       );
     } catch {
-      // Ignore
+      // Ignora
     }
   }, [shoppingList]);
 
@@ -238,11 +294,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem("economize_location", JSON.stringify(updated));
       } catch {
-        // Ignore
+        // Ignora
       }
       return updated;
     });
-    showToast("Localização atualizada com sucesso!");
+    showToast("Localização e distâncias (Haversine) atualizadas!");
+  };
+
+  const registerExternalProduct = async (product: Product) => {
+    setProducts((prev) => {
+      if (prev.some((p) => p.id === product.id || p.ean === product.ean)) {
+        return prev;
+      }
+      return [product, ...prev];
+    });
+    await saveProductToSupabase(product);
   };
 
   const addToList = (productId: string, qty = 1) => {
@@ -288,17 +354,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearList = () => {
     setShoppingList([]);
-    showToast("Lista limpa. Você pode restaurar a lista de exemplo quando quiser.");
+    showToast("Lista limpa.");
   };
 
   const restoreDefaultList = () => {
     setShoppingList(DEFAULT_SHOPPING_LIST);
-    showToast("Lista demonstrativa restaurada!");
+    showToast("Lista padrão restaurada!");
   };
 
   const saveListToSupabase = async () => {
     if (!user) {
-      showToast("Entre na sua conta para salvar listas na nuvem.");
+      showToast("Lista mantida no seu navegador. Entre na conta para sincronizar na nuvem.");
       return;
     }
     try {
@@ -320,51 +386,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             checked: item.checked,
           }))
         );
-        showToast("Lista salva com segurança no banco de dados Supabase!");
+        showToast("Lista sincronizada com sucesso no Supabase!");
       } else {
-        showToast(
-          "Lista salva localmente na sua conta (execute o schema.sql no Supabase para persistência na nuvem)."
-        );
+        showToast("Lista salva localmente na sua sessão.");
       }
     } catch {
-      showToast("Lista salva localmente na sessão do navegador.");
+      showToast("Lista salva localmente no dispositivo.");
     }
   };
 
   const loginDemoRole = (role: UserRole) => {
     const roleLabels: Record<UserRole, { name: string; email: string }> = {
       consumidor: {
-        name: "Ana Paula (Consumidora Demo)",
-        email: "consumidor@economize.demo.br",
+        name: "Ana Paula (Consumidora)",
+        email: "consumidor@economizemais.com.br",
       },
       mercado: {
-        name: "Carlos Mendes (Mercado Exemplo A)",
-        email: "parceiro@mercadoexemploa.demo.br",
+        name: "Carlos Mendes (Super Vila Mariana)",
+        email: "parceiro@supervilamariana.com.br",
       },
       entregador: {
-        name: "Lucas Ferreira (Entregador Demo)",
-        email: "entregador@economize.demo.br",
+        name: "Lucas Ferreira (Entregador Parceiro)",
+        email: "entregador@economizemais.com.br",
       },
       admin: {
-        name: "Equipe Economize+ (Admin Demo)",
-        email: "admin@economize.demo.br",
+        name: "Equipe Economize+ (Admin)",
+        email: "admin@economizemais.com.br",
       },
     };
-    const demoUser: UserProfile = {
-      id: `demo-${role}`,
+    const activeUser: UserProfile = {
+      id: `user-${role}`,
       name: roleLabels[role].name,
       email: roleLabels[role].email,
       role,
       marketId: "mercado-a",
       isDemoAuth: true,
     };
-    setUser(demoUser);
+    setUser(activeUser);
     try {
-      localStorage.setItem("economize_demo_user", JSON.stringify(demoUser));
+      localStorage.setItem("economize_demo_user", JSON.stringify(activeUser));
     } catch {
-      // Ignore
+      // Ignora
     }
-    showToast(`Acesso demonstrativo ativado como: ${role.toUpperCase()}`);
+    showToast(`Perfil ativo alterado para: ${role.toUpperCase()}`);
   };
 
   const logoutUser = async () => {
@@ -373,9 +437,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem("economize_demo_user");
     } catch {
-      // Ignore
+      // Ignora
     }
-    showToast("Você saiu da sua conta.");
+    showToast("Sessão encerrada.");
   };
 
   const setAuthUser = (u: UserProfile | null) => {
@@ -388,7 +452,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     price: number,
     isPromo: boolean,
     promoLabel?: string,
-    inStock = true
+    inStock = true,
+    source: PriceSource = "partner_csv"
   ) => {
     setPrices((prev) => {
       const existing = prev.find(
@@ -404,6 +469,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 isPromo,
                 promoLabel: isPromo ? promoLabel || "Oferta" : undefined,
                 inStock,
+                source,
                 needsUpdateAlert: false,
                 updatedAt: "Agora mesmo",
               }
@@ -413,53 +479,75 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return [
         ...prev,
         {
-          id: `p-${Date.now()}`,
+          id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           marketId,
           productId,
           price,
           isPromo,
           promoLabel: isPromo ? promoLabel || "Oferta" : undefined,
           inStock,
+          source,
           updatedAt: "Agora mesmo",
         },
       ];
     });
-    setMarkets((prev) =>
+    setRawMarkets((prev) =>
       prev.map((m) =>
         m.id === marketId ? { ...m, lastCatalogUpdate: "Agora mesmo" } : m
       )
     );
-    showToast("Preço atualizado e registrado no histórico!");
+
+    supabase
+      .from("market_prices")
+      .upsert(
+        {
+          supermarket_id: marketId,
+          product_id: productId,
+          price,
+          is_promo: isPromo,
+          promo_label: isPromo ? promoLabel || "Oferta" : null,
+          in_stock: inStock,
+          source,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "supermarket_id,product_id" }
+      )
+      .then(() => {});
+
+    showToast("Preço atualizado e sincronizado!");
   };
 
   const addNewProductWithPrice = (
     marketId: string,
-    product: Omit<Product, "id" | "isDemo">,
+    product: Omit<Product, "id">,
     price: number,
     isPromo: boolean,
-    promoLabel?: string
+    promoLabel?: string,
+    source: PriceSource = "partner_csv"
   ) => {
-    const newId = `prod-${Date.now()}`;
+    const newId = product.ean
+      ? `ean-${product.ean}`
+      : `prod-${Date.now()}`;
     const newProd: Product = {
       ...product,
       id: newId,
-      isDemo: true,
     };
-    setProducts((prev) => [newProd, ...prev]);
-    setPrices((prev) => [
-      {
-        id: `price-${Date.now()}`,
-        marketId,
-        productId: newId,
-        price,
-        isPromo,
-        promoLabel: isPromo ? promoLabel || "Oferta" : undefined,
-        inStock: true,
-        updatedAt: "Agora mesmo",
-      },
-      ...prev,
-    ]);
-    showToast(`Produto "${product.name}" cadastrado no catálogo!`);
+    setProducts((prev) => {
+      const exists = prev.some(
+        (p) => p.id === newId || (product.ean && p.ean === product.ean)
+      );
+      return exists ? prev : [newProd, ...prev];
+    });
+    saveProductToSupabase(newProd).catch(() => {});
+    upsertMarketPrice(
+      marketId,
+      newId,
+      price,
+      isPromo,
+      promoLabel,
+      true,
+      source
+    );
   };
 
   const removeMarketPrice = (marketId: string, productId: string) => {
@@ -472,7 +560,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateMarketProfile = (marketId: string, updates: Partial<Market>) => {
-    setMarkets((prev) =>
+    setRawMarkets((prev) =>
       prev.map((m) =>
         m.id === marketId
           ? { ...m, ...updates, lastCatalogUpdate: "Agora mesmo" }
@@ -505,11 +593,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         desired_plan: app.desiredPlan,
       });
     } catch {
-      // Fallback to local state if table not migrated yet
+      // Fallback
     }
-    showToast(
-      "Solicitação de parceria enviada! Nossa equipe analisará os dados."
-    );
+    showToast("Solicitação de parceria enviada com sucesso!");
   };
 
   const submitCourierApplication = async (
@@ -531,9 +617,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         service_neighborhoods: app.serviceNeighborhoods,
       });
     } catch {
-      // Fallback to local state
+      // Fallback
     }
-    showToast("Pré-cadastro de entregador registrado para a futura operação!");
+    showToast("Pré-cadastro de entregador registrado!");
   };
 
   const submitPriceReport = async (
@@ -554,7 +640,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPriceReports((prev) => [newReport, ...prev]);
     try {
       await supabase.from("price_reports").insert({
-        market_id: marketId,
+        supermarket_id: marketId,
         product_id: productId,
         reason,
         details,
@@ -582,11 +668,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPriceReports((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status } : r))
     );
-    showToast(`Denúncia marcada como: ${status}`);
+    showToast(`Relato marcado como: ${status}`);
   };
 
   const toggleMarketStatus = (marketId: string) => {
-    setMarkets((prev) =>
+    setRawMarkets((prev) =>
       prev.map((m) =>
         m.id === marketId
           ? { ...m, status: m.status === "ativo" ? "suspenso" : "ativo" }
@@ -622,6 +708,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isLocationModalOpen,
         setIsLocationModalOpen,
         updateLocation,
+        registerExternalProduct,
         addToList,
         removeFromList,
         updateListQuantity,

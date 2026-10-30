@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
+  Barcode,
+  Camera,
   CheckCircle2,
   CloudUpload,
+  Loader2,
   MapPin,
   Plus,
   RotateCcw,
+  Search,
   ShoppingBasket,
   Store,
   Trash2,
@@ -16,10 +20,16 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import {
-  DEMO_DISCLAIMER,
+  Product,
+  TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
 } from "@/data/mockData";
+import {
+  lookupProductByEan,
+  searchProductsOpenFoodFacts,
+} from "@/services/productLookup";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 export default function ListaInteligentePage() {
   const {
@@ -28,6 +38,7 @@ export default function ListaInteligentePage() {
     markets,
     prices,
     location,
+    registerExternalProduct,
     addToList,
     removeFromList,
     updateListQuantity,
@@ -35,23 +46,107 @@ export default function ListaInteligentePage() {
     clearList,
     restoreDefaultList,
     saveListToSupabase,
+    showToast,
   } = useApp();
 
-  const [quickAddProductId, setQuickAddProductId] = useState(
-    products[0]?.id || ""
-  );
+  // Estados de Autocomplete (Debounce 300ms) + Open Food Facts + Scanner EAN
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedTerm, setDebouncedTerm] = useState("");
+  const [remoteResults, setRemoteResults] = useState<Product[]>([]);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  // Debounce de 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTerm(searchTerm.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Busca na API Open Food Facts Brasil quando debouncedTerm muda
+  useEffect(() => {
+    let active = true;
+    if (debouncedTerm.length < 2) {
+      setRemoteResults([]);
+      setIsSearchingApi(false);
+      return;
+    }
+
+    setIsSearchingApi(true);
+    searchProductsOpenFoodFacts(debouncedTerm)
+      .then((res) => {
+        if (active) {
+          setRemoteResults(res);
+          setIsSearchingApi(false);
+        }
+      })
+      .catch(() => {
+        if (active) setIsSearchingApi(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedTerm]);
+
+  const localMatches =
+    debouncedTerm.length >= 1
+      ? products.filter((p) => {
+          const q = debouncedTerm.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(q) ||
+            p.brand.toLowerCase().includes(q) ||
+            p.ean.includes(q)
+          );
+        })
+      : [];
+
+  const combinedSuggestions = [
+    ...localMatches,
+    ...remoteResults.filter(
+      (rem) =>
+        !localMatches.some((loc) => loc.ean === rem.ean || loc.id === rem.id)
+    ),
+  ].slice(0, 8);
+
+  const handleSelectSuggestion = async (product: Product) => {
+    await registerExternalProduct(product);
+    addToList(product.id, 1);
+    setSearchTerm("");
+    setRemoteResults([]);
+  };
+
+  const handleBarcodeDetected = async (ean: string) => {
+    setIsScannerOpen(false);
+    const localProd = products.find((p) => p.ean === ean);
+    if (localProd) {
+      addToList(localProd.id, 1);
+      return;
+    }
+
+    showToast(`Consultando EAN ${ean} no Open Food Facts Brasil...`);
+    const remoteProd = await lookupProductByEan(ean);
+    if (remoteProd) {
+      await registerExternalProduct(remoteProd);
+      addToList(remoteProd.id, 1);
+    } else {
+      showToast(
+        `Produto de código EAN ${ean} não localizado na base Open Food Facts.`
+      );
+    }
+  };
 
   const activeItems = shoppingList.filter((i) => i.checked);
   const activeMarkets = markets.filter(
     (m) => m.status === "ativo" && m.distanceKm <= location.maxRadiusKm
   );
 
-  // Calculate basket breakdown for each market
   const marketComparisons = activeMarkets
     .map((market) => {
       let subtotal = 0;
       const foundItems: Array<{
-        product: (typeof products)[0];
+        product: Product;
         quantity: number;
         unitPrice: number;
         lineTotal: number;
@@ -60,7 +155,7 @@ export default function ListaInteligentePage() {
         promoLabel?: string;
       }> = [];
       const missingItems: Array<{
-        product: (typeof products)[0];
+        product: Product;
         reason: "sem_preco" | "indisponivel";
       }> = [];
 
@@ -104,7 +199,6 @@ export default function ListaInteligentePage() {
       };
     })
     .sort((a, b) => {
-      // Prioritize complete baskets first, then lowest subtotal
       if (a.isComplete && !b.isComplete) return -1;
       if (!a.isComplete && b.isComplete) return 1;
       return a.subtotal - b.subtotal;
@@ -124,19 +218,25 @@ export default function ListaInteligentePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onDetectedEan={handleBarcodeDetected}
+      />
+
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-brand-green">
             <ShoppingBasket className="h-3.5 w-3.5" />
-            Lista de Compras Inteligente
+            Lista de Compras Inteligente • Open Food Facts Brasil
           </span>
           <h1 className="mt-1 font-heading text-2xl font-extrabold text-brand-navy sm:text-3xl">
             Monte sua lista e descubra onde economizar
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            {DEMO_DISCLAIMER} • Itens sem preço cadastrado são destacados e{" "}
-            <strong>nunca somados como zero</strong>.
+            {TRANSPARENCY_DISCLAIMER} • Itens sem preço cadastrado são
+            destacados e <strong>nunca somados como zero</strong>.
           </p>
         </div>
 
@@ -144,7 +244,7 @@ export default function ListaInteligentePage() {
           <button
             type="button"
             onClick={saveListToSupabase}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-blue px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-navy"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-blue px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-navy"
           >
             <CloudUpload className="h-4 w-4" />
             Salvar Lista na Conta
@@ -152,16 +252,16 @@ export default function ListaInteligentePage() {
           <button
             type="button"
             onClick={restoreDefaultList}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:border-brand-blue"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:border-brand-blue"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Restaurar Exemplo
+            Restaurar Padrão
           </button>
           {shoppingList.length > 0 && (
             <button
               type="button"
               onClick={clearList}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Limpar Lista
@@ -170,49 +270,115 @@ export default function ListaInteligentePage() {
         </div>
       </div>
 
-      {/* Layout em 2 Colunas: Itens da Lista (Esquerda) + Comparativo por Mercado estilo Lidl (Direita) */}
+      {/* Layout em 2 Colunas */}
       <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Coluna Esquerda: Minha Lista de Compras */}
+        {/* Coluna Esquerda: Autocomplete + Scanner EAN + Itens da Lista */}
         <div className="space-y-4 lg:col-span-5">
-          {/* Adicionar produto rápido */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
-            <label
-              htmlFor="quick-add-select"
-              className="block text-xs font-bold text-brand-navy"
-            >
-              Adicionar produto rapidamente à cesta:
-            </label>
-            <div className="mt-2 flex gap-2">
-              <select
-                id="quick-add-select"
-                value={quickAddProductId}
-                onChange={(e) => setQuickAddProductId(e.target.value)}
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
+          {/* Barra de Busca Dinâmica com Autocomplete (300ms debounce) + Scanner */}
+          <div className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs">
+            <div className="flex items-center justify-between gap-2">
+              <label
+                htmlFor="autocomplete-product-search"
+                className="block text-xs font-bold text-brand-navy"
               >
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.sizeLabel} ({p.brand})
-                  </option>
-                ))}
-              </select>
+                Buscar produto por nome, marca ou código EAN:
+              </label>
+              <span className="text-[11px] font-medium text-brand-blue">
+                Base Local + Open Food Facts
+              </span>
+            </div>
+
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <input
+                  id="autocomplete-product-search"
+                  type="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Digite nome ou código EAN (ex: arroz, leite, 789...)"
+                  className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-9 pl-3.5 text-xs text-slate-800 focus:border-brand-blue focus:bg-white focus:outline-none"
+                />
+                {isSearchingApi ? (
+                  <Loader2 className="absolute top-3 right-3 h-4 w-4 animate-spin text-brand-blue" />
+                ) : (
+                  <Search className="absolute top-3 right-3 h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
               <button
                 type="button"
-                onClick={() => addToList(quickAddProductId, 1)}
-                className="inline-flex items-center gap-1 rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white hover:bg-brand-navy"
+                onClick={() => setIsScannerOpen(true)}
+                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-brand-yellow transition hover:bg-brand-blue hover:text-white"
               >
-                <Plus className="h-4 w-4" />
-                Adicionar
+                <Camera className="h-4 w-4" />
+                Escanear Código de Barras
               </button>
             </div>
+
+            {/* Dropdown de Autocomplete */}
+            {debouncedTerm.length >= 1 && (
+              <div className="mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-lg">
+                {combinedSuggestions.length === 0 && !isSearchingApi ? (
+                  <p className="p-3 text-center text-xs text-slate-500">
+                    Nenhum produto encontrado para &ldquo;{debouncedTerm}&rdquo;.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {combinedSuggestions.map((item) => {
+                      const isFromOff = item.id.startsWith("ean-");
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectSuggestion(item)}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl p-2.5 text-left transition hover:bg-brand-light/60"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 bg-white object-contain"
+                            />
+                            <div>
+                              <p className="font-heading text-xs font-bold text-brand-navy">
+                                {item.name} — {item.sizeLabel}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+                                <span>{item.brand}</span>
+                                <span>•</span>
+                                <span className="inline-flex items-center gap-0.5">
+                                  <Barcode className="h-2.5 w-2.5" />
+                                  {item.ean}
+                                </span>
+                                {isFromOff && (
+                                  <span className="rounded bg-emerald-100 px-1.5 py-0.2 font-bold text-brand-green">
+                                    Open Food Facts BR
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-brand-blue px-2.5 py-1 text-[11px] font-bold text-white">
+                            <Plus className="h-3 w-3" />
+                            Adicionar
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Lista de Itens (Inspirado na Referência Cart UI) */}
+          {/* Lista de Itens */}
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="font-heading text-base font-bold text-brand-navy">
                 Itens na sua lista ({shoppingList.length})
               </h2>
-              <span className="text-xs text-slate-500">
+              <span className="tabular-price text-xs text-slate-500">
                 {activeItems.reduce((a, b) => a + b.quantity, 0)} unidades
                 ativas
               </span>
@@ -225,14 +391,15 @@ export default function ListaInteligentePage() {
                   Sua lista está vazia
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Adicione produtos acima ou restaure a lista demonstrativa.
+                  Pesquise na barra acima, escaneie um código de barras ou
+                  restaure a lista padrão.
                 </p>
                 <button
                   type="button"
                   onClick={restoreDefaultList}
-                  className="mt-4 rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white"
+                  className="mt-4 min-h-[44px] rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white"
                 >
-                  Carregar Lista de Exemplo
+                  Restaurar Lista Padrão
                 </button>
               </div>
             ) : (
@@ -261,7 +428,7 @@ export default function ListaInteligentePage() {
                         <img
                           src={product.imageUrl}
                           alt={product.name}
-                          className="h-12 w-12 rounded-xl border border-slate-100 object-cover"
+                          className="h-12 w-12 rounded-xl border border-slate-100 bg-white object-contain p-0.5"
                         />
                         <div>
                           <Link
@@ -289,12 +456,12 @@ export default function ListaInteligentePage() {
                                 item.quantity - 1
                               )
                             }
-                            className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                            className="min-h-[38px] min-w-[34px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
                             aria-label="Diminuir quantidade"
                           >
                             -
                           </button>
-                          <span className="px-2.5 text-xs font-bold text-brand-navy">
+                          <span className="tabular-price px-2.5 text-xs font-bold text-brand-navy">
                             {item.quantity}
                           </span>
                           <button
@@ -305,7 +472,7 @@ export default function ListaInteligentePage() {
                                 item.quantity + 1
                               )
                             }
-                            className="px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                            className="min-h-[38px] min-w-[34px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
                             aria-label="Aumentar quantidade"
                           >
                             +
@@ -315,7 +482,7 @@ export default function ListaInteligentePage() {
                         <button
                           type="button"
                           onClick={() => removeFromList(item.productId)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="min-h-[38px] min-w-[38px] rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                           aria-label={`Remover ${product.name}`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -329,9 +496,8 @@ export default function ListaInteligentePage() {
           </div>
         </div>
 
-        {/* Coluna Direita: Comparativo de Cesta por Mercado (Inspirado na Foto Lidl) */}
+        {/* Coluna Direita: Comparativo de Cesta por Mercado */}
         <div className="space-y-5 lg:col-span-7">
-          {/* Resumo de Economia entre Cestas Completas */}
           {bestCompleteBasket && estimatedSavings > 0.05 && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-brand-green/30 bg-emerald-50/90 p-5 shadow-2xs">
               <div className="flex items-start gap-3">
@@ -343,7 +509,7 @@ export default function ListaInteligentePage() {
                     Menor custo estimado completo:{" "}
                     {bestCompleteBasket.market.shortName}
                   </p>
-                  <p className="text-xs font-semibold text-brand-green">
+                  <p className="tabular-price text-xs font-semibold text-brand-green">
                     Economia estimada de {formatBRL(estimatedSavings)} na cesta
                     completa em relação ao{" "}
                     {highestCompleteBasket?.market.shortName}.
@@ -354,14 +520,13 @@ export default function ListaInteligentePage() {
                 <span className="block text-[10px] font-bold uppercase text-brand-green">
                   Total estimado
                 </span>
-                <span className="font-heading text-2xl font-extrabold text-brand-green">
+                <span className="tabular-price font-heading text-2xl font-extrabold text-brand-green">
                   {formatBRL(bestCompleteBasket.subtotal)}
                 </span>
               </div>
             </div>
           )}
 
-          {/* Cards de Comparação por Mercado (Estilo Lidl Reference) */}
           {marketComparisons.map(
             ({ market, subtotal, foundItems, missingItems, isComplete }) => {
               const isBestComplete =
@@ -376,7 +541,6 @@ export default function ListaInteligentePage() {
                       : "border-slate-200"
                   }`}
                 >
-                  {/* Cabeçalho do Card do Mercado */}
                   <div className="border-b border-slate-100 p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
@@ -386,7 +550,7 @@ export default function ListaInteligentePage() {
                           </h3>
                           {isBestComplete && (
                             <span className="rounded-full bg-brand-green px-3 py-0.5 text-xs font-bold text-white">
-                              € Menor preço estimado (Cesta Completa)
+                              Menor preço estimado (Cesta Completa)
                             </span>
                           )}
                           {!isComplete && activeItems.length > 0 && (
@@ -412,7 +576,7 @@ export default function ListaInteligentePage() {
                             Sem preço / Indisponíveis: {missingItems.length}
                           </span>
                           <span className="text-slate-400">•</span>
-                          <span className="flex items-center gap-1 text-slate-500">
+                          <span className="tabular-price flex items-center gap-1 text-slate-500">
                             <MapPin className="h-3.5 w-3.5 text-brand-blue" />
                             {market.distanceKm} km ({market.neighborhood})
                           </span>
@@ -426,7 +590,7 @@ export default function ListaInteligentePage() {
                             : "Subtotal parcial (incompleto)"}
                         </span>
                         <span
-                          className={`font-heading text-2xl font-extrabold ${
+                          className={`tabular-price font-heading text-2xl font-extrabold ${
                             isBestComplete
                               ? "text-brand-green"
                               : "text-brand-navy"
@@ -438,7 +602,6 @@ export default function ListaInteligentePage() {
                     </div>
                   </div>
 
-                  {/* Itens Encontrados neste Mercado */}
                   <div className="divide-y divide-slate-100 px-5 py-2">
                     {foundItems.map((fi) => (
                       <div
@@ -449,13 +612,13 @@ export default function ListaInteligentePage() {
                           <img
                             src={fi.product.imageUrl}
                             alt={fi.product.name}
-                            className="h-9 w-9 rounded-lg border border-slate-100 object-cover"
+                            className="h-9 w-9 rounded-lg border border-slate-100 bg-white object-contain p-0.5"
                           />
                           <div>
                             <p className="font-semibold text-brand-navy">
                               {fi.product.name} — {fi.product.sizeLabel}
                             </p>
-                            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                            <div className="tabular-price flex items-center gap-2 text-[11px] text-slate-500">
                               <span>
                                 Qtd: <strong>{fi.quantity}x</strong>{" "}
                                 {formatBRL(fi.unitPrice)}
@@ -471,7 +634,7 @@ export default function ListaInteligentePage() {
                         </div>
 
                         <div className="flex items-center gap-2.5">
-                          <span className="font-heading text-sm font-bold text-brand-navy">
+                          <span className="tabular-price font-heading text-sm font-bold text-brand-navy">
                             {formatBRL(fi.lineTotal)}
                           </span>
                           <CheckCircle2 className="h-4 w-4 text-brand-green" />
@@ -479,12 +642,11 @@ export default function ListaInteligentePage() {
                       </div>
                     ))}
 
-                    {/* Aviso explícito de itens excluídos por falta de preço/estoque */}
                     {missingItems.length > 0 && (
                       <div className="my-2 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
                         <p className="flex items-center gap-1.5 font-bold">
                           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                          Itens não incluídos neste subtotal (não tratados como
+                          Itens não incluídos neste subtotal (nunca somados como
                           R$ 0,00):
                         </p>
                         <ul className="mt-1 list-inside list-disc space-y-0.5 text-[11px]">
@@ -504,7 +666,6 @@ export default function ListaInteligentePage() {
                     )}
                   </div>
 
-                  {/* Barra Inferior do Card */}
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-5 py-3.5">
                     <div>
                       <span className="text-xs font-semibold text-slate-600">
@@ -513,10 +674,10 @@ export default function ListaInteligentePage() {
                     </div>
                     <Link
                       href={`/mercados/${market.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+                      className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
                     >
                       <Store className="h-3.5 w-3.5" />
-                      Ver perfil e catálogo do {market.shortName}
+                      Ver catálogo do {market.shortName}
                     </Link>
                   </div>
                 </div>

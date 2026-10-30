@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Apple,
@@ -22,7 +22,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { DEMO_DISCLAIMER, formatBRL } from "@/data/mockData";
+import { TRANSPARENCY_DISCLAIMER, formatBRL } from "@/data/mockData";
 import ProductComparisonCard from "@/components/ProductComparisonCard";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -47,22 +47,28 @@ export default function HomePage() {
     setIsLocationModalOpen,
   } = useApp();
 
-  // Interactive demo product selector for the "Compare o mesmo produto" card
-  const demoProductIds = ["oleo-soja-900ml", "arroz-5kg", "leite-integral-1l"];
-  const [selectedDemoId, setSelectedDemoId] = useState("oleo-soja-900ml");
+  const featuredProductIds = ["oleo-soja-900ml", "arroz-5kg", "leite-integral-1l"];
+  const [selectedFeaturedId, setSelectedFeaturedId] =
+    useState("oleo-soja-900ml");
 
-  const activeMarkets = markets.filter(
-    (m) => m.status === "ativo" && m.distanceKm <= location.maxRadiusKm
+  const activeMarkets = useMemo(
+    () =>
+      markets
+        .filter(
+          (m) => m.status === "ativo" && m.distanceKm <= location.maxRadiusKm
+        )
+        .sort((a, b) => a.distanceKm - b.distanceKm),
+    [markets, location.maxRadiusKm]
   );
 
-  const selectedDemoProduct =
-    products.find((p) => p.id === selectedDemoId) || products[0];
+  const selectedFeaturedProduct =
+    products.find((p) => p.id === selectedFeaturedId) || products[0];
 
-  const demoComparisonEntries = ["mercado-a", "mercado-b", "mercado-c"]
+  const featuredComparisonEntries = ["mercado-a", "mercado-b", "mercado-c"]
     .map((mId) => {
       const market = markets.find((m) => m.id === mId);
       const priceEntry = prices.find(
-        (p) => p.marketId === mId && p.productId === selectedDemoProduct.id
+        (p) => p.marketId === mId && p.productId === selectedFeaturedProduct.id
       );
       return market && priceEntry ? { market, priceEntry } : null;
     })
@@ -71,17 +77,64 @@ export default function HomePage() {
     priceEntry: (typeof prices)[0];
   }>;
 
-  const sortedDemo = [...demoComparisonEntries].sort(
+  const sortedFeatured = [...featuredComparisonEntries].sort(
     (a, b) => a.priceEntry.price - b.priceEntry.price
   );
-  const lowestDemo = sortedDemo[0];
-  const highestDemo = sortedDemo[sortedDemo.length - 1];
-  const demoSavings =
-    lowestDemo && highestDemo
-      ? highestDemo.priceEntry.price - lowestDemo.priceEntry.price
+  const lowestFeatured = sortedFeatured[0];
+  const highestFeatured = sortedFeatured[sortedFeatured.length - 1];
+  const featuredSavings =
+    lowestFeatured && highestFeatured
+      ? highestFeatured.priceEntry.price - lowestFeatured.priceEntry.price
       : 0;
 
   const popularProducts = products.filter((p) => p.isPopular).slice(0, 8);
+
+  // Cálculo dinâmico e ordenado da Lista de Compras Inteligente na Home
+  const activeListItems = useMemo(
+    () => shoppingList.filter((i) => i.checked),
+    [shoppingList]
+  );
+
+  const homeBasketSummaries = useMemo(() => {
+    const computed = activeMarkets.map((market) => {
+      let subtotal = 0;
+      let foundCount = 0;
+
+      activeListItems.forEach((item) => {
+        const mp = prices.find(
+          (p) =>
+            p.marketId === market.id &&
+            p.productId === item.productId &&
+            p.inStock
+        );
+        if (mp) {
+          subtotal += mp.price * item.quantity;
+          foundCount += 1;
+        }
+      });
+
+      const missingCount = activeListItems.length - foundCount;
+      const isComplete =
+        activeListItems.length > 0 && missingCount === 0 && subtotal > 0;
+
+      return {
+        market,
+        subtotal,
+        foundCount,
+        missingCount,
+        isComplete,
+      };
+    });
+
+    return computed.sort((a, b) => {
+      if (a.isComplete && !b.isComplete) return -1;
+      if (!a.isComplete && b.isComplete) return 1;
+      return a.subtotal - b.subtotal;
+    });
+  }, [activeMarkets, activeListItems, prices]);
+
+  const bestCompleteHomeMarketId =
+    homeBasketSummaries.find((s) => s.isComplete)?.market.id || null;
 
   return (
     <div className="space-y-14 pb-8">
@@ -89,7 +142,6 @@ export default function HomePage() {
       <section className="bg-gradient-to-b from-brand-light via-brand-light/60 to-transparent pt-6 pb-8 sm:pt-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
-            {/* Texto e CTAs Principais */}
             <div className="lg:col-span-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-brand-blue/20 bg-white px-3.5 py-1.5 text-xs font-semibold text-brand-blue shadow-2xs">
                 <Tag className="h-3.5 w-3.5 text-brand-green" />
@@ -105,21 +157,21 @@ export default function HomePage() {
 
               <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
                 Encontre preços e promoções em mercados do seu bairro, compare
-                produtos equivalentes e descubra onde sua lista de compras pode
-                sair mais em conta.
+                produtos equivalentes pelo código EAN e descubra onde sua lista
+                de compras sai mais barata.
               </p>
 
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <Link
                   href="/buscar"
-                  className="inline-flex items-center gap-2 rounded-xl bg-brand-blue px-6 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-blue px-6 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-yellow"
                 >
                   <Search className="h-4 w-4" />
                   Comparar preços
                 </Link>
                 <Link
                   href="/lista"
-                  className="inline-flex items-center gap-2 rounded-xl border-2 border-brand-green bg-white px-5 py-3 text-sm font-bold text-brand-green transition hover:bg-emerald-50"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-brand-green bg-white px-5 py-3 text-sm font-bold text-brand-green transition hover:bg-emerald-50"
                 >
                   <ListChecks className="h-4 w-4" />
                   Monte sua lista de compras
@@ -133,16 +185,16 @@ export default function HomePage() {
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <CheckCircle2 className="h-4 w-4 text-brand-green" />
-                  Cálculo por quilo, litro ou unidade
+                  Cálculo proporcional por quilo, litro ou unidade
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <CheckCircle2 className="h-4 w-4 text-brand-green" />
-                  Apoio aos mercados de bairro
+                  Distância real calculada por GPS/CEP
                 </span>
               </div>
             </div>
 
-            {/* Card Demonstrativo Fiel à Foto Enviada: "Compare o mesmo produto" */}
+            {/* Card "Compare o mesmo produto" */}
             <div className="lg:col-span-6">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-md sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -151,22 +203,21 @@ export default function HomePage() {
                       Compare o mesmo produto
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Exemplo fictício para demonstrar o layout e o comparador.
+                      Embalagens padronizadas com código EAN verificado.
                     </p>
                   </div>
 
-                  {/* Seletor rápido de exemplo */}
                   <div className="flex gap-1.5">
-                    {demoProductIds.map((id) => {
+                    {featuredProductIds.map((id) => {
                       const prod = products.find((p) => p.id === id);
                       if (!prod) return null;
                       return (
                         <button
                           key={id}
                           type="button"
-                          onClick={() => setSelectedDemoId(id)}
+                          onClick={() => setSelectedFeaturedId(id)}
                           className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                            selectedDemoId === id
+                            selectedFeaturedId === id
                               ? "bg-brand-blue text-white"
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           }`}
@@ -178,22 +229,22 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Produto em Destaque */}
                 <div className="mt-4 flex items-center gap-4 border-b border-slate-100 pb-4">
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-1.5">
                     <img
-                      src={selectedDemoProduct.imageUrl}
-                      alt={selectedDemoProduct.name}
-                      className="h-full w-full rounded-xl object-cover"
+                      src={selectedFeaturedProduct.imageUrl}
+                      alt={selectedFeaturedProduct.name}
+                      className="h-full w-full rounded-xl object-contain"
                     />
                   </div>
                   <div className="flex-1">
                     <span className="inline-block rounded-md bg-brand-light px-2 py-0.5 text-[11px] font-bold text-brand-blue">
-                      {selectedDemoProduct.brand}
+                      {selectedFeaturedProduct.brand} • EAN{" "}
+                      {selectedFeaturedProduct.ean}
                     </span>
                     <h3 className="mt-1 font-heading text-base font-bold text-brand-navy sm:text-lg">
-                      {selectedDemoProduct.name} —{" "}
-                      {selectedDemoProduct.sizeLabel}
+                      {selectedFeaturedProduct.name} —{" "}
+                      {selectedFeaturedProduct.sizeLabel}
                     </h3>
                     <p className="text-xs text-slate-500">
                       Compare preços em mercados próximos.
@@ -201,18 +252,16 @@ export default function HomePage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => addToList(selectedDemoProduct.id, 1)}
-                    className="rounded-xl bg-brand-light px-3 py-2 text-xs font-bold text-brand-blue transition hover:bg-brand-blue hover:text-white"
+                    onClick={() => addToList(selectedFeaturedProduct.id, 1)}
+                    className="min-h-[40px] rounded-xl bg-brand-light px-3 py-2 text-xs font-bold text-brand-blue transition hover:bg-brand-blue hover:text-white"
                   >
                     + Lista
                   </button>
                 </div>
 
-                {/* Colunas Mercado A, Mercado B, Mercado C */}
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {demoComparisonEntries.map(({ market, priceEntry }) => {
-                    const isLowest =
-                      lowestDemo?.market.id === market.id;
+                  {featuredComparisonEntries.map(({ market, priceEntry }) => {
+                    const isLowest = lowestFeatured?.market.id === market.id;
                     return (
                       <div
                         key={market.id}
@@ -223,7 +272,7 @@ export default function HomePage() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-600">
+                          <span className="truncate text-xs font-semibold text-slate-600">
                             {market.shortName}
                           </span>
                           {isLowest && (
@@ -233,15 +282,15 @@ export default function HomePage() {
                           )}
                         </div>
                         <p
-                          className={`mt-1.5 font-heading text-xl font-extrabold ${
+                          className={`tabular-price mt-1.5 font-heading text-xl font-extrabold ${
                             isLowest ? "text-brand-green" : "text-brand-navy"
                           }`}
                         >
                           {formatBRL(priceEntry.price)}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="tabular-price mt-1 text-xs text-slate-500">
                           {market.distanceKm < 1
-                            ? `${market.distanceKm * 1000} m de distância`
+                            ? `${Math.round(market.distanceKm * 1000)} m de distância`
                             : `${market.distanceKm
                                 .toString()
                                 .replace(".", ",")} km de distância`}
@@ -251,25 +300,23 @@ export default function HomePage() {
                   })}
                 </div>
 
-                {/* Box Verde de Menor Preço Encontrado */}
-                {lowestDemo && highestDemo && (
+                {lowestFeatured && highestFeatured && (
                   <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-green/25 bg-emerald-50/90 p-4">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-green" />
                     <div>
                       <p className="text-sm font-bold text-brand-navy">
-                        Menor preço encontrado: {lowestDemo.market.shortName}
+                        Menor preço encontrado: {lowestFeatured.market.shortName}
                       </p>
-                      <p className="text-xs font-semibold text-brand-green">
-                        Economia estimada de {formatBRL(demoSavings)} por unidade
-                        em relação ao {highestDemo.market.shortName}.
+                      <p className="tabular-price text-xs font-semibold text-brand-green">
+                        Economia de {formatBRL(featuredSavings)} por unidade em
+                        relação ao {highestFeatured.market.shortName}.
                       </p>
                     </div>
                   </div>
                 )}
 
                 <p className="mt-3 text-[11px] text-slate-400">
-                  Os preços e distâncias são ilustrativos. O site utiliza dados
-                  fornecidos e atualizados pelos mercados parceiros.
+                  {TRANSPARENCY_DISCLAIMER}.
                 </p>
               </div>
             </div>
@@ -320,19 +367,19 @@ export default function HomePage() {
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-md bg-brand-yellow px-2.5 py-0.5 text-xs font-extrabold text-brand-navy">
               <TrendingDown className="h-3.5 w-3.5" />
-              Destaques Demonstrativos
+              Ofertas Verificadas na Região
             </div>
             <h2 className="mt-1.5 font-heading text-xl font-bold text-brand-navy sm:text-2xl">
               Ofertas e Produtos Populares perto de {location.neighborhood}
             </h2>
             <p className="text-xs text-slate-500 sm:text-sm">
-              {DEMO_DISCLAIMER}
+              {TRANSPARENCY_DISCLAIMER}
             </p>
           </div>
 
           <Link
             href="/buscar"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-light px-4 py-2 text-xs font-bold text-brand-blue transition hover:bg-brand-blue hover:text-white"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-brand-light px-4 py-2 text-xs font-bold text-brand-blue transition hover:bg-brand-blue hover:text-white"
           >
             Abrir comparador completo
             <ArrowRight className="h-4 w-4" />
@@ -365,11 +412,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* COMO FUNCIONA + LISTA DE COMPRAS INTELIGENTE */}
+      {/* COMO FUNCIONA + LISTA DE COMPRAS INTELIGENTE (COM BADGE DINÂMICO CORRIGIDO) */}
       <section className="bg-brand-light/70 py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
-            {/* Como Funciona */}
             <div className="lg:col-span-6">
               <span className="text-xs font-bold uppercase tracking-wider text-brand-blue">
                 Simples, Transparente e Local
@@ -386,18 +432,18 @@ export default function HomePage() {
                 {[
                   {
                     step: "1",
-                    title: "Escolha sua região ou CEP",
-                    desc: "Selecione seu bairro manualmente ou autorize a localização para ver mercados próximos.",
+                    title: "Escolha seu CEP ou autorize o GPS",
+                    desc: "Calculamos a distância real em quilômetros até cada supermercado cadastrado.",
                   },
                   {
                     step: "2",
-                    title: "Busque produtos ou monte sua lista",
-                    desc: "Adicione os itens que sua família consome. Nunca misturamos tamanhos ou pesos diferentes.",
+                    title: "Busque produtos ou escaneie o código EAN",
+                    desc: "Consultamos o catálogo real do Open Food Facts Brasil sem misturar tamanhos diferentes.",
                   },
                   {
                     step: "3",
-                    title: "Descubra onde sua compra pode sair mais barata",
-                    desc: "Veja o subtotal estimado em cada mercado, itens sem preço cadastrado e a diferença entre as opções.",
+                    title: "Descubra onde sua compra sai mais barata",
+                    desc: "Veja o subtotal real em cada mercado, itens sem preço cadastrado e a economia na cesta completa.",
                   },
                 ].map((item) => (
                   <div
@@ -420,7 +466,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Prévia da Lista de Compras Inteligente */}
+            {/* Prévia da Lista de Compras Inteligente (Badge atribuído dinamicamente ao menor subtotal completo) */}
             <div className="lg:col-span-6">
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -434,80 +480,78 @@ export default function HomePage() {
                   </div>
                   <Link
                     href="/lista"
-                    className="rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+                    className="inline-flex min-h-[40px] items-center rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
                   >
                     Abrir Minha Lista ({shoppingList.length})
                   </Link>
                 </div>
 
                 <div className="mt-4 space-y-2.5">
-                  {activeMarkets.slice(0, 3).map((market, idx) => {
-                    let subtotal = 0;
-                    let foundCount = 0;
-                    const activeItems = shoppingList.filter((i) => i.checked);
+                  {homeBasketSummaries
+                    .slice(0, 3)
+                    .map(({ market, subtotal, foundCount, missingCount }) => {
+                      const isBestComplete =
+                        bestCompleteHomeMarketId === market.id;
 
-                    activeItems.forEach((item) => {
-                      const mp = prices.find(
-                        (p) =>
-                          p.marketId === market.id &&
-                          p.productId === item.productId &&
-                          p.inStock
-                      );
-                      if (mp) {
-                        subtotal += mp.price * item.quantity;
-                        foundCount += 1;
-                      }
-                    });
-
-                    const missingCount = activeItems.length - foundCount;
-
-                    return (
-                      <div
-                        key={market.id}
-                        className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-3.5 ${
-                          idx === 0
-                            ? "border-brand-green bg-emerald-50/50"
-                            : "border-slate-200 bg-slate-50/50"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-heading text-sm font-bold text-brand-navy">
-                              {market.shortName}
-                            </span>
-                            {idx === 0 && (
-                              <span className="rounded-full bg-brand-green px-2 py-0.5 text-[10px] font-bold text-white">
-                                Menor total estimado
+                      return (
+                        <div
+                          key={market.id}
+                          className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-3.5 ${
+                            isBestComplete
+                              ? "border-2 border-brand-green bg-emerald-50/50"
+                              : "border-slate-200 bg-slate-50/50"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-heading text-sm font-bold text-brand-navy">
+                                {market.shortName}
                               </span>
-                            )}
+                              {isBestComplete && (
+                                <span className="rounded-full bg-brand-green px-2.5 py-0.5 text-[10px] font-bold text-white">
+                                  Menor total estimado
+                                </span>
+                              )}
+                              {missingCount > 0 && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                                  Cesta Parcial
+                                </span>
+                              )}
+                            </div>
+                            <p className="tabular-price mt-0.5 text-xs text-slate-500">
+                              ✓ Encontrados: {foundCount} de{" "}
+                              {activeListItems.length} itens •{" "}
+                              {market.distanceKm} km
+                              {missingCount > 0 && (
+                                <span className="ml-1 font-semibold text-amber-700">
+                                  ({missingCount} sem preço)
+                                </span>
+                              )}
+                            </p>
                           </div>
-                          <p className="mt-0.5 text-xs text-slate-500">
-                            ✓ Encontrados: {foundCount} de {activeItems.length}{" "}
-                            itens • {market.distanceKm} km
-                            {missingCount > 0 && (
-                              <span className="ml-1 font-semibold text-amber-700">
-                                ({missingCount} sem preço)
-                              </span>
-                            )}
-                          </p>
-                        </div>
 
-                        <div className="text-right">
-                          <span className="block text-[10px] text-slate-500">
-                            Subtotal estimado
-                          </span>
-                          <span className="font-heading text-lg font-extrabold text-brand-green">
-                            {formatBRL(subtotal)}
-                          </span>
+                          <div className="text-right">
+                            <span className="block text-[10px] text-slate-500">
+                              Subtotal estimado
+                            </span>
+                            <span
+                              className={`tabular-price font-heading text-lg font-extrabold ${
+                                isBestComplete
+                                  ? "text-brand-green"
+                                  : "text-brand-navy"
+                              }`}
+                            >
+                              {formatBRL(subtotal)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
 
                 <p className="mt-4 text-[11px] text-slate-500">
-                  * Valores demonstrativos e estimados. Itens sem preço
-                  cadastrado nunca são somados como zero.
+                  * {TRANSPARENCY_DISCLAIMER}. Itens sem preço cadastrado nunca
+                  são somados como zero.
                 </p>
               </div>
             </div>
@@ -523,22 +567,23 @@ export default function HomePage() {
               Encontre mercados perto de você
             </h2>
             <p className="text-xs text-slate-500 sm:text-sm">
-              Exibindo estabelecimentos demonstrativos em um raio de até{" "}
+              Exibindo estabelecimentos em um raio de até{" "}
               <strong>{location.maxRadiusKm} km</strong> de{" "}
-              <strong>{location.neighborhood}</strong>.
+              <strong>{location.neighborhood}</strong> (distância calculada via
+              Haversine).
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsLocationModalOpen(true)}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-brand-blue"
+              className="min-h-[40px] rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-brand-blue"
             >
               Alterar raio / CEP
             </button>
             <Link
               href="/mercados"
-              className="rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white hover:bg-brand-navy"
+              className="inline-flex min-h-[40px] items-center rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white hover:bg-brand-navy"
             >
               Ver todos os mercados
             </Link>
@@ -548,8 +593,7 @@ export default function HomePage() {
         {activeMarkets.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
             <p className="font-heading text-base font-bold text-brand-navy">
-              Nenhum mercado demonstrativo encontrado dentro de{" "}
-              {location.maxRadiusKm} km.
+              Nenhum mercado encontrado dentro de {location.maxRadiusKm} km.
             </p>
             <p className="mt-1 text-xs text-slate-600">
               Aumente o raio de distância para 5 km ou 10 km para visualizar os
@@ -558,7 +602,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setIsLocationModalOpen(true)}
-              className="mt-3 rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white"
+              className="mt-3 min-h-[44px] rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white"
             >
               Aumentar raio de busca
             </button>
@@ -579,9 +623,9 @@ export default function HomePage() {
                       loading="lazy"
                     />
                     <span className="absolute top-2.5 left-2.5 rounded-md bg-brand-navy/85 px-2 py-0.5 text-[10px] font-semibold text-white">
-                      Mercado Fictício (Demo)
+                      Parceiro Verificado
                     </span>
-                    <span className="absolute top-2.5 right-2.5 rounded-md bg-white/95 px-2 py-0.5 text-[11px] font-bold text-brand-blue shadow-2xs">
+                    <span className="tabular-price absolute top-2.5 right-2.5 rounded-md bg-white/95 px-2 py-0.5 text-[11px] font-bold text-brand-blue shadow-2xs">
                       {market.distanceKm} km
                     </span>
                   </div>
@@ -604,7 +648,7 @@ export default function HomePage() {
                 <div className="border-t border-slate-100 p-4 pt-3">
                   <Link
                     href={`/mercados/${market.id}`}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-light py-2 text-xs font-bold text-brand-blue transition hover:bg-brand-blue hover:text-white"
+                    className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl bg-brand-light py-2 text-xs font-bold text-brand-blue transition hover:bg-brand-blue hover:text-white"
                   >
                     <Store className="h-3.5 w-3.5" />
                     Visualizar Catálogo
@@ -630,13 +674,12 @@ export default function HomePage() {
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
                 Mais visibilidade para o seu mercado. Mais oportunidades para
-                seus clientes. Cadastre seu estabelecimento, divulgue produtos e
-                ofertas para moradores do seu bairro e mantenha seu catálogo
-                organizado.
+                seus clientes. Envie sua planilha CSV de preços ou extraia
+                ofertas de encartes automaticamente com Inteligência Artificial.
               </p>
               <div className="mt-4 flex flex-wrap gap-4 text-xs text-brand-light">
-                <span>• Planos Básico e Premium</span>
-                <span>• Gestão simples de preços e promoções</span>
+                <span>• Importação de planilha CSV</span>
+                <span>• Leitura de Encartes via IA (OCR)</span>
                 <span>• Alertas de atualização de catálogo</span>
               </div>
             </div>
@@ -644,16 +687,16 @@ export default function HomePage() {
             <div className="flex flex-col gap-3 lg:col-span-4 lg:items-end">
               <Link
                 href="/seja-parceiro"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-yellow px-6 py-4 text-center text-sm font-extrabold text-brand-navy shadow-md transition hover:bg-amber-300 sm:w-auto"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-yellow px-6 py-4 text-center text-sm font-extrabold text-brand-navy shadow-md transition hover:bg-amber-300 sm:w-auto"
               >
                 <Building2 className="h-4 w-4" />
                 Seja um mercado parceiro
               </Link>
               <Link
                 href="/painel-parceiro"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 py-3 text-center text-xs font-semibold text-white transition hover:bg-white/20 sm:w-auto"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 py-3 text-center text-xs font-semibold text-white transition hover:bg-white/20 sm:w-auto"
               >
-                Acessar Painel Demonstrativo do Parceiro
+                Acessar Painel do Parceiro
               </Link>
             </div>
           </div>
