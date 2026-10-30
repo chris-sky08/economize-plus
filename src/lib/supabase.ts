@@ -52,9 +52,9 @@ export function mapDbMarketRow(m: Record<string, unknown>): Market {
     neighborhood: String(m.neighborhood || ""),
     city: String(m.city || ""),
     state: String(m.state || ""),
-    zipCode: m.zip_code ? String(m.zip_code) : null,
-    lat: latNum !== null && !Number.isNaN(latNum) ? latNum : null,
-    lng: lngNum !== null && !Number.isNaN(lngNum) ? lngNum : null,
+    zipCode: m.zip_code ? String(m.zip_code) : m.cep ? String(m.cep) : null,
+    lat: latNum !== null && !Number.isNaN(latNum) ? latNum : (m.latitude !== null && m.latitude !== undefined ? Number(m.latitude) : null),
+    lng: lngNum !== null && !Number.isNaN(lngNum) ? lngNum : (m.longitude !== null && m.longitude !== undefined ? Number(m.longitude) : null),
     distanceKm: null,
     openingHours: m.opening_hours ? String(m.opening_hours) : null,
     planId: m.plan_id === "premium" ? "premium" : "basico",
@@ -128,7 +128,7 @@ export function mapDbPriceRow(pr: Record<string, unknown>): MarketPrice {
 
   return {
     id: String(pr.id),
-    marketId: String(pr.supermarket_id),
+    marketId: String(pr.supermarket_id || pr.market_id || ""),
     productId: String(pr.product_id),
     price: Number(pr.price),
     regularPrice:

@@ -176,7 +176,7 @@ export default function Navbar() {
                 <button
                   type="submit"
                   aria-label="Buscar e comparar produto"
-                  className="absolute right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-brand-blue text-white transition hover:bg-brand-navy"
+                  className="absolute right-1 flex h-11 w-11 items-center justify-center rounded-full bg-brand-blue text-white transition hover:bg-brand-navy active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
                 >
                   <Search className="h-4 w-4" />
                 </button>
@@ -230,11 +230,11 @@ export default function Navbar() {
           aria-label="Menu principal e categorias"
           className="border-t border-white/15 bg-brand-blue/20 text-white"
         >
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 overflow-x-auto px-3 py-2 text-xs font-medium whitespace-nowrap sm:px-6">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 overflow-x-auto px-3 py-1 text-xs font-medium whitespace-nowrap sm:px-6">
             <div className="flex items-center gap-1 sm:gap-2">
               <Link
                 href="/buscar"
-                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 font-semibold transition ${
                   pathname === "/buscar"
                     ? "bg-white text-brand-navy"
                     : "hover:bg-white/15"
@@ -246,14 +246,14 @@ export default function Navbar() {
                 <Link
                   key={cat.id}
                   href={`/buscar?categoria=${cat.id}`}
-                  className="rounded-lg px-2.5 py-1 text-brand-light transition hover:bg-white/15 hover:text-white"
+                  className="flex min-h-[44px] items-center rounded-lg px-2.5 py-2 text-brand-light transition hover:bg-white/15 hover:text-white active:scale-95"
                 >
                   {cat.name}
                 </Link>
               ))}
               <Link
                 href="/mercados"
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition ${
+                className={`flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 transition ${
                   pathname.startsWith("/mercados")
                     ? "bg-white text-brand-navy font-semibold"
                     : "hover:bg-white/15"
@@ -267,7 +267,7 @@ export default function Navbar() {
             <div className="flex items-center gap-1.5 border-l border-white/20 pl-3">
               <Link
                 href="/seja-parceiro"
-                className="flex items-center gap-1 rounded-lg bg-brand-green px-2.5 py-1 font-bold text-brand-navy transition hover:opacity-90"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 font-bold text-brand-navy transition hover:opacity-90 active:scale-95"
               >
                 <Building2 className="h-3.5 w-3.5" />
                 Seja Parceiro
@@ -275,7 +275,7 @@ export default function Navbar() {
               {(user?.role === "mercado" || user?.role === "admin") && (
                 <Link
                   href="/painel-parceiro"
-                  className="flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-white transition hover:bg-white/25"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
                 >
                   <LayoutDashboard className="h-3.5 w-3.5 text-brand-yellow" />
                   Painel do Mercado
@@ -283,7 +283,7 @@ export default function Navbar() {
               )}
               <Link
                 href="/entregas"
-                className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-white transition hover:bg-white/20"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-white transition hover:bg-white/20 active:scale-95"
               >
                 <Truck className="h-3.5 w-3.5" />
                 Entregas

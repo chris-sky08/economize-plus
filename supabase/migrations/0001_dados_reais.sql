@@ -31,6 +31,52 @@ create table if not exists public.supermarkets (
   updated_at timestamptz default now()
 );
 
+
+create table if not exists public.partner_applications (
+  id uuid default uuid_generate_v4() primary key,
+  market_name text not null,
+  cnpj text,
+  responsible_name text not null,
+  email text not null,
+  phone text not null,
+  city text not null,
+  state text not null,
+  neighborhood text not null default '',
+  address text not null default '',
+  zip_code text not null default '',
+  desired_plan text default 'basico',
+  status text default 'em_analise' check (status in ('em_analise', 'aprovado', 'recusado')),
+  created_at timestamptz default now()
+);
+
+create table if not exists public.couriers (
+  id uuid default uuid_generate_v4() primary key,
+  full_name text not null,
+  email text not null,
+  phone text not null,
+  vehicle_type text not null check (vehicle_type in ('bicicleta', 'moto', 'carro', 'utilitario')),
+  service_neighborhoods text[] not null default '{}',
+  status text default 'pre_cadastro' check (status in ('pre_cadastro', 'em_analise', 'aprovado', 'suspenso')),
+  created_at timestamptz default now()
+);
+
+create table if not exists public.shopping_lists (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  name text not null default 'Minha Lista',
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.shopping_list_items (
+  id uuid default uuid_generate_v4() primary key,
+  list_id uuid references public.shopping_lists(id) on delete cascade,
+  product_id text references public.products(id) on delete cascade,
+  quantity integer not null default 1,
+  checked boolean not null default true,
+  notes text,
+  created_at timestamptz default now()
+);
+
 create table if not exists public.price_reports (
   id uuid default uuid_generate_v4() primary key,
   supermarket_id text references public.supermarkets(id) on delete cascade,
