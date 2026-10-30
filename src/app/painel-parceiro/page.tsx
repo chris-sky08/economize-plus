@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   BarChart3,
@@ -9,6 +10,7 @@ import {
   FileSpreadsheet,
   FileUp,
   Loader2,
+  Package,
   Plus,
   RefreshCw,
   Save,
@@ -16,11 +18,35 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { formatBRL } from "@/data/mockData";
-import type { ExtractedFlyerItem } from "@/app/api/ingest/flyer/route";
-import type { ParsedCsvRow } from "@/app/api/ingest/csv/route";
+import { formatBRL, validateGtin } from "@/lib/format";
+import { supabase } from "@/lib/supabase";
+import type { CsvLineError } from "@/app/api/ingest/csv/route";
+
+interface PendingReviewItem {
+  id: string;
+  supermarket_id: string;
+  product_id: string;
+  price: number;
+  is_promo: boolean;
+  promo_label: string | null;
+  source: string;
+  status: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  updated_at: string;
+  products: {
+    id: string;
+    ean: string | null;
+    name: string;
+    brand: string | null;
+    size_label: string | null;
+    unit_type: string | null;
+    unit_value: number | null;
+  } | null;
+}
 
 export default function PainelParceiroPage() {
   const {
@@ -29,17 +55,23 @@ export default function PainelParceiroPage() {
     products,
     prices,
     categories,
-    loginDemoRole,
     upsertMarketPrice,
     addNewProductWithPrice,
     removeMarketPrice,
     updateMarketProfile,
+    refreshCatalog,
     showToast,
   } = useApp();
 
-  const partnerMarketId = user?.marketId || "mercado-a";
-  const myMarket =
-    markets.find((m) => m.id === partnerMarketId) || markets[0];
+  const [selectedAdminMarketId, setSelectedAdminMarketId] =
+    useState<string>("");
+
+  const effectiveMarketId =
+    user?.role === "admin"
+      ? selectedAdminMarketId || user?.marketId || markets[0]?.id || null
+      : user?.marketId || null;
+
+  const myMarket = markets.find((m) => m.id === effectiveMarketId) || null;
 
   const [activeTab, setActiveTab] = useState<
     "catalogo" | "novo_produto" | "importar" | "encarte_ia" | "perfil" | "metricas"
@@ -50,62 +82,135 @@ export default function PainelParceiroPage() {
   >({});
 
   // Novo produto
-  const [newEan, setNewEan] = useState("7896006711155");
+  const [newEan, setNewEan] = useState("");
   const [newName, setNewName] = useState("");
   const [newBrand, setNewBrand] = useState("");
   const [newCat, setNewCat] = useState("mercearia");
-  const [newSizeLabel, setNewSizeLabel] = useState("1 kg");
+  const [newSizeLabel, setNewSizeLabel] = useState("");
   const [newUnitType, setNewUnitType] = useState<"kg" | "L" | "un" | "rolo">(
     "kg"
   );
-  const [newMultiplier, setNewMultiplier] = useState("1");
-  const [newPrice, setNewPrice] = useState("9.90");
+  const [newMultiplier, setNewMultiplier] = useState("");
+  const [newPrice, setNewPrice] = useState("");
   const [newPromo, setNewPromo] = useState(false);
-  const [newPromoLabel, setNewPromoLabel] = useState("Oferta do Bairro");
+  const [newPromoLabel, setNewPromoLabel] = useState("");
+  const [newProdError, setNewProdError] = useState<string | null>(null);
 
   // Perfil
-  const [editHours, setEditHours] = useState(myMarket.openingHours);
-  const [editPhone, setEditPhone] = useState(myMarket.phone);
+  const [editHours, setEditHours] = useState(myMarket?.openingHours || "");
+  const [editPhone, setEditPhone] = useState(myMarket?.phone || "");
   const [editDeliveryInfo, setEditDeliveryInfo] = useState(
-    myMarket.deliveryInfo
+    myMarket?.deliveryInfo || ""
   );
 
   // Importação CSV (/api/ingest/csv)
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvText, setCsvText] = useState(
-    "ean,nome,preco,oferta\n7896036090244,Óleo de Soja Refinado 900ml,7.49,Oferta CSV\n7896006711117,Arroz Branco Tipo 1 5kg,25.90,true\n7898215151784,Leite UHT Integral 1L,4.89,Menor Preço"
-  );
+  const [csvText, setCsvText] = useState("");
   const [loadingCsv, setLoadingCsv] = useState(false);
+  const [csvLineErrors, setCsvLineErrors] = useState<CsvLineError[]>([]);
+  const [csvSummary, setCsvSummary] = useState<string | null>(null);
 
-  // Leitura de Encarte IA (/api/ingest/flyer)
+  // Leitura de Encarte IA (/api/ingest/flyer) + Revisão (/api/ingest/review)
   const [flyerFile, setFlyerFile] = useState<File | null>(null);
   const [loadingFlyer, setLoadingFlyer] = useState(false);
-  const [extractedFlyerItems, setExtractedFlyerItems] = useState<
-    ExtractedFlyerItem[]
+  const [flyerError, setFlyerError] = useState<string | null>(null);
+  const [pendingReviewItems, setPendingReviewItems] = useState<
+    PendingReviewItem[]
   >([]);
+  const [loadingReview, setLoadingReview] = useState(false);
+  const [reviewEdits, setReviewEdits] = useState<
+    Record<string, { price: string; promo_label: string }>
+  >({});
+
+  useEffect(() => {
+    if (myMarket) {
+      setEditHours(myMarket.openingHours || "");
+      setEditPhone(myMarket.phone || "");
+      setEditDeliveryInfo(myMarket.deliveryInfo || "");
+    }
+  }, [myMarket]);
+
+  const getAccessToken = async (): Promise<string | null> => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
+  };
+
+  const fetchPendingReviewItems = useCallback(async () => {
+    if (!myMarket) return;
+    setLoadingReview(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch(
+        `/api/ingest/review?supermarket_id=${encodeURIComponent(myMarket.id)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { items: PendingReviewItem[] };
+        setPendingReviewItems(data.items || []);
+      }
+    } catch {
+      // ignora erro silencioso na busca de pendentes
+    } finally {
+      setLoadingReview(false);
+    }
+  }, [myMarket]);
+
+  useEffect(() => {
+    if (activeTab === "encarte_ia" && myMarket) {
+      void fetchPendingReviewItems();
+    }
+  }, [activeTab, myMarket, fetchPendingReviewItems]);
 
   if (!user || (user.role !== "mercado" && user.role !== "admin")) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
-          <ShieldAlert className="mx-auto h-12 w-12 text-brand-blue" />
+          <ShieldAlert className="mx-auto h-12 w-12 text-brand-navy" />
           <h1 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
-            Área Exclusiva do Mercado Parceiro
+            Área Restrita ao Mercado Parceiro
           </h1>
           <p className="mx-auto mt-2 max-w-lg text-xs text-slate-600 sm:text-sm">
-            Para gerenciar o catálogo, subir planilhas CSV, extrair ofertas de
-            encartes via IA e atualizar o perfil do estabelecimento, entre com
-            perfil de <strong>Mercado Parceiro</strong>.
+            Para gerenciar o catálogo, subir planilhas CSV e revisar ofertas
+            extraídas de encartes, faça login com uma conta vinculada a um
+            supermercado em <code>public.market_members</code>.
           </p>
           <div className="mt-6 flex justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => loginDemoRole("mercado")}
-              className="min-h-[44px] rounded-xl bg-brand-blue px-6 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-brand-navy sm:text-sm"
+            <Link
+              href="/conta"
+              className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-navy px-6 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue sm:text-sm"
             >
-              Acessar como Mercado Parceiro
-            </button>
+              Fazer Login na Conta
+            </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!myMarket) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
+          <Building2 className="mx-auto h-12 w-12 text-brand-blue" />
+          <h1 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
+            Nenhum supermercado vinculado à sua conta
+          </h1>
+          <p className="mx-auto mt-2 max-w-lg text-xs text-slate-600 sm:text-sm">
+            Sua conta ainda não possui vínculo ativo em{" "}
+            <code>public.market_members</code> ou ainda não há mercados
+            cadastrados.{user.role === "admin" && " Cadastre um mercado no Painel Admin."}
+          </p>
+          {user.role === "admin" && (
+            <Link
+              href="/admin"
+              className="mt-5 inline-flex min-h-[44px] items-center rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white"
+            >
+              Cadastrar Mercado no Painel Admin
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -123,44 +228,69 @@ export default function PainelParceiroPage() {
   }>;
 
   const outdatedItems = myPrices.filter(
-    ({ priceEntry }) =>
-      priceEntry.needsUpdateAlert || priceEntry.updatedAt.includes("dias")
+    ({ priceEntry }) => priceEntry.isStale
   );
 
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNewProdError(null);
+    const cleanEan = newEan.replace(/\D/g, "");
+    const gtinCheck = validateGtin(cleanEan);
+    if (!gtinCheck.valid) {
+      setNewProdError(
+        gtinCheck.reason ||
+          "Informe um código GTIN/EAN real de 8, 12, 13 ou 14 dígitos com dígito verificador válido."
+      );
+      return;
+    }
     const parsedPrice = parseFloat(newPrice.replace(",", "."));
-    const parsedMult = parseFloat(newMultiplier.replace(",", ".")) || 1;
-    if (!newName.trim() || isNaN(parsedPrice) || parsedPrice <= 0) return;
+    const parsedMult = newMultiplier
+      ? parseFloat(newMultiplier.replace(",", "."))
+      : null;
+    if (!newName.trim() || isNaN(parsedPrice) || parsedPrice <= 0) {
+      setNewProdError("Informe o nome do produto e um preço válido.");
+      return;
+    }
 
-    addNewProductWithPrice(
+    await addNewProductWithPrice(
       myMarket.id,
       {
-        ean: newEan.trim() || `${Date.now()}`,
+        ean: gtinCheck.normalized,
         name: newName.trim(),
-        brand: newBrand.trim() || "Marca Local",
+        brand: newBrand.trim() || null,
         categoryId: newCat,
-        sizeLabel: newSizeLabel.trim() || "1 un",
-        unitType: newUnitType,
-        unitMultiplier: parsedMult,
-        imageUrl: "/logo-oficial.jpg",
+        sizeLabel: newSizeLabel.trim() || null,
+        unitType: parsedMult ? newUnitType : null,
+        unitMultiplier: parsedMult && parsedMult > 0 ? parsedMult : null,
+        imageUrl: null,
         isPopular: true,
-        description: `${newName} (${newSizeLabel}) cadastrado pelo painel do parceiro.`,
+        description: null,
       },
       parsedPrice,
       newPromo,
-      newPromoLabel,
+      newPromo ? newPromoLabel.trim() || "Oferta" : undefined,
       "partner_csv"
     );
+    setNewEan("");
     setNewName("");
     setNewBrand("");
+    setNewPrice("");
     setActiveTab("catalogo");
   };
 
   const handleCsvIngest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingCsv(true);
+    setCsvLineErrors([]);
+    setCsvSummary(null);
     try {
+      const token = await getAccessToken();
+      if (!token) {
+        showToast("Faça login novamente para enviar a planilha CSV.");
+        setLoadingCsv(false);
+        return;
+      }
+
       let response: Response;
       if (csvFile) {
         const formData = new FormData();
@@ -168,12 +298,16 @@ export default function PainelParceiroPage() {
         formData.append("supermarket_id", myMarket.id);
         response = await fetch("/api/ingest/csv", {
           method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
           body: formData,
         });
       } else {
         response = await fetch("/api/ingest/csv", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             csvText,
             supermarket_id: myMarket.id,
@@ -183,56 +317,26 @@ export default function PainelParceiroPage() {
 
       const data = (await response.json()) as {
         success: boolean;
-        count: number;
-        items: ParsedCsvRow[];
+        count?: number;
+        errors?: CsvLineError[];
+        error?: string;
       };
 
-      if (data.success && Array.isArray(data.items)) {
-        data.items.forEach((row) => {
-          const existingProd = products.find(
-            (p) =>
-              p.ean === row.ean ||
-              p.name.toLowerCase() === row.nome.toLowerCase()
-          );
-          if (existingProd) {
-            upsertMarketPrice(
-              myMarket.id,
-              existingProd.id,
-              row.preco,
-              row.oferta,
-              row.promo_label,
-              true,
-              "partner_csv"
-            );
-          } else {
-            addNewProductWithPrice(
-              myMarket.id,
-              {
-                ean: row.ean,
-                name: row.nome,
-                brand: "Catálogo CSV",
-                categoryId: "mercearia",
-                sizeLabel: "1 un",
-                unitType: "un",
-                unitMultiplier: 1,
-                imageUrl: "/logo-oficial.jpg",
-                isPopular: true,
-                description: `${row.nome} (EAN ${row.ean}) importado via CSV.`,
-              },
-              row.preco,
-              row.oferta,
-              row.promo_label,
-              "partner_csv"
-            );
-          }
-        });
-        showToast(
-          `${data.count} produtos processados via /api/ingest/csv e salvos no catálogo!`
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        setCsvLineErrors(data.errors);
+      }
+
+      if (!response.ok || !data.success) {
+        setCsvSummary(data.error || "Erro ao processar a planilha CSV.");
+      } else {
+        setCsvSummary(
+          `${data.count || 0} preços importados e publicados com sucesso.`
         );
-        setActiveTab("catalogo");
+        await refreshCatalog();
+        showToast(`${data.count || 0} preços atualizados via CSV!`);
       }
     } catch {
-      showToast("Erro ao processar a planilha CSV.");
+      setCsvSummary("Falha de conexão ao enviar a planilha CSV.");
     } finally {
       setLoadingCsv(false);
     }
@@ -240,86 +344,103 @@ export default function PainelParceiroPage() {
 
   const handleFlyerIngest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!flyerFile) {
+      setFlyerError("Selecione uma imagem ou PDF do encarte para enviar.");
+      return;
+    }
     setLoadingFlyer(true);
+    setFlyerError(null);
     try {
-      const formData = new FormData();
-      if (flyerFile) {
-        formData.append("file", flyerFile);
+      const token = await getAccessToken();
+      if (!token) {
+        setFlyerError("Sessão expirada. Faça login novamente.");
+        setLoadingFlyer(false);
+        return;
       }
+
+      const formData = new FormData();
+      formData.append("file", flyerFile);
       formData.append("supermarket_id", myMarket.id);
 
       const res = await fetch("/api/ingest/flyer", {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       const data = (await res.json()) as {
         success: boolean;
-        items: ExtractedFlyerItem[];
+        count?: number;
+        error?: string;
+        message?: string;
       };
 
-      if (data.success && Array.isArray(data.items)) {
-        setExtractedFlyerItems(data.items);
-        showToast(
-          `${data.items.length} ofertas identificadas do encarte via IA!`
+      if (!res.ok || !data.success) {
+        setFlyerError(
+          data.error || "Não foi possível extrair ofertas deste encarte."
         );
+      } else {
+        showToast(
+          data.message ||
+            `${data.count || 0} ofertas extraídas com status pendente de revisão!`
+        );
+        await fetchPendingReviewItems();
       }
     } catch {
-      showToast("Não foi possível analisar o encarte no momento.");
+      setFlyerError("Falha ao enviar o encarte para leitura OCR.");
     } finally {
       setLoadingFlyer(false);
     }
   };
 
-  const applyExtractedFlyerToCatalog = () => {
-    extractedFlyerItems.forEach((item) => {
-      const matched = products.find(
-        (p) =>
-          p.ean === item.ean_or_name ||
-          p.name.toLowerCase().includes(item.ean_or_name.toLowerCase())
-      );
-      if (matched) {
-        upsertMarketPrice(
-          myMarket.id,
-          matched.id,
-          item.price,
-          true,
-          item.promo_label,
-          true,
-          "flyer_ocr"
-        );
-      } else {
-        addNewProductWithPrice(
-          myMarket.id,
-          {
-            ean: `${Date.now().toString().slice(-13)}`,
-            name: item.ean_or_name,
-            brand: item.brand || "Oferta Encarte",
-            categoryId: "mercearia",
-            sizeLabel: item.weight || "1 un",
-            unitType: "un",
-            unitMultiplier: 1,
-            imageUrl: "/logo-oficial.jpg",
-            isPopular: true,
-            description: `${item.ean_or_name} (${item.weight}) extraído via OCR de encarte.`,
-          },
-          item.price,
-          true,
-          item.promo_label,
-          "flyer_ocr"
-        );
-      }
+  const handleReviewAction = async (
+    action: "approve" | "reject" | "approve_batch",
+    priceId?: string
+  ) => {
+    const token = await getAccessToken();
+    if (!token) return;
+
+    const edit = priceId ? reviewEdits[priceId] : undefined;
+    const payload =
+      action === "approve_batch"
+        ? {
+            action: "approve_batch",
+            supermarket_id: myMarket.id,
+            price_ids: pendingReviewItems.map((i) => i.id),
+          }
+        : {
+            action,
+            supermarket_id: myMarket.id,
+            price_id: priceId,
+            price: edit?.price ? parseFloat(edit.price) : undefined,
+            promo_label: edit?.promo_label,
+          };
+
+    const res = await fetch("/api/ingest/review", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
     });
-    setExtractedFlyerItems([]);
-    setActiveTab("catalogo");
-    showToast("Ofertas do encarte publicadas no catálogo do mercado!");
+
+    if (res.ok) {
+      showToast(
+        action === "reject"
+          ? "Item rejeitado."
+          : "Oferta(s) aprovada(s) e publicada(s) no catálogo!"
+      );
+      await fetchPendingReviewItems();
+      await refreshCatalog();
+    }
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateMarketProfile(myMarket.id, {
-      openingHours: editHours,
-      phone: editPhone,
-      deliveryInfo: editDeliveryInfo,
+    await updateMarketProfile(myMarket.id, {
+      openingHours: editHours.trim() || null,
+      phone: editPhone.trim() || null,
+      deliveryInfo: editDeliveryInfo.trim() || null,
     });
   };
 
@@ -332,15 +453,33 @@ export default function PainelParceiroPage() {
               Painel do Mercado Parceiro • Plano{" "}
               {myMarket.planId.toUpperCase()}
             </span>
-            <span className="rounded-md bg-white/15 px-2.5 py-0.5 text-xs">
-              CNPJ: {myMarket.cnpj}
-            </span>
+            {myMarket.cnpj && (
+              <span className="rounded-md bg-white/15 px-2.5 py-0.5 text-xs">
+                CNPJ: {myMarket.cnpj}
+              </span>
+            )}
+            {user.role === "admin" && markets.length > 1 && (
+              <select
+                value={myMarket.id}
+                onChange={(e) => setSelectedAdminMarketId(e.target.value)}
+                className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-brand-navy"
+                aria-label="Selecionar mercado para gerenciar"
+              >
+                {markets.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <h1 className="mt-2 font-heading text-2xl font-extrabold sm:text-3xl">
             {myMarket.name}
           </h1>
           <p className="text-xs text-brand-light">
-            Última atualização geral do catálogo: {myMarket.lastCatalogUpdate}
+            {myMarket.lastCatalogUpdate
+              ? `Última atualização do catálogo: ${myMarket.lastCatalogUpdate}`
+              : "Nenhuma atualização registrada ainda"}
           </p>
         </div>
 
@@ -353,16 +492,16 @@ export default function PainelParceiroPage() {
               },
               { id: "novo_produto", label: "+ Novo Produto" },
               { id: "importar", label: "Subir Planilha CSV" },
-              { id: "encarte_ia", label: "Ler Encarte com IA (OCR)" },
+              { id: "encarte_ia", label: "Encartes IA & Revisão" },
               { id: "perfil", label: "Perfil e Horários" },
-              { id: "metricas", label: "Métricas" },
+              { id: "metricas", label: "Resumo" },
             ] as const
           ).map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setActiveTab(t.id)}
-              className={`min-h-[40px] rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+              className={`min-h-[44px] rounded-xl px-3.5 py-2 text-xs font-bold transition ${
                 activeTab === t.id
                   ? "bg-brand-yellow text-brand-navy"
                   : "bg-white/10 text-white hover:bg-white/20"
@@ -381,12 +520,12 @@ export default function PainelParceiroPage() {
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
             <div>
               <h2 className="font-heading text-sm font-bold text-amber-950">
-                Alerta de Preços Desatualizados ({outdatedItems.length}{" "}
+                Preços com mais de 7 dias ({outdatedItems.length}{" "}
                 {outdatedItems.length === 1 ? "item" : "itens"})
               </h2>
               <p className="text-xs text-amber-900">
-                Manter os preços confirmados ajuda o consumidor a confiar no
-                catálogo do seu mercado.
+                Confirme se os valores continuam vigentes na loja para remover o
+                selo de desatualizado.
               </p>
             </div>
           </div>
@@ -406,7 +545,7 @@ export default function PainelParceiroPage() {
                     priceEntry.inStock
                   )
                 }
-                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Confirmar {product.name} ({formatBRL(priceEntry.price)})
@@ -422,150 +561,145 @@ export default function PainelParceiroPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
             <div>
               <h2 className="font-heading text-lg font-bold text-brand-navy">
-                Gerenciar Produtos, Preços e Promoções
+                Produtos e Preços Publicados ({myPrices.length})
               </h2>
               <p className="text-xs text-slate-500">
-                Altere o valor ou clique em Promoção para destacar a oferta em
-                amarelo para os consumidores.
+                Altere o valor ou marque itens em oferta.
               </p>
             </div>
           </div>
 
-          <div className="mt-4 divide-y divide-slate-100">
-            {myPrices.map(({ priceEntry, product }) => {
-              const currentInputVal =
-                editingPriceMap[product.id] ?? priceEntry.price.toFixed(2);
+          {myPrices.length === 0 ? (
+            <div className="py-10 text-center text-xs text-slate-500">
+              Nenhum preço publicado neste mercado ainda. Cadastre um produto,
+              importe uma planilha CSV ou envie um encarte.
+            </div>
+          ) : (
+            <div className="mt-4 divide-y divide-slate-100">
+              {myPrices.map(({ priceEntry, product }) => {
+                const currentInputVal =
+                  editingPriceMap[product.id] ?? priceEntry.price.toFixed(2);
 
-              return (
-                <div
-                  key={priceEntry.id}
-                  className="flex flex-wrap items-center justify-between gap-4 py-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="h-12 w-12 rounded-xl border border-slate-100 bg-white object-contain p-0.5"
-                    />
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-heading text-sm font-bold text-brand-navy">
-                          {product.name} — {product.sizeLabel}
-                        </h3>
-                        {priceEntry.isPromo && (
-                          <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-extrabold text-brand-navy">
-                            {priceEntry.promoLabel || "Em Oferta"}
+                return (
+                  <div
+                    key={priceEntry.id}
+                    className="flex flex-wrap items-center justify-between gap-4 py-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="h-12 w-12 rounded-xl border border-slate-100 bg-white object-contain p-0.5"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
+                          <Package className="h-6 w-6 text-slate-300" />
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-heading text-sm font-bold text-brand-navy">
+                            {product.name}
+                            {product.sizeLabel ? ` — ${product.sizeLabel}` : ""}
+                          </h3>
+                          {priceEntry.isPromo && (
+                            <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-extrabold text-brand-navy">
+                              {priceEntry.promoLabel || "Oferta"}
+                            </span>
+                          )}
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                            {priceEntry.sourceLabel}
                           </span>
-                        )}
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                          Fonte: {priceEntry.source}
-                        </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          {product.brand || "Sem marca"} •{" "}
+                          {product.ean ? `EAN ${product.ean} • ` : ""}
+                          Atualizado em {priceEntry.updatedAt}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500">
-                        {product.brand} • EAN {product.ean} • Atualizado:{" "}
-                        {priceEntry.updatedAt}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-500">
-                        R$
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0.1"
-                        value={currentInputVal}
-                        onChange={(e) =>
-                          setEditingPriceMap((prev) => ({
-                            ...prev,
-                            [product.id]: e.target.value,
-                          }))
-                        }
-                        aria-label={`Preço de ${product.name}`}
-                        className="tabular-price w-24 rounded-xl border border-slate-200 px-2.5 py-1.5 text-sm font-bold text-brand-navy"
-                      />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = parseFloat(currentInputVal);
-                        if (!isNaN(val) && val > 0) {
-                          upsertMarketPrice(
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-500">
+                          R$
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={currentInputVal}
+                          onChange={(e) =>
+                            setEditingPriceMap((prev) => ({
+                              ...prev,
+                              [product.id]: e.target.value,
+                            }))
+                          }
+                          aria-label={`Preço de ${product.name}`}
+                          className="tabular-price w-24 rounded-xl border border-slate-200 px-2.5 py-1.5 text-sm font-bold text-brand-navy"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = parseFloat(currentInputVal);
+                          if (!isNaN(val) && val > 0) {
+                            void upsertMarketPrice(
+                              myMarket.id,
+                              product.id,
+                              val,
+                              priceEntry.isPromo,
+                              priceEntry.promoLabel,
+                              priceEntry.inStock
+                            );
+                          }
+                        }}
+                        className="inline-flex min-h-[44px] items-center gap-1 rounded-xl bg-brand-navy px-3 py-2 text-xs font-bold text-white hover:bg-brand-blue"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        Salvar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void upsertMarketPrice(
                             myMarket.id,
                             product.id,
-                            val,
-                            priceEntry.isPromo,
-                            priceEntry.promoLabel,
+                            priceEntry.price,
+                            !priceEntry.isPromo,
+                            !priceEntry.isPromo ? "Oferta" : undefined,
                             priceEntry.inStock
-                          );
+                          )
                         }
-                      }}
-                      className="inline-flex min-h-[40px] items-center gap-1 rounded-xl bg-brand-green px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
-                    >
-                      <Save className="h-3.5 w-3.5" />
-                      Salvar Preço
-                    </button>
+                        className={`inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                          priceEntry.isPromo
+                            ? "bg-brand-yellow text-brand-navy"
+                            : "border border-slate-200 bg-slate-50 text-slate-600"
+                        }`}
+                      >
+                        <Tag className="h-3.5 w-3.5" />
+                        {priceEntry.isPromo ? "Promo Ativa" : "Ativar Promo"}
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        upsertMarketPrice(
-                          myMarket.id,
-                          product.id,
-                          priceEntry.price,
-                          !priceEntry.isPromo,
-                          !priceEntry.isPromo ? "Oferta do Dia" : undefined,
-                          priceEntry.inStock
-                        )
-                      }
-                      className={`inline-flex min-h-[40px] items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
-                        priceEntry.isPromo
-                          ? "bg-brand-yellow text-brand-navy"
-                          : "border border-slate-200 bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <Tag className="h-3.5 w-3.5" />
-                      {priceEntry.isPromo ? "Promo Ativa" : "Ativar Promo"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        upsertMarketPrice(
-                          myMarket.id,
-                          product.id,
-                          priceEntry.price,
-                          priceEntry.isPromo,
-                          priceEntry.promoLabel,
-                          !priceEntry.inStock
-                        )
-                      }
-                      className={`min-h-[40px] rounded-xl px-3 py-2 text-xs font-bold ${
-                        priceEntry.inStock
-                          ? "bg-emerald-50 text-brand-green"
-                          : "bg-rose-100 text-rose-700"
-                      }`}
-                    >
-                      {priceEntry.inStock ? "Em Estoque" : "Sem Estoque"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => removeMarketPrice(myMarket.id, product.id)}
-                      className="min-h-[40px] min-w-[40px] rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                      aria-label={`Remover ${product.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void removeMarketPrice(myMarket.id, product.id)
+                        }
+                        className="min-h-[44px] min-w-[44px] rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        aria-label={`Remover ${product.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -576,24 +710,30 @@ export default function PainelParceiroPage() {
           className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs"
         >
           <h2 className="font-heading text-lg font-bold text-brand-navy">
-            Cadastrar Novo Produto no Catálogo
+            Cadastrar Produto com Código EAN Validado
           </h2>
           <p className="text-xs text-slate-500">
-            Informe o código EAN-13 e a medida exata (ex: 5 kg, 900 ml) para
-            cálculo proporcional por unidade.
+            Informe o código GTIN/EAN real e a medida da embalagem para cálculo
+            proporcional.
           </p>
+
+          {newProdError && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+              {newProdError}
+            </div>
+          )}
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="block text-xs font-bold text-slate-700">
-                Código EAN-13 *
+                Código GTIN / EAN-13 *
               </label>
               <input
                 type="text"
                 required
                 value={newEan}
                 onChange={(e) => setNewEan(e.target.value)}
-                placeholder="Ex.: 7896006711155"
+                placeholder="13 dígitos verificados"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
@@ -606,20 +746,19 @@ export default function PainelParceiroPage() {
                 required
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Ex.: Macarrão Espaguete"
+                placeholder="Descrição da embalagem"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700">
-                Marca *
+                Marca
               </label>
               <input
                 type="text"
-                required
                 value={newBrand}
                 onChange={(e) => setNewBrand(e.target.value)}
-                placeholder="Ex.: Adria"
+                placeholder="Marca do fabricante"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
@@ -641,20 +780,19 @@ export default function PainelParceiroPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700">
-                Tamanho / Peso na Embalagem *
+                Peso / Volume na Embalagem
               </label>
               <input
                 type="text"
-                required
                 value={newSizeLabel}
                 onChange={(e) => setNewSizeLabel(e.target.value)}
-                placeholder="Ex.: 500 g"
+                placeholder="Ex.: 500 g, 1 L, 5 kg"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700">
-                Unidade de Medida Base (Cálculo)
+                Medida para Cálculo Proporcional
               </label>
               <div className="mt-1 flex gap-2">
                 <select
@@ -673,7 +811,7 @@ export default function PainelParceiroPage() {
                 </select>
                 <input
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   value={newMultiplier}
                   onChange={(e) => setNewMultiplier(e.target.value)}
                   placeholder="Fator (ex: 0.5)"
@@ -683,7 +821,7 @@ export default function PainelParceiroPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700">
-                Preço no Mercado (R$) *
+                Preço na Loja (R$) *
               </label>
               <input
                 type="number"
@@ -691,7 +829,8 @@ export default function PainelParceiroPage() {
                 required
                 value={newPrice}
                 onChange={(e) => setNewPrice(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-brand-green"
+                placeholder="0.00"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-emerald-700"
               />
             </div>
           </div>
@@ -702,7 +841,7 @@ export default function PainelParceiroPage() {
                 type="checkbox"
                 checked={newPromo}
                 onChange={(e) => setNewPromo(e.target.checked)}
-                className="h-4 w-4 rounded text-brand-blue"
+                className="h-4 w-4 rounded text-brand-navy"
               />
               Produto em Promoção
             </label>
@@ -711,7 +850,7 @@ export default function PainelParceiroPage() {
                 type="text"
                 value={newPromoLabel}
                 onChange={(e) => setNewPromoLabel(e.target.value)}
-                placeholder="Selo da Promoção (ex: -15% OFF)"
+                placeholder="Selo da Promoção"
                 className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
               />
             )}
@@ -719,10 +858,10 @@ export default function PainelParceiroPage() {
 
           <button
             type="submit"
-            className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-blue px-6 py-3 text-xs font-bold text-white hover:bg-brand-navy"
+            className="mt-5 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-6 py-3 text-xs font-bold text-white hover:bg-brand-blue"
           >
             <Plus className="h-4 w-4" />
-            Adicionar Produto ao Catálogo
+            Publicar Produto e Preço
           </button>
         </form>
       )}
@@ -735,136 +874,253 @@ export default function PainelParceiroPage() {
         >
           <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
             <FileSpreadsheet className="h-5 w-5 text-brand-blue" />
-            Importação de Planilha CSV em Massa (<code>POST /api/ingest/csv</code>)
+            Importação de Planilha CSV (<code>POST /api/ingest/csv</code>)
           </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Envie um arquivo <code>.csv</code> ou cole os dados abaixo no
-            formato padrão: <code>ean,nome,preco,oferta</code>
+            Envie um arquivo <code>.csv</code> (máx. 2 MB / 5.000 linhas) no
+            formato <code>ean,nome,preco,oferta</code>. Todos os códigos EAN são
+            validados pelo dígito verificador GTIN.
           </p>
 
           <div className="mt-4">
             <label className="block text-xs font-bold text-slate-700">
-              Selecionar arquivo .csv do computador (Opcional):
+              Selecionar arquivo .csv do computador:
             </label>
             <input
               type="file"
               accept=".csv,text/csv"
               onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-              className="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-light file:px-4 file:py-2 file:text-xs file:font-bold file:text-brand-blue hover:file:bg-brand-blue hover:file:text-white"
+              className="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-light file:px-4 file:py-2 file:text-xs file:font-bold file:text-brand-navy hover:file:bg-brand-navy hover:file:text-white"
             />
           </div>
 
           <div className="mt-4">
             <label className="block text-xs font-bold text-slate-700">
-              Ou edite/cole as linhas CSV diretamente:
+              Ou cole as linhas CSV diretamente (cabeçalho:{" "}
+              <code>ean,nome,preco,oferta</code>):
             </label>
             <textarea
               rows={5}
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
+              placeholder={"ean,nome,preco,oferta\n"}
               className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 font-mono text-xs text-slate-800"
             />
           </div>
 
+          {csvSummary && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-brand-navy">
+              {csvSummary}
+            </div>
+          )}
+
+          {csvLineErrors.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-900">
+              <p className="font-bold">
+                Erros por linha encontrados na planilha ({csvLineErrors.length}):
+              </p>
+              <ul className="mt-2 max-h-40 list-inside list-disc space-y-1 overflow-y-auto">
+                {csvLineErrors.map((err, i) => (
+                  <li key={i}>
+                    <strong>Linha {err.line}:</strong> {err.reason}{" "}
+                    {err.rawEan && (
+                      <code className="text-[10px] text-rose-700">
+                        (EAN: {err.rawEan})
+                      </code>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loadingCsv}
-            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-green px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-brand-blue disabled:opacity-50"
           >
             {loadingCsv ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <FileUp className="h-4 w-4" />
             )}
-            Processar Planilha CSV e Atualizar Catálogo
+            Validar e Importar Planilha CSV
           </button>
         </form>
       )}
 
-      {/* ABA 4: CAPTURA DE PREÇOS DE ENCARTE VIA GEMINI OCR (/api/ingest/flyer) */}
+      {/* ABA 4: CAPTURA DE PREÇOS DE ENCARTE VIA GEMINI OCR + REVISÃO HUMANA */}
       {activeTab === "encarte_ia" && (
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
-          <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
-            <Sparkles className="h-5 w-5 text-brand-blue" />
-            Extração de Preços de Encarte por IA (<code>POST /api/ingest/flyer</code>)
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Envie a foto ou PDF do encarte de ofertas do mercado. O serviço
-            multimodal extrai automaticamente{" "}
-            <code>[{"{ ean_or_name, brand, weight, price, promo_label }"}]</code>{" "}
-            pronto para publicar em <code>market_prices</code>.
-          </p>
+        <div className="mt-6 space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
+            <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
+              <Sparkles className="h-5 w-5 text-brand-blue" />
+              1. Enviar Encarte para Leitura Assistida por IA (
+              <code>POST /api/ingest/flyer</code>)
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              O encarte original é arquivado no bucket privado{" "}
+              <code>encartes</code> e os itens extraídos entram com{" "}
+              <code>status = &apos;pendente&apos;</code> para sua revisão abaixo
+              antes de irem ao ar.
+            </p>
 
-          <form onSubmit={handleFlyerIngest} className="mt-4 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700">
-                Foto ou PDF do Encarte do Supermercado:
-              </label>
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={(e) => setFlyerFile(e.target.files?.[0] || null)}
-                className="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-light file:px-4 file:py-2 file:text-xs file:font-bold file:text-brand-blue hover:file:bg-brand-blue hover:file:text-white"
-              />
-            </div>
+            {flyerError && (
+              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+                {flyerError}
+              </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={loadingFlyer}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-blue px-5 py-2.5 text-xs font-bold text-white hover:bg-brand-navy disabled:opacity-50"
-            >
-              {loadingFlyer ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              Extrair Ofertas do Encarte com IA
-            </button>
-          </form>
+            <form onSubmit={handleFlyerIngest} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700">
+                  Foto ou PDF do Encarte do Supermercado:
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => setFlyerFile(e.target.files?.[0] || null)}
+                  className="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-light file:px-4 file:py-2 file:text-xs file:font-bold file:text-brand-navy hover:file:bg-brand-navy hover:file:text-white"
+                />
+              </div>
 
-          {extractedFlyerItems.length > 0 && (
-            <div className="mt-6 rounded-2xl border border-brand-green/30 bg-emerald-50/50 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-heading text-sm font-bold text-brand-navy">
-                  Ofertas extraídas do encarte ({extractedFlyerItems.length}):
+              <button
+                type="submit"
+                disabled={loadingFlyer}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-brand-blue disabled:opacity-50"
+              >
+                {loadingFlyer ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Extrair Ofertas para Revisão
+              </button>
+            </form>
+          </div>
+
+          {/* Fila de Revisão de Encartes (status = 'pendente') */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="font-heading text-base font-bold text-brand-navy">
+                  2. Revisão de Ofertas Extraídas Pendentes (
+                  {pendingReviewItems.length})
                 </h3>
+                <p className="text-xs text-slate-500">
+                  Confira o nome, peso e valor extraídos pelo OCR antes de
+                  publicar para os consumidores.
+                </p>
+              </div>
+              {pendingReviewItems.length > 0 && (
                 <button
                   type="button"
-                  onClick={applyExtractedFlyerToCatalog}
-                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                  onClick={() => void handleReviewAction("approve_batch")}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-brand-navy"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Confirmar e Salvar em market_prices
+                  Aprovar Todos em Lote ({pendingReviewItems.length})
                 </button>
-              </div>
-              <div className="mt-3 divide-y divide-emerald-100">
-                {extractedFlyerItems.map((it, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between py-2 text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-brand-navy">
-                        {it.ean_or_name}
-                      </span>{" "}
-                      • {it.brand} •{" "}
-                      <span className="font-semibold text-brand-blue">
-                        {it.weight}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded bg-brand-yellow px-2 py-0.5 text-[10px] font-bold text-brand-navy">
-                        {it.promo_label}
-                      </span>
-                      <span className="tabular-price font-heading text-sm font-extrabold text-brand-green">
-                        {formatBRL(it.price)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
             </div>
-          )}
+
+            {loadingReview ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                Carregando itens pendentes de revisão...
+              </div>
+            ) : pendingReviewItems.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                Nenhum item de encarte aguardando revisão no momento.
+              </div>
+            ) : (
+              <div className="mt-4 divide-y divide-slate-100">
+                {pendingReviewItems.map((item) => {
+                  const editState = reviewEdits[item.id] || {
+                    price: String(item.price),
+                    promo_label: item.promo_label || "Oferta de Encarte",
+                  };
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-wrap items-center justify-between gap-4 py-3.5 text-xs"
+                    >
+                      <div>
+                        <p className="font-heading text-sm font-bold text-brand-navy">
+                          {item.products?.name || "Produto extraído"}
+                          {item.products?.size_label
+                            ? ` (${item.products.size_label})`
+                            : ""}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {item.products?.brand || "Marca não identificada"} •{" "}
+                          {item.products?.ean
+                            ? `EAN ${item.products.ean}`
+                            : "Sem EAN no encarte"}{" "}
+                          • Validade:{" "}
+                          {item.valid_until || "Não impressa no encarte"}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editState.price}
+                          onChange={(e) =>
+                            setReviewEdits((prev) => ({
+                              ...prev,
+                              [item.id]: {
+                                ...editState,
+                                price: e.target.value,
+                              },
+                            }))
+                          }
+                          className="tabular-price w-24 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-brand-navy"
+                          aria-label="Editar preço extraído"
+                        />
+                        <input
+                          type="text"
+                          value={editState.promo_label}
+                          onChange={(e) =>
+                            setReviewEdits((prev) => ({
+                              ...prev,
+                              [item.id]: {
+                                ...editState,
+                                promo_label: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-36 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs"
+                          aria-label="Editar selo promocional"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleReviewAction("approve", item.id)
+                          }
+                          className="inline-flex min-h-[40px] items-center gap-1 rounded-xl bg-brand-green px-3 py-1.5 font-bold text-brand-navy"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Aprovar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleReviewAction("reject", item.id)
+                          }
+                          className="inline-flex min-h-[40px] items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 font-bold text-rose-700"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          Rejeitar
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -876,7 +1132,7 @@ export default function PainelParceiroPage() {
         >
           <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
             <Building2 className="h-5 w-5 text-brand-blue" />
-            Dados do Estabelecimento, Horários e Entrega
+            Dados do Estabelecimento, Horários e Atendimento
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -887,6 +1143,7 @@ export default function PainelParceiroPage() {
                 type="text"
                 value={editHours}
                 onChange={(e) => setEditHours(e.target.value)}
+                placeholder="Ex.: Seg a Sáb: 08h às 21h"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
@@ -898,24 +1155,26 @@ export default function PainelParceiroPage() {
                 type="text"
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="DDD + Número"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-slate-700">
-                Informações de Entrega / Retirada
+                Informações de Retirada / Entrega
               </label>
               <input
                 type="text"
                 value={editDeliveryInfo}
                 onChange={(e) => setEditDeliveryInfo(e.target.value)}
+                placeholder="Informe as condições reais da loja"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
           </div>
           <button
             type="submit"
-            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-blue px-5 py-2.5 text-xs font-bold text-white"
+            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white"
           >
             <CheckCircle2 className="h-4 w-4" />
             Salvar Alterações do Perfil
@@ -923,18 +1182,17 @@ export default function PainelParceiroPage() {
         </form>
       )}
 
-      {/* ABA 6: MÉTRICAS DE VISIBILIDADE */}
+      {/* ABA 6: RESUMO DO CATÁLOGO */}
       {activeTab === "metricas" && (
         <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
-                <BarChart3 className="h-5 w-5 text-brand-green" />
-                Indicadores de Visibilidade do Estabelecimento
+                <BarChart3 className="h-5 w-5 text-brand-blue" />
+                Resumo do Catálogo Publicado
               </h2>
               <p className="text-xs text-slate-500">
-                Resumo consolidado dos itens ativos e buscas na região de{" "}
-                {myMarket.neighborhood}.
+                Contagem real de preços e promoções ativas em {myMarket.name}.
               </p>
             </div>
           </div>
@@ -942,36 +1200,27 @@ export default function PainelParceiroPage() {
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-slate-100 bg-brand-light/50 p-4">
               <span className="text-xs font-semibold text-slate-600">
-                Produtos com Preço Ativo
+                Produtos com Preço Publicado
               </span>
-              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-brand-blue">
+              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-brand-navy">
                 {myPrices.length} itens
               </p>
-              <span className="text-[11px] text-slate-500">
-                Catálogo sincronizado
-              </span>
             </div>
             <div className="rounded-2xl border border-slate-100 bg-emerald-50/60 p-4">
               <span className="text-xs font-semibold text-slate-600">
                 Ofertas Promocionais Ativas
               </span>
-              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-brand-green">
+              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-emerald-700">
                 {myPrices.filter((p) => p.priceEntry.isPromo).length} ofertas
               </p>
-              <span className="text-[11px] text-slate-500">
-                Destaques no comparador
-              </span>
             </div>
             <div className="rounded-2xl border border-slate-100 bg-amber-50/70 p-4">
               <span className="text-xs font-semibold text-slate-600">
-                Principais Categorias Cadastradas
+                Itens com mais de 7 dias
               </span>
-              <p className="mt-1 font-heading text-base font-extrabold text-brand-navy">
-                Mercearia • Laticínios • Hortifruti
+              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-amber-800">
+                {outdatedItems.length} itens
               </p>
-              <span className="text-[11px] text-slate-500">
-                Cobertura regional: {myMarket.neighborhood}
-              </span>
             </div>
           </div>
         </div>

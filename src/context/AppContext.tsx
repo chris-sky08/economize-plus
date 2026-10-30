@@ -1,54 +1,49 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  CATEGORIES,
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type {
   Category,
   CourierApplication,
-  DEFAULT_SHOPPING_LIST,
-  INITIAL_MARKETS,
-  INITIAL_PRICES,
-  INITIAL_PRODUCTS,
+  LocationConfig,
   Market,
   MarketPrice,
   PartnerApplication,
   PriceReport,
   PriceSource,
   Product,
-} from "@/data/mockData";
+  ShoppingListItem,
+  UserProfile,
+  UserRole,
+} from "@/types/domain";
+import {
+  CATEGORIES,
+  formatDateTimeBR,
+  getPriceSourceBadgeLabel,
+  isTimestampStale,
+} from "@/lib/format";
 import {
   fetchCatalogFromSupabase,
-  saveProductToSupabase,
+  isSupabaseConfigured,
+  mapDbPriceRow,
+  mapDbProductRow,
   supabase,
+  supabaseConfigError,
 } from "@/lib/supabase";
 import { calculateHaversineKm } from "@/hooks/useUserLocation";
 
-export type UserRole = "consumidor" | "mercado" | "entregador" | "admin";
-
-export interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  marketId?: string;
-  isDemoAuth?: boolean;
-}
-
-export interface ShoppingListItem {
-  productId: string;
-  quantity: number;
-  checked: boolean;
-}
-
-export interface LocationConfig {
-  city: string;
-  neighborhood: string;
-  zipCode: string;
-  lat: number;
-  lng: number;
-  maxRadiusKm: number;
-  deviceLocationGranted: boolean;
-}
+export type {
+  UserRole,
+  UserProfile,
+  ShoppingListItem,
+  LocationConfig,
+};
 
 interface AppContextType {
   categories: Category[];
@@ -58,24 +53,26 @@ interface AppContextType {
   shoppingList: ShoppingListItem[];
   location: LocationConfig;
   user: UserProfile | null;
+  accessToken: string | null;
   toast: string | null;
+  catalogLoading: boolean;
+  catalogError: string | null;
   partnerApplications: PartnerApplication[];
   courierApplications: CourierApplication[];
   priceReports: PriceReport[];
   isLocationModalOpen: boolean;
   setIsLocationModalOpen: (open: boolean) => void;
   updateLocation: (loc: Partial<LocationConfig>) => void;
-  registerExternalProduct: (product: Product) => Promise<void>;
+  refreshCatalog: () => Promise<void>;
+  registerExternalProduct: (product: Product) => void;
   addToList: (productId: string, qty?: number) => void;
   removeFromList: (productId: string) => void;
   updateListQuantity: (productId: string, qty: number) => void;
   toggleListItemChecked: (productId: string) => void;
   clearList: () => void;
-  restoreDefaultList: () => void;
   saveListToSupabase: () => Promise<void>;
-  loginDemoRole: (role: UserRole) => void;
   logoutUser: () => Promise<void>;
-  setAuthUser: (u: UserProfile | null) => void;
+  syncSessionFromToken: (token: string) => Promise<UserProfile | null>;
   showToast: (msg: string) => void;
   upsertMarketPrice: (
     marketId: string,
@@ -84,111 +81,295 @@ interface AppContextType {
     isPromo: boolean,
     promoLabel?: string,
     inStock?: boolean,
-    source?: PriceSource
-  ) => void;
+    source?: PriceSource,
+    validUntil?: string | null
+  ) => Promise<boolean>;
   addNewProductWithPrice: (
     marketId: string,
-    product: Omit<Product, "id">,
+    product: Omit<Product, "id" | "source" | "dataStatus">,
     price: number,
     isPromo: boolean,
     promoLabel?: string,
     source?: PriceSource
-  ) => void;
-  removeMarketPrice: (marketId: string, productId: string) => void;
-  updateMarketProfile: (marketId: string, updates: Partial<Market>) => void;
+  ) => Promise<boolean>;
+  removeMarketPrice: (marketId: string, productId: string) => Promise<boolean>;
+  updateMarketProfile: (
+    marketId: string,
+    updates: Partial<
+      Pick<
+        Market,
+        "phone" | "openingHours" | "deliveryAvailable" | "deliveryInfo"
+      >
+    >
+  ) => Promise<boolean>;
   submitPartnerApplication: (
-    app: Omit<PartnerApplication, "id" | "status" | "createdAt">
-  ) => Promise<void>;
+    app: Omit<PartnerApplication, "id" | "status" | "createdAt">,
+    turnstileToken: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   submitCourierApplication: (
-    app: Omit<CourierApplication, "id" | "status" | "createdAt">
-  ) => Promise<void>;
+    app: Omit<CourierApplication, "id" | "status" | "createdAt">,
+    turnstileToken: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   submitPriceReport: (
     marketId: string,
     productId: string,
     reason: string,
-    details: string
-  ) => Promise<void>;
+    details: string,
+    turnstileToken: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   updatePartnerApplicationStatus: (
     id: string,
     status: "em_analise" | "aprovado" | "recusado"
-  ) => void;
+  ) => Promise<void>;
   updatePriceReportStatus: (
     id: string,
     status: "pendente" | "revisado" | "arquivado"
-  ) => void;
-  toggleMarketStatus: (marketId: string) => void;
-  toggleSponsoredPrice: (priceId: string) => void;
+  ) => Promise<void>;
+  toggleMarketStatus: (marketId: string) => Promise<void>;
+  toggleSponsoredPrice: (priceId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const EMPTY_LOCATION_STATE: LocationConfig = {
+  city: null,
+  neighborhood: null,
+  state: null,
+  zipCode: null,
+  lat: null,
+  lng: null,
+  maxRadiusKm: 10,
+  deviceLocationGranted: false,
+  configured: false,
+};
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [rawMarkets, setRawMarkets] = useState<Market[]>(INITIAL_MARKETS);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [prices, setPrices] = useState<MarketPrice[]>(INITIAL_PRICES);
-  const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>(
-    DEFAULT_SHOPPING_LIST
+  const [rawMarkets, setRawMarkets] = useState<Market[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [prices, setPrices] = useState<MarketPrice[]>([]);
+  const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
+  const [location, setLocation] = useState<LocationConfig>(
+    EMPTY_LOCATION_STATE
   );
-  const [location, setLocation] = useState<LocationConfig>({
-    city: "São Paulo",
-    neighborhood: "Vila Mariana",
-    zipCode: "04101-000",
-    lat: -23.5842,
-    lng: -46.6365,
-    maxRadiusKm: 5,
-    deviceLocationGranted: false,
-  });
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState<boolean>(true);
+  const [catalogError, setCatalogError] = useState<string | null>(
+    supabaseConfigError
+  );
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const [partnerApplications, setPartnerApplications] = useState<
     PartnerApplication[]
-  >([
-    {
-      id: "pa-1",
-      marketName: "Mercadinho São Jorge",
-      responsibleName: "Marcos Paulo",
-      email: "contato@mercadinhosaojorge.com.br",
-      phone: "(11) 98765-4321",
-      address: "Rua Loefgren, 1120",
-      neighborhood: "Vila Clementino",
-      city: "São Paulo",
-      zipCode: "04040-000",
-      desiredPlan: "premium",
-      status: "em_analise",
-      createdAt: "Hoje, 10:15",
-    },
-  ]);
-
+  >([]);
   const [courierApplications, setCourierApplications] = useState<
     CourierApplication[]
-  >([
-    {
-      id: "ca-1",
-      fullName: "Lucas Ferreira",
-      email: "lucas.entregas@economizemais.com.br",
-      phone: "(11) 97654-3210",
-      vehicleType: "moto",
-      serviceNeighborhoods: ["Vila Mariana", "Saúde", "Ipiranga"],
-      status: "pre_cadastro",
-      createdAt: "Ontem, 16:40",
-    },
-  ]);
+  >([]);
+  const [priceReports, setPriceReports] = useState<PriceReport[]>([]);
 
-  const [priceReports, setPriceReports] = useState<PriceReport[]>([
-    {
-      id: "rep-1",
-      marketId: "mercado-c",
-      productId: "cafe-torrado-500g",
-      reason: "Preço com atualização pendente há mais de 5 dias",
-      details: "Verificação automática de revisão de preço no catálogo.",
-      status: "pendente",
-      createdAt: "Hoje, 08:00",
-    },
-  ]);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => {
+      setToast((prev) => (prev === msg ? null : prev));
+    }, 4200);
+  }, []);
 
-  // Recalcula a distância real de cada supermercado usando a Fórmula de Haversine
+  const refreshCatalog = useCallback(async () => {
+    setCatalogLoading(true);
+    const result = await fetchCatalogFromSupabase({ page: 0, pageSize: 150 });
+    setRawMarkets(result.supermarkets);
+    setProducts(result.products);
+    setPrices(result.prices);
+    setCatalogError(result.error);
+    setCatalogLoading(false);
+  }, []);
+
+  const loadAdminRecords = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const [appsRes, couriersRes, reportsRes] = await Promise.all([
+      supabase
+        .from("partner_applications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(0, 99),
+      supabase
+        .from("couriers")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(0, 99),
+      supabase
+        .from("price_reports")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(0, 99),
+    ]);
+
+    if (!appsRes.error && Array.isArray(appsRes.data)) {
+      setPartnerApplications(
+        appsRes.data.map((a) => ({
+          id: String(a.id),
+          marketName: String(a.market_name),
+          responsibleName: String(a.responsible_name),
+          email: String(a.email),
+          phone: String(a.phone),
+          address: String(a.address),
+          neighborhood: String(a.neighborhood),
+          city: String(a.city),
+          zipCode: String(a.zip_code),
+          desiredPlan: a.desired_plan === "premium" ? "premium" : "basico",
+          status:
+            a.status === "aprovado" || a.status === "recusado"
+              ? a.status
+              : "em_analise",
+          createdAt: formatDateTimeBR(String(a.created_at || "")),
+        }))
+      );
+    }
+
+    if (!couriersRes.error && Array.isArray(couriersRes.data)) {
+      setCourierApplications(
+        couriersRes.data.map((c) => ({
+          id: String(c.id),
+          fullName: String(c.full_name),
+          email: String(c.email),
+          phone: String(c.phone),
+          vehicleType:
+            c.vehicle_type === "bicicleta" ||
+            c.vehicle_type === "carro" ||
+            c.vehicle_type === "utilitario"
+              ? c.vehicle_type
+              : "moto",
+          serviceNeighborhoods: Array.isArray(c.service_neighborhoods)
+            ? c.service_neighborhoods.map(String)
+            : [],
+          status:
+            c.status === "em_analise" ||
+            c.status === "aprovado" ||
+            c.status === "suspenso"
+              ? c.status
+              : "pre_cadastro",
+          createdAt: formatDateTimeBR(String(c.created_at || "")),
+        }))
+      );
+    }
+
+    if (!reportsRes.error && Array.isArray(reportsRes.data)) {
+      setPriceReports(
+        reportsRes.data.map((r) => ({
+          id: String(r.id),
+          marketId: String(r.supermarket_id || ""),
+          productId: String(r.product_id || ""),
+          reason: String(r.reason),
+          details: String(r.details || ""),
+          status:
+            r.status === "revisado" || r.status === "arquivado"
+              ? r.status
+              : "pendente",
+          createdAt: formatDateTimeBR(String(r.created_at || "")),
+        }))
+      );
+    }
+  }, []);
+
+  const syncSessionFromToken = useCallback(
+    async (token: string): Promise<UserProfile | null> => {
+      try {
+        setAccessToken(token);
+        const res = await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: token }),
+        });
+        if (!res.ok) {
+          setUser(null);
+          return null;
+        }
+        const data = (await res.json()) as { user?: UserProfile };
+        if (data.user) {
+          setUser(data.user);
+          if (data.user.role === "admin") {
+            void loadAdminRecords();
+          }
+          return data.user;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    },
+    [loadAdminRecords]
+  );
+
+  useEffect(() => {
+    try {
+      const savedList = localStorage.getItem("economize_shopping_list");
+      if (savedList) {
+        const parsedList = JSON.parse(savedList) as ShoppingListItem[];
+        if (Array.isArray(parsedList)) {
+          setShoppingList(parsedList);
+        }
+      }
+      const savedLoc = localStorage.getItem("economize_location");
+      if (savedLoc) {
+        const parsed = JSON.parse(savedLoc) as Partial<LocationConfig>;
+        if (parsed && (parsed.city || parsed.zipCode || parsed.lat !== null)) {
+          setLocation({
+            city: parsed.city ?? null,
+            neighborhood: parsed.neighborhood ?? null,
+            state: parsed.state ?? null,
+            zipCode: parsed.zipCode ?? null,
+            lat: typeof parsed.lat === "number" ? parsed.lat : null,
+            lng: typeof parsed.lng === "number" ? parsed.lng : null,
+            maxRadiusKm:
+              typeof parsed.maxRadiusKm === "number" ? parsed.maxRadiusKm : 10,
+            deviceLocationGranted: Boolean(parsed.deviceLocationGranted),
+            configured: true,
+          });
+        }
+      }
+    } catch {
+      // Ignora falha de leitura de localStorage
+    }
+
+    void refreshCatalog();
+
+    if (isSupabaseConfigured) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data?.session?.access_token) {
+          void syncSessionFromToken(data.session.access_token);
+        }
+      });
+
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          if (session?.access_token) {
+            void syncSessionFromToken(session.access_token);
+          } else {
+            setAccessToken(null);
+            setUser(null);
+          }
+        }
+      );
+
+      return () => {
+        listener.subscription.unsubscribe();
+      };
+    }
+  }, [refreshCatalog, syncSessionFromToken]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "economize_shopping_list",
+        JSON.stringify(shoppingList)
+      );
+    } catch {
+      // Ignora falha de escrita em localStorage
+    }
+  }, [shoppingList]);
+
+  // Calcula a distância em linha reta (Haversine) apenas quando tanto o usuário quanto o mercado possuem coordenadas reais
   const markets = useMemo(() => {
     return rawMarkets.map((m) => ({
       ...m,
@@ -201,96 +382,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [rawMarkets, location.lat, location.lng]);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => {
-      setToast((prev) => (prev === msg ? null : prev));
-    }, 3800);
-  };
-
-  useEffect(() => {
-    try {
-      const savedList = localStorage.getItem("economize_shopping_list");
-      if (savedList) {
-        setShoppingList(JSON.parse(savedList));
-      }
-      const savedLoc = localStorage.getItem("economize_location");
-      if (savedLoc) {
-        const parsed = JSON.parse(savedLoc) as Partial<LocationConfig>;
-        setLocation((prev) => ({
-          ...prev,
-          ...parsed,
-          lat: typeof parsed.lat === "number" ? parsed.lat : prev.lat,
-          lng: typeof parsed.lng === "number" ? parsed.lng : prev.lng,
-        }));
-      }
-      const savedUser = localStorage.getItem("economize_demo_user");
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
-    } catch {
-      // Ignora erro de localStorage
-    }
-
-    // Busca catálogo real do Supabase (com fallback seguro)
-    fetchCatalogFromSupabase().then((remote) => {
-      if (remote.supermarkets && remote.supermarkets.length > 0) {
-        setRawMarkets(remote.supermarkets);
-      }
-      if (remote.products && remote.products.length > 0) {
-        setProducts((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const merged = [...prev];
-          remote.products!.forEach((rp) => {
-            if (!existingIds.has(rp.id)) merged.push(rp);
-          });
-          return merged;
-        });
-      }
-      if (remote.prices && remote.prices.length > 0) {
-        setPrices((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const merged = [...prev];
-          remote.prices!.forEach((rpr) => {
-            if (!existingIds.has(rpr.id)) merged.push(rpr);
-          });
-          return merged;
-        });
-      }
-    });
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session?.user) {
-        const sbUser = data.session.user;
-        setUser({
-          id: sbUser.id,
-          name:
-            sbUser.user_metadata?.full_name ||
-            sbUser.email?.split("@")[0] ||
-            "Usuário Economize+",
-          email: sbUser.email || "",
-          role: (sbUser.user_metadata?.role as UserRole) || "consumidor",
-          marketId: "mercado-a",
-          isDemoAuth: false,
-        });
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "economize_shopping_list",
-        JSON.stringify(shoppingList)
-      );
-    } catch {
-      // Ignora
-    }
-  }, [shoppingList]);
-
   const updateLocation = (loc: Partial<LocationConfig>) => {
     setLocation((prev) => {
-      const updated = { ...prev, ...loc };
+      const updated: LocationConfig = {
+        ...prev,
+        ...loc,
+        configured: true,
+      };
       try {
         localStorage.setItem("economize_location", JSON.stringify(updated));
       } catch {
@@ -298,17 +396,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return updated;
     });
-    showToast("Localização e distâncias (Haversine) atualizadas!");
+    showToast("Localização atualizada!");
   };
 
-  const registerExternalProduct = async (product: Product) => {
+  const registerExternalProduct = (product: Product) => {
     setProducts((prev) => {
       if (prev.some((p) => p.id === product.id || p.ean === product.ean)) {
         return prev;
       }
       return [product, ...prev];
     });
-    await saveProductToSupabase(product);
   };
 
   const addToList = (productId: string, qty = 1) => {
@@ -354,31 +451,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearList = () => {
     setShoppingList([]);
-    showToast("Lista limpa.");
-  };
-
-  const restoreDefaultList = () => {
-    setShoppingList(DEFAULT_SHOPPING_LIST);
-    showToast("Lista padrão restaurada!");
+    showToast("Lista de compras esvaziada.");
   };
 
   const saveListToSupabase = async () => {
     if (!user) {
-      showToast("Lista mantida no seu navegador. Entre na conta para sincronizar na nuvem.");
+      showToast(
+        "Sua lista já está salva neste navegador. Faça login em /conta para sincronizar na nuvem."
+      );
       return;
     }
-    try {
-      const { data: listData, error } = await supabase
-        .from("shopping_lists")
-        .insert({
-          user_id: user.id,
-          title: "Minha Lista Economize+",
-        })
-        .select()
-        .single();
+    const { data: listData, error: listErr } = await supabase
+      .from("shopping_lists")
+      .insert({
+        user_id: user.id,
+        title: "Minha Lista Economize+",
+      })
+      .select()
+      .single();
 
-      if (!error && listData) {
-        await supabase.from("shopping_list_items").insert(
+    if (listErr || !listData) {
+      showToast(
+        `Não foi possível salvar na nuvem (${listErr?.message || "erro"}). Sua lista continua salva no navegador.`
+      );
+      return;
+    }
+
+    if (shoppingList.length > 0) {
+      const { error: itemsErr } = await supabase
+        .from("shopping_list_items")
+        .insert(
           shoppingList.map((item) => ({
             list_id: listData.id,
             product_id: item.productId,
@@ -386,160 +488,107 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             checked: item.checked,
           }))
         );
-        showToast("Lista sincronizada com sucesso no Supabase!");
-      } else {
-        showToast("Lista salva localmente na sua sessão.");
-      }
-    } catch {
-      showToast("Lista salva localmente no dispositivo.");
-    }
-  };
 
-  const loginDemoRole = (role: UserRole) => {
-    const roleLabels: Record<UserRole, { name: string; email: string }> = {
-      consumidor: {
-        name: "Ana Paula (Consumidora)",
-        email: "consumidor@economizemais.com.br",
-      },
-      mercado: {
-        name: "Carlos Mendes (Super Vila Mariana)",
-        email: "parceiro@supervilamariana.com.br",
-      },
-      entregador: {
-        name: "Lucas Ferreira (Entregador Parceiro)",
-        email: "entregador@economizemais.com.br",
-      },
-      admin: {
-        name: "Equipe Economize+ (Admin)",
-        email: "admin@economizemais.com.br",
-      },
-    };
-    const activeUser: UserProfile = {
-      id: `user-${role}`,
-      name: roleLabels[role].name,
-      email: roleLabels[role].email,
-      role,
-      marketId: "mercado-a",
-      isDemoAuth: true,
-    };
-    setUser(activeUser);
-    try {
-      localStorage.setItem("economize_demo_user", JSON.stringify(activeUser));
-    } catch {
-      // Ignora
+      if (itemsErr) {
+        showToast(`Erro ao sincronizar itens da lista: ${itemsErr.message}`);
+        return;
+      }
     }
-    showToast(`Perfil ativo alterado para: ${role.toUpperCase()}`);
+
+    showToast("Lista sincronizada com sua conta no Supabase!");
   };
 
   const logoutUser = async () => {
-    await supabase.auth.signOut().catch(() => {});
+    await supabase.auth.signOut();
+    await fetch("/api/auth/session", { method: "DELETE" });
+    setAccessToken(null);
     setUser(null);
-    try {
-      localStorage.removeItem("economize_demo_user");
-    } catch {
-      // Ignora
-    }
     showToast("Sessão encerrada.");
   };
 
-  const setAuthUser = (u: UserProfile | null) => {
-    setUser(u);
-  };
-
-  const upsertMarketPrice = (
+  const upsertMarketPrice = async (
     marketId: string,
     productId: string,
     price: number,
     isPromo: boolean,
     promoLabel?: string,
     inStock = true,
-    source: PriceSource = "partner_csv"
-  ) => {
-    setPrices((prev) => {
-      const existing = prev.find(
-        (p) => p.marketId === marketId && p.productId === productId
-      );
-      if (existing) {
-        return prev.map((p) =>
-          p.marketId === marketId && p.productId === productId
-            ? {
-                ...p,
-                regularPrice: isPromo ? p.price : undefined,
-                price,
-                isPromo,
-                promoLabel: isPromo ? promoLabel || "Oferta" : undefined,
-                inStock,
-                source,
-                needsUpdateAlert: false,
-                updatedAt: "Agora mesmo",
-              }
-            : p
-        );
-      }
-      return [
-        ...prev,
-        {
-          id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          marketId,
-          productId,
-          price,
-          isPromo,
-          promoLabel: isPromo ? promoLabel || "Oferta" : undefined,
-          inStock,
-          source,
-          updatedAt: "Agora mesmo",
-        },
-      ];
-    });
-    setRawMarkets((prev) =>
-      prev.map((m) =>
-        m.id === marketId ? { ...m, lastCatalogUpdate: "Agora mesmo" } : m
-      )
-    );
+    source: PriceSource = "partner_manual",
+    validUntil?: string | null
+  ): Promise<boolean> => {
+    if (!user) {
+      showToast("Faça login com sua conta de mercado parceiro para atualizar preços.");
+      return false;
+    }
 
-    supabase
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
       .from("market_prices")
       .upsert(
         {
           supermarket_id: marketId,
           product_id: productId,
-          price,
+          price: Math.round(price * 100) / 100,
           is_promo: isPromo,
-          promo_label: isPromo ? promoLabel || "Oferta" : null,
+          promo_label: isPromo && promoLabel ? promoLabel : null,
           in_stock: inStock,
           source,
-          updated_at: new Date().toISOString(),
+          status: source === "flyer_ocr" ? "pendente" : "publicado",
+          valid_until: validUntil || null,
+          collected_at: nowIso,
+          submitted_by: user.id,
+          updated_at: nowIso,
         },
         { onConflict: "supermarket_id,product_id" }
       )
-      .then(() => {});
+      .select()
+      .single();
 
-    showToast("Preço atualizado e sincronizado!");
+    if (error || !data) {
+      showToast(
+        `Erro ao salvar preço no banco: ${error?.message || "permissão negada pelo RLS"}`
+      );
+      return false;
+    }
+
+    const mapped = mapDbPriceRow(data as Record<string, unknown>);
+    setPrices((prev) => {
+      const exists = prev.some(
+        (p) => p.marketId === marketId && p.productId === productId
+      );
+      if (exists) {
+        return prev.map((p) =>
+          p.marketId === marketId && p.productId === productId ? mapped : p
+        );
+      }
+      return [mapped, ...prev];
+    });
+
+    showToast("Preço gravado e confirmado no banco de dados!");
+    return true;
   };
 
-  const addNewProductWithPrice = (
+  const addNewProductWithPrice = async (
     marketId: string,
-    product: Omit<Product, "id">,
+    product: Omit<Product, "id" | "source" | "dataStatus">,
     price: number,
     isPromo: boolean,
     promoLabel?: string,
-    source: PriceSource = "partner_csv"
-  ) => {
-    const newId = product.ean
-      ? `ean-${product.ean}`
-      : `prod-${Date.now()}`;
-    const newProd: Product = {
-      ...product,
-      id: newId,
-    };
-    setProducts((prev) => {
-      const exists = prev.some(
-        (p) => p.id === newId || (product.ean && p.ean === product.ean)
-      );
-      return exists ? prev : [newProd, ...prev];
-    });
-    saveProductToSupabase(newProd).catch(() => {});
-    upsertMarketPrice(
+    source: PriceSource = "partner_manual"
+  ): Promise<boolean> => {
+    if (!user) {
+      showToast("Faça login para cadastrar produtos e preços.");
+      return false;
+    }
+    const cleanEan = product.ean.replace(/\D/g, "");
+    const newId = `ean-${cleanEan}`;
+
+    // Consulta ou cria o produto via rota de servidor do EAN antes de vincular o preço
+    await fetch(`/api/produtos/ean/${encodeURIComponent(cleanEan)}`).catch(
+      () => null
+    );
+
+    const ok = await upsertMarketPrice(
       marketId,
       newId,
       price,
@@ -548,147 +597,263 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       true,
       source
     );
+
+    if (ok) {
+      const { data: prodRow } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", newId)
+        .maybeSingle();
+      if (prodRow) {
+        registerExternalProduct(
+          mapDbProductRow(prodRow as Record<string, unknown>)
+        );
+      }
+    }
+    return ok;
   };
 
-  const removeMarketPrice = (marketId: string, productId: string) => {
+  const removeMarketPrice = async (
+    marketId: string,
+    productId: string
+  ): Promise<boolean> => {
+    const { error } = await supabase
+      .from("market_prices")
+      .delete()
+      .eq("supermarket_id", marketId)
+      .eq("product_id", productId);
+
+    if (error) {
+      showToast(`Erro ao remover preço: ${error.message}`);
+      return false;
+    }
+
     setPrices((prev) =>
       prev.filter(
         (p) => !(p.marketId === marketId && p.productId === productId)
       )
     );
-    showToast("Produto removido do catálogo deste mercado.");
+    showToast("Preço removido do catálogo.");
+    return true;
   };
 
-  const updateMarketProfile = (marketId: string, updates: Partial<Market>) => {
+  const updateMarketProfile = async (
+    marketId: string,
+    updates: Partial<
+      Pick<
+        Market,
+        "phone" | "openingHours" | "deliveryAvailable" | "deliveryInfo"
+      >
+    >
+  ): Promise<boolean> => {
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+    if (updates.openingHours !== undefined)
+      dbUpdates.opening_hours = updates.openingHours;
+    if (updates.deliveryAvailable !== undefined)
+      dbUpdates.delivery_available = updates.deliveryAvailable;
+    if (updates.deliveryInfo !== undefined)
+      dbUpdates.delivery_info = updates.deliveryInfo;
+
+    const { error } = await supabase
+      .from("supermarkets")
+      .update(dbUpdates)
+      .eq("id", marketId);
+
+    if (error) {
+      showToast(`Erro ao atualizar dados do mercado: ${error.message}`);
+      return false;
+    }
+
+    const nowIso = new Date().toISOString();
     setRawMarkets((prev) =>
       prev.map((m) =>
         m.id === marketId
-          ? { ...m, ...updates, lastCatalogUpdate: "Agora mesmo" }
+          ? {
+              ...m,
+              ...updates,
+              updatedAtIso: nowIso,
+              lastCatalogUpdate: formatDateTimeBR(nowIso),
+            }
           : m
       )
     );
-    showToast("Perfil do estabelecimento atualizado!");
+    showToast("Dados do estabelecimento atualizados no banco!");
+    return true;
   };
 
   const submitPartnerApplication = async (
-    app: Omit<PartnerApplication, "id" | "status" | "createdAt">
-  ) => {
-    const newApp: PartnerApplication = {
-      ...app,
-      id: `pa-${Date.now()}`,
-      status: "em_analise",
-      createdAt: "Agora mesmo",
-    };
-    setPartnerApplications((prev) => [newApp, ...prev]);
+    app: Omit<PartnerApplication, "id" | "status" | "createdAt">,
+    turnstileToken: string
+  ): Promise<{ ok: boolean; error?: string }> => {
     try {
-      await supabase.from("partner_applications").insert({
-        market_name: app.marketName,
-        responsible_name: app.responsibleName,
-        email: app.email,
-        phone: app.phone,
-        address: app.address,
-        neighborhood: app.neighborhood,
-        city: app.city,
-        zip_code: app.zipCode,
-        desired_plan: app.desiredPlan,
+      const res = await fetch("/api/public/submission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "partner",
+          turnstileToken,
+          payload: app,
+        }),
       });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        return {
+          ok: false,
+          error: data.error || "Não foi possível enviar a solicitação.",
+        };
+      }
+      showToast("Solicitação de parceria registrada com sucesso!");
+      return { ok: true };
     } catch {
-      // Fallback
+      return {
+        ok: false,
+        error: "Falha de comunicação ao enviar a solicitação.",
+      };
     }
-    showToast("Solicitação de parceria enviada com sucesso!");
   };
 
   const submitCourierApplication = async (
-    app: Omit<CourierApplication, "id" | "status" | "createdAt">
-  ) => {
-    const newCourier: CourierApplication = {
-      ...app,
-      id: `ca-${Date.now()}`,
-      status: "pre_cadastro",
-      createdAt: "Agora mesmo",
-    };
-    setCourierApplications((prev) => [newCourier, ...prev]);
+    app: Omit<CourierApplication, "id" | "status" | "createdAt">,
+    turnstileToken: string
+  ): Promise<{ ok: boolean; error?: string }> => {
     try {
-      await supabase.from("couriers").insert({
-        full_name: app.fullName,
-        email: app.email,
-        phone: app.phone,
-        vehicle_type: app.vehicleType,
-        service_neighborhoods: app.serviceNeighborhoods,
+      const res = await fetch("/api/public/submission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "courier",
+          turnstileToken,
+          payload: app,
+        }),
       });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        return {
+          ok: false,
+          error: data.error || "Não foi possível enviar o cadastro.",
+        };
+      }
+      showToast("Cadastro de entregador registrado com sucesso!");
+      return { ok: true };
     } catch {
-      // Fallback
+      return {
+        ok: false,
+        error: "Falha de comunicação ao enviar o cadastro.",
+      };
     }
-    showToast("Pré-cadastro de entregador registrado!");
   };
 
   const submitPriceReport = async (
     marketId: string,
     productId: string,
     reason: string,
-    details: string
-  ) => {
-    const newReport: PriceReport = {
-      id: `rep-${Date.now()}`,
-      marketId,
-      productId,
-      reason,
-      details,
-      status: "pendente",
-      createdAt: "Agora mesmo",
-    };
-    setPriceReports((prev) => [newReport, ...prev]);
+    details: string,
+    turnstileToken: string
+  ): Promise<{ ok: boolean; error?: string }> => {
     try {
-      await supabase.from("price_reports").insert({
-        supermarket_id: marketId,
-        product_id: productId,
-        reason,
-        details,
+      const res = await fetch("/api/public/submission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "price_report",
+          turnstileToken,
+          payload: { marketId, productId, reason, details },
+        }),
       });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        return {
+          ok: false,
+          error: data.error || "Não foi possível enviar o relato.",
+        };
+      }
+      showToast("Relato enviado para revisão administrativa!");
+      return { ok: true };
     } catch {
-      // Fallback
+      return {
+        ok: false,
+        error: "Falha de comunicação ao enviar o relato.",
+      };
     }
-    showToast("Relato enviado para revisão no Painel Administrativo.");
   };
 
-  const updatePartnerApplicationStatus = (
+  const updatePartnerApplicationStatus = async (
     id: string,
     status: "em_analise" | "aprovado" | "recusado"
   ) => {
+    const { error } = await supabase
+      .from("partner_applications")
+      .update({ status })
+      .eq("id", id);
+
+    if (error) {
+      showToast(`Erro ao atualizar solicitação: ${error.message}`);
+      return;
+    }
     setPartnerApplications((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a))
     );
     showToast(`Status da solicitação alterado para: ${status.toUpperCase()}`);
   };
 
-  const updatePriceReportStatus = (
+  const updatePriceReportStatus = async (
     id: string,
     status: "pendente" | "revisado" | "arquivado"
   ) => {
+    const { error } = await supabase
+      .from("price_reports")
+      .update({ status })
+      .eq("id", id);
+
+    if (error) {
+      showToast(`Erro ao atualizar relato: ${error.message}`);
+      return;
+    }
     setPriceReports((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status } : r))
     );
-    showToast(`Relato marcado como: ${status}`);
+    showToast(`Relato atualizado para: ${status}`);
   };
 
-  const toggleMarketStatus = (marketId: string) => {
+  const toggleMarketStatus = async (marketId: string) => {
+    const current = rawMarkets.find((m) => m.id === marketId);
+    if (!current) return;
+    const nextStatus = current.status === "ativo" ? "suspenso" : "ativo";
+    const { error } = await supabase
+      .from("supermarkets")
+      .update({ status: nextStatus })
+      .eq("id", marketId);
+
+    if (error) {
+      showToast(`Erro ao alterar status do mercado: ${error.message}`);
+      return;
+    }
     setRawMarkets((prev) =>
-      prev.map((m) =>
-        m.id === marketId
-          ? { ...m, status: m.status === "ativo" ? "suspenso" : "ativo" }
-          : m
-      )
+      prev.map((m) => (m.id === marketId ? { ...m, status: nextStatus } : m))
     );
-    showToast("Status de exibição do mercado atualizado.");
+    showToast("Status do mercado atualizado no banco.");
   };
 
-  const toggleSponsoredPrice = (priceId: string) => {
+  const toggleSponsoredPrice = async (priceId: string) => {
+    const current = prices.find((p) => p.id === priceId);
+    if (!current) return;
+    const nextSponsored = !current.isSponsored;
+    const { error } = await supabase
+      .from("market_prices")
+      .update({ is_sponsored: nextSponsored })
+      .eq("id", priceId);
+
+    if (error) {
+      showToast(`Erro ao atualizar destaque patrocinado: ${error.message}`);
+      return;
+    }
     setPrices((prev) =>
       prev.map((p) =>
-        p.id === priceId ? { ...p, isSponsored: !p.isSponsored } : p
+        p.id === priceId ? { ...p, isSponsored: nextSponsored } : p
       )
     );
-    showToast("Destaque patrocinado atualizado.");
+    showToast("Destaque patrocinado atualizado no banco.");
   };
 
   return (
@@ -701,24 +866,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         shoppingList,
         location,
         user,
+        accessToken,
         toast,
+        catalogLoading,
+        catalogError,
         partnerApplications,
         courierApplications,
         priceReports,
         isLocationModalOpen,
         setIsLocationModalOpen,
         updateLocation,
+        refreshCatalog,
         registerExternalProduct,
         addToList,
         removeFromList,
         updateListQuantity,
         toggleListItemChecked,
         clearList,
-        restoreDefaultList,
         saveListToSupabase,
-        loginDemoRole,
         logoutUser,
-        setAuthUser,
+        syncSessionFromToken,
         showToast,
         upsertMarketPrice,
         addNewProductWithPrice,

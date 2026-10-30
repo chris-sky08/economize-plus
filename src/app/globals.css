@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --bg-surface: #f8fbff;
+  --bg-surface: #f4fafc;
   --bg-card: #ffffff;
-  --bg-soft: #eaf3ff;
-  --text-primary: #041834;
+  --bg-soft: #e6f7fb;
+  --text-primary: #063a6b;
   --text-secondary: #475569;
-  --accent: #176bce;
-  --accent-economy: #159447;
-  --accent-promo: #ffd447;
+  --accent: #00afcf;
+  --accent-economy: #52d95d;
+  --accent-promo: #ffc928;
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 

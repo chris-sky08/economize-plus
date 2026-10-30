@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Barcode, Camera, Search, X } from "lucide-react";
+import { Camera, Search, X } from "lucide-react";
+import { validateGtin } from "@/lib/format";
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -16,14 +17,17 @@ export default function BarcodeScannerModal({
 }: BarcodeScannerModalProps) {
   const [manualEan, setManualEan] = useState("");
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(
-    null
-  );
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const scannerRef = useRef<{
+    stop: () => Promise<void>;
+    clear: () => void;
+  } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     let isMounted = true;
     setCameraError(null);
+    setValidationError(null);
 
     import("html5-qrcode")
       .then(({ Html5Qrcode }) => {
@@ -40,7 +44,7 @@ export default function BarcodeScannerModal({
             },
             (decodedText) => {
               const clean = decodedText.replace(/\D/g, "");
-              if (clean.length >= 8) {
+              if (validateGtin(clean).valid) {
                 html5QrCode
                   .stop()
                   .then(() => html5QrCode.clear())
@@ -55,7 +59,7 @@ export default function BarcodeScannerModal({
           .catch(() => {
             if (isMounted) {
               setCameraError(
-                "Câmera não disponível ou permissão não concedida. Digite ou escolha um código EAN abaixo."
+                "Câmera não disponível ou permissão não concedida. Digite o código de barras EAN-8/EAN-13 abaixo."
               );
             }
           });
@@ -63,7 +67,7 @@ export default function BarcodeScannerModal({
       .catch(() => {
         if (isMounted) {
           setCameraError(
-            "Não foi possível inicializar o leitor de câmera. Utilize a digitação manual do EAN abaixo."
+            "Não foi possível inicializar o leitor de câmera. Utilize a digitação manual do código EAN abaixo."
           );
         }
       });
@@ -85,9 +89,16 @@ export default function BarcodeScannerModal({
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = manualEan.replace(/\D/g, "");
-    if (clean.length >= 8) {
-      onDetectedEan(clean);
+    const check = validateGtin(clean);
+    if (!check.valid) {
+      setValidationError(
+        check.reason ||
+          "Código de barras inválido. Digite um código GTIN/EAN real de 8, 12, 13 ou 14 dígitos com dígito verificador válido."
+      );
+      return;
     }
+    setValidationError(null);
+    onDetectedEan(check.normalized);
   };
 
   return (
@@ -100,7 +111,7 @@ export default function BarcodeScannerModal({
       <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand-blue">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand-navy">
               <Camera className="h-5 w-5" />
             </div>
             <div>
@@ -111,7 +122,7 @@ export default function BarcodeScannerModal({
                 Escanear Código de Barras (EAN)
               </h2>
               <p className="text-xs text-slate-500">
-                Aponte a câmera para a embalagem do produto
+                Aponte a câmera para o código de barras da embalagem
               </p>
             </div>
           </div>
@@ -136,55 +147,42 @@ export default function BarcodeScannerModal({
           </div>
         )}
 
-        {/* Entrada Manual ou Teste Rápido de EAN Real no Open Food Facts */}
+        {validationError && (
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-800">
+            {validationError}
+          </div>
+        )}
+
+        {/* Entrada Manual de EAN com Validação GTIN */}
         <form onSubmit={handleManualSubmit} className="mt-4">
           <label
             htmlFor="manual-ean-input"
             className="block text-xs font-bold text-slate-700"
           >
-            Ou digite o código de barras EAN-13 manualmente:
+            Ou digite o código de barras EAN-8 / EAN-13 manualmente:
           </label>
           <div className="mt-1.5 flex gap-2">
             <input
               id="manual-ean-input"
               type="text"
+              inputMode="numeric"
               value={manualEan}
-              onChange={(e) => setManualEan(e.target.value)}
-              placeholder="Ex: 7891000100103 (Leite Moça)"
+              onChange={(e) => {
+                setManualEan(e.target.value);
+                if (validationError) setValidationError(null);
+              }}
+              placeholder="Digite os 13 dígitos do código de barras"
               className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
             />
             <button
               type="submit"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white hover:bg-brand-navy"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white hover:bg-brand-blue"
             >
               <Search className="h-3.5 w-3.5" />
-              Buscar EAN
+              Consultar
             </button>
           </div>
         </form>
-
-        <div className="mt-4 border-t border-slate-100 pt-3">
-          <p className="text-[11px] font-semibold text-slate-500">
-            Códigos EAN reais do Open Food Facts Brasil para testar:
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {[
-              { ean: "7891000100103", label: "Leite Condensado Moça 395g" },
-              { ean: "7891991010856", label: "Guaraná Antarctica 2L" },
-              { ean: "7891000053508", label: "Achocolatado Nescau 370g" },
-            ].map((sample) => (
-              <button
-                key={sample.ean}
-                type="button"
-                onClick={() => onDetectedEan(sample.ean)}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:border-brand-blue hover:text-brand-blue"
-              >
-                <Barcode className="h-3 w-3 text-brand-blue" />
-                {sample.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

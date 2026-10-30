@@ -3,46 +3,35 @@
 import React, { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  AlertTriangle,
+  Database,
   FileText,
   HelpCircle,
-  Mail,
-  Send,
   ShieldCheck,
 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
 
 function InstitucionalContent() {
   const searchParams = useSearchParams();
   const initialTab =
-    (searchParams.get("aba") as
-      | "ajuda"
-      | "privacidade"
-      | "termos"
-      | "contato") || "ajuda";
+    (searchParams.get("aba") as "ajuda" | "privacidade" | "termos") || "ajuda";
 
-  const { showToast } = useApp();
   const [activeTab, setActiveTab] = useState<
-    "ajuda" | "privacidade" | "termos" | "contato"
+    "ajuda" | "privacidade" | "termos"
   >(initialTab);
-
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactMsg, setContactMsg] = useState("");
-
-  const handleContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    showToast("Mensagem enviada! Nossa equipe responderá em breve.");
-    setContactName("");
-    setContactEmail("");
-    setContactMsg("");
-  };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs sm:p-8">
-        <span className="rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-blue">
-          Transparência, Confiança e LGPD
-        </span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-navy">
+            Transparência, Origem dos Dados e Termos
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
+            <AlertTriangle className="h-3 w-3 text-amber-600" />
+            Minuta técnica — Pendente de revisão jurídica formal
+          </span>
+        </div>
+
         <h1 className="mt-2 font-heading text-2xl font-extrabold text-brand-navy sm:text-3xl">
           Central Institucional Economize+
         </h1>
@@ -51,50 +40,38 @@ function InstitucionalContent() {
           <button
             type="button"
             onClick={() => setActiveTab("ajuda")}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
               activeTab === "ajuda"
-                ? "bg-brand-blue text-white"
+                ? "bg-brand-navy text-white"
                 : "bg-slate-100 text-slate-600"
             }`}
           >
             <HelpCircle className="h-4 w-4" />
-            Ajuda & Perguntas Frequentes
+            Como os Preços São Coletados
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("privacidade")}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
               activeTab === "privacidade"
-                ? "bg-brand-blue text-white"
+                ? "bg-brand-navy text-white"
                 : "bg-slate-100 text-slate-600"
             }`}
           >
             <ShieldCheck className="h-4 w-4" />
-            Política de Privacidade (LGPD)
+            Política de Privacidade
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("termos")}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
               activeTab === "termos"
-                ? "bg-brand-blue text-white"
+                ? "bg-brand-navy text-white"
                 : "bg-slate-100 text-slate-600"
             }`}
           >
             <FileText className="h-4 w-4" />
             Termos de Uso
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("contato")}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
-              activeTab === "contato"
-                ? "bg-brand-blue text-white"
-                : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            <Mail className="h-4 w-4" />
-            Fale Conosco
           </button>
         </div>
 
@@ -103,70 +80,139 @@ function InstitucionalContent() {
           <div className="mt-6 space-y-4 text-sm text-slate-700">
             <div className="rounded-2xl bg-slate-50 p-4">
               <h2 className="font-heading text-base font-bold text-brand-navy">
-                1. Os preços exibidos na plataforma são garantidos na loja?
+                1. De onde vêm os preços exibidos no Economize+?
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                Os preços são informados pelos mercados parceiros (ou simulados
-                no modo demonstrativo deste MVP) e possuem data e hora da última
-                atualização visíveis em cada item. Valores e estoques podem
-                sofrer variações na loja física.
+                Todos os preços publicados possuem origem rastreável e horário
+                de atualização visível no card do produto:
               </p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
+                <li>
+                  <strong>Planilha do parceiro (partner_csv):</strong> enviada
+                  diretamente pelo estabelecimento credenciado.
+                </li>
+                <li>
+                  <strong>Encarte revisado (flyer_ocr):</strong> extraído de
+                  encarte promocional e revisado manualmente antes da
+                  publicação.
+                </li>
+                <li>
+                  <strong>Coleta em loja (team_collected):</strong> registrada
+                  presencialmente com foto da etiqueta de gôndola.
+                </li>
+              </ul>
             </div>
+
             <div className="rounded-2xl bg-slate-50 p-4">
               <h2 className="font-heading text-base font-bold text-brand-navy">
-                2. Como funciona o cálculo da Lista de Compras Inteligente?
+                2. Os preços exibidos constituem reserva de estoque na loja?
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                Multiplicamos a quantidade escolhida pelo preço disponível em
-                cada mercado. Caso um mercado não tenha preço cadastrado ou
-                esteja sem estoque para algum item, ele é sinalizado como{" "}
-                <strong>Cesta Parcial</strong> e o item faltante nunca é tratado
-                como se custasse R$ 0,00.
+                Não. Os preços refletem o valor registrado na data e hora da
+                coleta informada em cada item e estão sujeitos a alteração ou
+                esgotamento de estoque na loja física. Preços com mais de 7 dias
+                recebem automaticamente o aviso visual{" "}
+                <strong>Desatualizado</strong>.
               </p>
             </div>
+
             <div className="rounded-2xl bg-slate-50 p-4">
               <h2 className="font-heading text-base font-bold text-brand-navy">
-                3. Preciso criar conta para pesquisar preços?
+                3. Como funciona o cálculo da Lista de Compras?
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                Não! A busca e a comparação de preços são abertas para todos os
-                consumidores. O login é exigido apenas para salvar listas na
-                nuvem ou administrar perfis de parceiros.
+                Multiplicamos a quantidade escolhida pelo preço publicado em
+                cada mercado. Caso um mercado não tenha preço cadastrado para
+                algum item da sua lista, ele é classificado separadamente como{" "}
+                <strong>Cesta Parcial</strong> e o item faltante nunca é somado
+                como R$ 0,00.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h2 className="flex items-center gap-1.5 font-heading text-base font-bold text-brand-navy">
+                <Database className="h-4 w-4 text-brand-blue" />
+                4. Atribuição Open Food Facts (ODbL 1.0 / CC BY-SA 3.0)
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                Quando um código de barras EAN é escaneado ou consultado, os
+                dados cadastrais (nome, marca, peso/volume) e a imagem da
+                embalagem podem ser obtidos do banco colaborativo{" "}
+                <a
+                  href="https://br.openfoodfacts.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-brand-navy underline"
+                >
+                  Open Food Facts Brasil
+                </a>
+                , licenciado sob{" "}
+                <a
+                  href="https://opendatacommons.org/licenses/odbl/1-0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Open Database License (ODbL 1.0)
+                </a>{" "}
+                para a base de dados e{" "}
+                <a
+                  href="https://creativecommons.org/licenses/by-sa/3.0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0)
+                </a>{" "}
+                para as imagens de produtos.
               </p>
             </div>
           </div>
         )}
 
-        {/* ABA PRIVACIDADE (LGPD) */}
+        {/* ABA PRIVACIDADE */}
         {activeTab === "privacidade" && (
           <div className="mt-6 space-y-4 text-xs leading-relaxed text-slate-700 sm:text-sm">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <strong>Nota:</strong> Este documento descreve de forma fiel os
+              dados técnicos tratados pela aplicação e encontra-se{" "}
+              <strong>pendente de revisão jurídica formal</strong> antes do
+              lançamento comercial amplo.
+            </div>
+
             <h2 className="font-heading text-lg font-bold text-brand-navy">
-              Política de Privacidade e Proteção de Dados (Lei nº 13.709/2018 —
-              LGPD)
+              Política de Privacidade e Tratamento de Dados
             </h2>
             <p>
-              O <strong>Economize+</strong> respeita a sua privacidade e atua em
-              conformidade com a Lei Geral de Proteção de Dados (LGPD) e o Marco
-              Civil da Internet (Lei nº 12.965/2014).
+              Esta política detalha quais informações são coletadas e como são
+              utilizadas pelo <strong>Economize+</strong>:
             </p>
             <ul className="list-inside list-disc space-y-2">
               <li>
-                <strong>Coleta Mínima de Dados:</strong> Coletamos apenas os
-                dados estritamente necessários para autenticação de conta (nome,
-                e-mail) ou cadastro comercial de mercados e entregadores
-                parceiros.
+                <strong>Dados de Conta (Opcionais):</strong> A pesquisa de
+                preços é aberta sem necessidade de cadastro. Caso o usuário opte
+                por criar conta para salvar listas na nuvem, coletamos nome e
+                e-mail via Supabase Auth.
               </li>
               <li>
-                <strong>Uso da Localização:</strong> A seleção de bairro ou CEP
-                pode ser feita manualmente a qualquer momento. A localização do
-                dispositivo é 100% opcional, solicitada apenas mediante
-                consentimento prévio, e não armazenamos histórico de
-                rastreamento GPS preciso de consumidores.
+                <strong>Localização e CEP:</strong> O cálculo de distância em
+                linha reta até os mercados pode ser feito informando um CEP
+                manualmente (consultado via ViaCEP/BrasilAPI) ou autorizando o
+                GPS do navegador. As coordenadas selecionadas ficam salvas no{" "}
+                <code>localStorage</code> do dispositivo do próprio usuário.
               </li>
               <li>
-                <strong>Direitos do Titular:</strong> O usuário pode consultar,
-                corrigir ou excluir sua conta e listas salvas a qualquer
-                momento.
+                <strong>Formulários Públicos e Proteção Anti-Abuso:</strong>{" "}
+                Solicitações de parceria de mercados, pré-cadastros de
+                entregadores e relatos de divergência de preço coletam os dados
+                informados no respectivo formulário e utilizam verificação
+                anti-bot (Cloudflare Turnstile) e limitação de taxa por IP para
+                segurança operacional.
+              </li>
+              <li>
+                <strong>Armazenamento e Segurança:</strong> Os dados são
+                armazenados no Supabase com políticas Row Level Security (RLS)
+                ativas no banco de dados.
               </li>
             </ul>
           </div>
@@ -175,84 +221,45 @@ function InstitucionalContent() {
         {/* ABA TERMOS DE USO */}
         {activeTab === "termos" && (
           <div className="mt-6 space-y-4 text-xs leading-relaxed text-slate-700 sm:text-sm">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <strong>Nota:</strong> Minuta técnica operacional —{" "}
+              <strong>pendente de revisão jurídica formal</strong>.
+            </div>
+
             <h2 className="font-heading text-lg font-bold text-brand-navy">
               Termos e Condições de Uso da Plataforma Economize+
             </h2>
             <p>
-              O <strong>Economize+</strong> atua como ferramenta informativa de
-              comparação de preços e divulgação de mercados de bairro.
+              O <strong>Economize+</strong> é uma plataforma informativa de
+              comparação de preços e divulgação de mercados locais.
             </p>
             <ul className="list-inside list-disc space-y-2">
               <li>
-                <strong>Caráter Informativo e Estimativo:</strong> As cotações e
-                comparações de listas são estimativas baseadas na última
-                atualização registrada e não constituem reserva de estoque nem
-                promessa de economia garantida.
+                <strong>Caráter Informativo e Estimativo:</strong> As cotações
+                individuais e os subtotais da Lista de Compras são estimativas
+                baseadas na última coleta registrada (cujo horário e fonte são
+                exibidos em cada oferta) e não constituem reserva de produto nem
+                vinculação de oferta pelo Economize+.
               </li>
               <li>
-                <strong>Planos para Comerciantes:</strong> Os planos Básico e
-                Premium oferecem recursos de presença digital e destaque
-                publicitário devidamente identificado, sem garantia de aumento
-                de faturamento ou vendas.
+                <strong>Comparação por Medida Exata:</strong> Cada produto é
+                identificado por seu código de barras (GTIN/EAN) e medida
+                específica, evitando a comparação indevida de embalagens de
+                pesos ou volumes distintos.
               </li>
               <li>
-                <strong>Entregas:</strong> Qualquer funcionalidade de entrega
-                está condicionada à disponibilidade operacional real e
-                integração confirmada na região.
+                <strong>Transparência Publicitária (CDC):</strong> Qualquer
+                item com destaque patrocinado é identificado de forma visível
+                com o selo <em>Destaque Patrocinado</em> e não altera a
+                ordenação objetiva por menor preço.
+              </li>
+              <li>
+                <strong>Módulo de Entregas:</strong> O recurso de entregas
+                encontra-se em fase de pré-cadastro informativo, sem realização
+                de pedidos ou cobranças online no momento.
               </li>
             </ul>
           </div>
-        )}
-
-        {/* ABA CONTATO */}
-        {activeTab === "contato" && (
-          <form onSubmit={handleContact} className="mt-6 space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-xs font-bold text-slate-700">
-                  Seu Nome *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700">
-                  Seu E-mail *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700">
-                Mensagem, Dúvida ou Sugestão *
-              </label>
-              <textarea
-                rows={4}
-                required
-                value={contactMsg}
-                onChange={(e) => setContactMsg(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-200 p-3.5 text-sm"
-              />
-            </div>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-blue px-6 py-3 text-xs font-bold text-white hover:bg-brand-navy"
-            >
-              <Send className="h-4 w-4" />
-              Enviar Mensagem
-            </button>
-          </form>
         )}
       </div>
     </div>

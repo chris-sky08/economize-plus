@@ -14,16 +14,24 @@ import {
   TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
-} from "@/data/mockData";
+} from "@/lib/format";
 import ProductComparisonCard from "@/components/ProductComparisonCard";
+import SkeletonCard from "@/components/SkeletonCard";
 
 function BuscarContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const initialCategory = searchParams.get("categoria") || "todas";
 
-  const { categories, products, markets, prices, location, setIsLocationModalOpen } =
-    useApp();
+  const {
+    categories,
+    products,
+    markets,
+    prices,
+    location,
+    catalogLoading,
+    setIsLocationModalOpen,
+  } = useApp();
 
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -40,13 +48,22 @@ function BuscarContent() {
   const activeMarkets = useMemo(
     () =>
       markets.filter(
-        (m) => m.status === "ativo" && m.distanceKm <= location.maxRadiusKm
+        (m) =>
+          m.status === "ativo" &&
+          (m.distanceKm === null || m.distanceKm <= location.maxRadiusKm)
       ),
     [markets, location.maxRadiusKm]
   );
 
   const allBrands = useMemo(
-    () => Array.from(new Set(products.map((p) => p.brand))).sort(),
+    () =>
+      Array.from(
+        new Set(
+          products
+            .map((p) => p.brand)
+            .filter((b): b is string => Boolean(b && b.trim()))
+        )
+      ).sort(),
     [products]
   );
 
@@ -83,7 +100,7 @@ function BuscarContent() {
         }
         if (
           selectedBrands.length > 0 &&
-          !selectedBrands.includes(product.brand)
+          (!product.brand || !selectedBrands.includes(product.brand))
         ) {
           return false;
         }
@@ -92,8 +109,9 @@ function BuscarContent() {
             categories.find((c) => c.id === product.categoryId)?.name || "";
           const match =
             product.name.toLowerCase().includes(q) ||
-            product.brand.toLowerCase().includes(q) ||
-            product.sizeLabel.toLowerCase().includes(q) ||
+            (product.brand || "").toLowerCase().includes(q) ||
+            (product.sizeLabel || "").toLowerCase().includes(q) ||
+            (product.ean || "").includes(q) ||
             catName.toLowerCase().includes(q);
           if (!match) return false;
         }
@@ -130,15 +148,17 @@ function BuscarContent() {
             ? Math.min(...productPrices.map((pp) => pp.priceEntry.price))
             : Infinity;
 
-        const lowestUnitPrice =
+        const unitCalc =
           productPrices.length > 0 && isFinite(lowestPrice)
-            ? calculateUnitPrice(lowestPrice, product).value
-            : Infinity;
+            ? calculateUnitPrice(lowestPrice, product)
+            : null;
+        const lowestUnitPrice = unitCalc ? unitCalc.value : Infinity;
 
+        const distances = productPrices
+          .map((pp) => pp.market.distanceKm)
+          .filter((d): d is number => d !== null);
         const minDistance =
-          productPrices.length > 0
-            ? Math.min(...productPrices.map((pp) => pp.market.distanceKm))
-            : Infinity;
+          distances.length > 0 ? Math.min(...distances) : Infinity;
 
         return {
           product,
@@ -179,7 +199,7 @@ function BuscarContent() {
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <span className="inline-block rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-blue">
+            <span className="inline-block rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-navy">
               Comparador de Preços Local
             </span>
             <h1 className="mt-1 font-heading text-2xl font-extrabold text-brand-navy sm:text-3xl">
@@ -189,8 +209,8 @@ function BuscarContent() {
             </h1>
             <p className="mt-1 text-xs text-slate-500">
               {TRANSPARENCY_DISCLAIMER} • Raio atual: até{" "}
-              <strong>{location.maxRadiusKm} km</strong> de{" "}
-              <strong>{location.neighborhood}</strong>.
+              <strong>{location.maxRadiusKm} km</strong>
+              {location.neighborhood ? ` de ${location.neighborhood}` : ""}.
             </p>
           </div>
 
@@ -206,11 +226,11 @@ function BuscarContent() {
               id="sort-select"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-brand-navy focus:border-brand-blue focus:outline-none"
+              className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-brand-navy focus:border-brand-blue focus:outline-none"
             >
               <option value="menor_total">Menor Preço Total (R$)</option>
               <option value="menor_unidade">
-                Menor Preço por Unidade/Medida (R$/kg ou L)
+                Menor Preço por Medida (R$/kg ou L)
               </option>
               <option value="distancia">Mercado Mais Próximo (km)</option>
               <option value="nome">Nome do Produto (A-Z)</option>
@@ -224,9 +244,9 @@ function BuscarContent() {
             <strong>Transparência na comparação:</strong> Produtos de pesos ou
             volumes diferentes (ex.: Arroz 5 kg e Arroz 1 kg) nunca são
             misturados como o mesmo item. Compare tanto o{" "}
-            <span className="font-bold text-brand-green">Menor Preço Total</span>{" "}
+            <span className="font-bold text-emerald-700">Menor Preço Total</span>{" "}
             quanto o{" "}
-            <span className="font-bold text-brand-blue">
+            <span className="font-bold text-brand-navy">
               Menor Preço por Quilo/Litro
             </span>
             .
@@ -234,7 +254,7 @@ function BuscarContent() {
         </div>
       </div>
 
-      {/* Layout Principal: Barra Lateral de Filtros (Estilo Magalu) + Grade de Produtos */}
+      {/* Layout Principal: Barra Lateral de Filtros + Grade de Produtos */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Sidebar de Filtros */}
         <aside className="lg:col-span-3">
@@ -247,7 +267,7 @@ function BuscarContent() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="flex items-center gap-1 text-xs font-semibold text-brand-blue hover:underline"
+                className="flex items-center gap-1 text-xs font-semibold text-brand-navy hover:underline"
               >
                 <RotateCcw className="h-3 w-3" />
                 Limpar
@@ -260,7 +280,7 @@ function BuscarContent() {
                 htmlFor="sidebar-search"
                 className="block text-xs font-bold text-slate-700"
               >
-                Produto ou Marca
+                Produto, Marca ou EAN
               </label>
               <div className="relative mt-1.5">
                 <input
@@ -268,7 +288,7 @@ function BuscarContent() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ex: arroz, leite, sabão..."
+                  placeholder="Ex: arroz, leite, 789..."
                   className="w-full rounded-xl border border-slate-200 py-2 pr-8 pl-3 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
                 />
                 <Search className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -284,7 +304,7 @@ function BuscarContent() {
                   onClick={() => setSelectedCategory("todas")}
                   className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
                     selectedCategory === "todas"
-                      ? "bg-brand-blue font-bold text-white"
+                      ? "bg-brand-navy font-bold text-white"
                       : "text-slate-600 hover:bg-slate-100"
                   }`}
                 >
@@ -297,7 +317,7 @@ function BuscarContent() {
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
                       selectedCategory === cat.id
-                        ? "bg-brand-blue font-bold text-white"
+                        ? "bg-brand-navy font-bold text-white"
                         : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
@@ -321,39 +341,46 @@ function BuscarContent() {
                 onChange={(e) => setSelectedMarketId(e.target.value)}
                 className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-brand-blue focus:outline-none"
               >
-                <option value="todos">Todos no raio ({activeMarkets.length})</option>
+                <option value="todos">
+                  Todos no raio ({activeMarkets.length})
+                </option>
                 {activeMarkets.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.shortName} ({m.distanceKm} km)
+                    {m.shortName}
+                    {m.distanceKm !== null ? ` (~ ${m.distanceKm} km)` : ""}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Marca (Checkboxes estilo Magalu) */}
-            <div>
-              <p className="text-xs font-bold text-slate-700">Marca</p>
-              <div className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
-                {allBrands.map((brand) => (
-                  <label
-                    key={brand}
-                    className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedBrands.includes(brand)}
-                      onChange={() => toggleBrand(brand)}
-                      className="h-3.5 w-3.5 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
-                    />
-                    <span>{brand}</span>
-                  </label>
-                ))}
+            {/* Marca */}
+            {allBrands.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-slate-700">Marca</p>
+                <div className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                  {allBrands.map((brand) => (
+                    <label
+                      key={brand}
+                      className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedBrands.includes(brand)}
+                        onChange={() => toggleBrand(brand)}
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-brand-navy focus:ring-brand-blue"
+                      />
+                      <span>{brand}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Faixa de Preço */}
             <div>
-              <p className="text-xs font-bold text-slate-700">Faixa de Preço (R$)</p>
+              <p className="text-xs font-bold text-slate-700">
+                Faixa de Preço (R$)
+              </p>
               <div className="mt-1.5 grid grid-cols-2 gap-2">
                 <div>
                   <label htmlFor="min-price" className="sr-only">
@@ -395,7 +422,7 @@ function BuscarContent() {
                   type="checkbox"
                   checked={onlyInStock}
                   onChange={(e) => setOnlyInStock(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-brand-blue"
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-brand-navy"
                 />
                 <span>Apenas itens disponíveis</span>
               </label>
@@ -404,7 +431,7 @@ function BuscarContent() {
                   type="checkbox"
                   checked={onlyPromo}
                   onChange={(e) => setOnlyPromo(e.target.checked)}
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-brand-blue"
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-brand-navy"
                 />
                 <span>Apenas produtos em promoção</span>
               </label>
@@ -422,7 +449,7 @@ function BuscarContent() {
             {filteredResults.length > 0 && (
               <span>
                 Menor preço da página:{" "}
-                <strong className="text-brand-green">
+                <strong className="tabular-price text-emerald-700">
                   {formatBRL(
                     Math.min(...filteredResults.map((r) => r.lowestPrice))
                   )}
@@ -431,31 +458,37 @@ function BuscarContent() {
             )}
           </div>
 
-          {filteredResults.length === 0 ? (
+          {catalogLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : filteredResults.length === 0 ? (
             <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-2xs">
               <AlertCircle className="mx-auto h-10 w-10 text-brand-blue" />
               <h3 className="mt-3 font-heading text-lg font-bold text-brand-navy">
-                Nenhum produto encontrado com esses filtros
+                Nenhum produto com preço publicado encontrado
               </h3>
               <p className="mx-auto mt-1 max-w-md text-xs text-slate-500">
                 Verifique se o raio de distância configurado (
-                {location.maxRadiusKm} km) possui mercados ativos ou limpe os
-                filtros selecionados.
+                {location.maxRadiusKm} km) possui mercados com ofertas ativas ou
+                limpe os filtros selecionados.
               </p>
-              <div className="mt-5 flex justify-center gap-3">
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="rounded-xl bg-brand-blue px-4 py-2.5 text-xs font-bold text-white hover:bg-brand-navy"
+                  className="min-h-[44px] rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white hover:bg-brand-blue"
                 >
                   Limpar todos os filtros
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsLocationModalOpen(true)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:border-brand-blue"
+                  className="min-h-[44px] rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:border-brand-blue"
                 >
-                  Aumentar raio de localização
+                  Alterar raio de localização
                 </button>
               </div>
             </div>

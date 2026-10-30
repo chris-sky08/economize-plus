@@ -1,32 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { supabase } from "@/lib/supabase";
+import { validateGtin } from "@/lib/format";
+import { requireMarketMember, ServerAuthError } from "@/lib/server/auth";
+import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
+import { parseMeasureFromQuantity, inferCategoryId } from "@/services/productLookup";
+
+export const maxDuration = 60;
 
 export interface ExtractedFlyerItem {
-  ean_or_name: string;
-  brand: string;
-  weight: string;
+  ean: string;
+  name: string;
+  brand?: string | null;
+  weight?: string | null;
   price: number;
-  promo_label: string;
+  promo_label?: string | null;
+  valid_from?: string | null;
+  valid_until?: string | null;
 }
 
 const FLYER_JSON_SCHEMA = {
   type: "array",
-  description: "Lista de ofertas extraídas do encarte de supermercado",
+  description:
+    "Lista de ofertas reais extraídas do encarte de supermercado com código EAN, validade e preço",
   items: {
     type: "object",
     properties: {
-      ean_or_name: {
+      ean: {
         type: "string",
-        description: "Código EAN ou nome completo do produto",
+        description:
+          "Código de barras EAN/GTIN numérico impresso no encarte (8 a 14 dígitos)",
+      },
+      name: {
+        type: "string",
+        description: "Nome completo do produto conforme impresso no encarte",
       },
       brand: {
         type: "string",
-        description: "Marca do produto",
+        description: "Marca do produto se estiver visível",
       },
       weight: {
         type: "string",
-        description: "Peso, volume ou medida (ex: 5 kg, 900 ml, 1 L)",
+        description: "Peso, volume ou medida exata (ex: 5 kg, 900 ml, 1 L)",
       },
       price: {
         type: "number",
@@ -34,146 +48,304 @@ const FLYER_JSON_SCHEMA = {
       },
       promo_label: {
         type: "string",
-        description: "Rótulo promocional (ex: Oferta do Encarte, -15% OFF)",
+        description: "Rótulo da oferta se houver (ex: Oferta do Encarte)",
+      },
+      valid_from: {
+        type: "string",
+        description:
+          "Data de início da validade do encarte em formato ISO 8601 (YYYY-MM-DD) se impressa",
+      },
+      valid_until: {
+        type: "string",
+        description:
+          "Data final de validade do encarte em formato ISO 8601 (YYYY-MM-DD) se impressa",
       },
     },
-    required: ["ean_or_name", "brand", "weight", "price", "promo_label"],
+    required: ["ean", "name", "price"],
   },
 };
 
 export async function POST(request: NextRequest) {
   try {
-    let base64Data = "";
-    let mimeType = "image/jpeg";
-    let supermarketId = "mercado-a";
+    const apiKey = (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      ""
+    ).trim();
+
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Extração de encarte indisponível: configure a variável GEMINI_API_KEY no ambiente do servidor.",
+          items: [],
+        },
+        { status: 503 }
+      );
+    }
 
     const contentType = request.headers.get("content-type") || "";
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await request.formData();
-      const file = formData.get("file");
-      const mkt = formData.get("supermarket_id");
-      if (typeof mkt === "string" && mkt.trim()) {
-        supermarketId = mkt.trim();
-      }
-      if (file instanceof File) {
-        mimeType = file.type || "image/jpeg";
-        const buffer = Buffer.from(await file.arrayBuffer());
-        base64Data = buffer.toString("base64");
-      }
-    } else {
-      const body = (await request.json()) as {
-        imageBase64?: string;
-        mimeType?: string;
-        supermarket_id?: string;
-      };
-      base64Data = body.imageBase64 || "";
-      mimeType = body.mimeType || "image/jpeg";
-      if (body.supermarket_id) supermarketId = body.supermarket_id;
+    if (!contentType.includes("multipart/form-data")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Envie o arquivo de encarte via formulário multipart/form-data.",
+          items: [],
+        },
+        { status: 400 }
+      );
     }
 
-    const apiKey =
-      process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    const formData = await request.formData();
+    const file = formData.get("file");
+    const requestedMarketId = formData.get("supermarket_id");
 
-    let items: ExtractedFlyerItem[] = [];
-    let usedLiveModel = false;
+    const { user, supermarketId } = await requireMarketMember(
+      request,
+      typeof requestedMarketId === "string" ? requestedMarketId : null
+    );
 
-    if (apiKey && base64Data) {
-      const ai = new GoogleGenAI({ apiKey });
-      const contentTypePart = mimeType.includes("pdf") ? "document" : "image";
-
-      const interaction = await ai.interactions.create({
-        model: "gemini-3.8-flash",
-        input: [
-          {
-            type: "text",
-            text: "Extraia todos os produtos e preços visíveis neste encarte de supermercado brasileiro. Retorne exclusivamente o JSON estruturado com ean_or_name, brand, weight, price e promo_label.",
-          },
-          {
-            type: contentTypePart,
-            data: base64Data,
-            mime_type: mimeType,
-          },
-        ],
-        response_format: {
-          type: "text",
-          mime_type: "application/json",
-          schema: FLYER_JSON_SCHEMA,
+    if (!(file instanceof File) || file.size === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Selecione uma imagem ou PDF válido do encarte.",
+          items: [],
         },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "O arquivo do encarte não pode ultrapassar 8 MB.",
+          items: [],
+        },
+        { status: 413 }
+      );
+    }
+
+    const mimeType = file.type || "image/jpeg";
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const storagePath = `${supermarketId}/${Date.now()}-${safeFileName}`;
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    const db = createServiceRoleClient();
+
+    // 1) Armazena o encarte no bucket privado 'encartes'
+    const { error: uploadErr } = await db.storage
+      .from("encartes")
+      .upload(storagePath, fileBuffer, {
+        contentType: mimeType,
+        upsert: false,
       });
 
-      if (interaction.output_text) {
-        const parsed = JSON.parse(
-          interaction.output_text
-        ) as ExtractedFlyerItem[];
-        if (Array.isArray(parsed)) {
-          items = parsed;
-          usedLiveModel = true;
-        }
-      }
+    if (uploadErr) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Falha ao salvar o arquivo no bucket privado 'encartes': ${uploadErr.message}`,
+          items: [],
+        },
+        { status: 500 }
+      );
     }
 
-    // Caso a chave GEMINI_API_KEY ainda não esteja configurada no ambiente,
-    // retorna extração estruturada padrão para que o fluxo em /painel-parceiro possa ser validado
-    if (items.length === 0) {
-      items = [
+    // 2) Baixa do bucket privado 'encartes' para processar a partir do Storage
+    const { data: downloadedBlob, error: downloadErr } = await db.storage
+      .from("encartes")
+      .download(storagePath);
+
+    if (downloadErr || !downloadedBlob) {
+      return NextResponse.json(
         {
-          ean_or_name: "Arroz Branco Tipo 1",
-          brand: "Camil",
-          weight: "5 kg",
-          price: 23.9,
-          promo_label: "Encarte da Semana",
+          success: false,
+          error: "Não foi possível ler o encarte armazenado no Storage para processamento.",
+          items: [],
         },
-        {
-          ean_or_name: "Óleo de Soja Refinado",
-          brand: "Liza",
-          weight: "900 ml",
-          price: 6.99,
-          promo_label: "Oferta de Encarte",
-        },
-        {
-          ean_or_name: "Leite UHT Integral",
-          brand: "Piracanjuba",
-          weight: "1 L",
-          price: 4.79,
-          promo_label: "Preço de Encarte",
-        },
-      ];
+        { status: 500 }
+      );
     }
 
-    // Persiste no Supabase com source = 'flyer_ocr'
-    for (const item of items) {
-      const productId = item.ean_or_name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .slice(0, 32);
+    const storedBuffer = Buffer.from(await downloadedBlob.arrayBuffer());
+    const base64Data = storedBuffer.toString("base64");
 
-      await supabase
-        .from("market_prices")
-        .upsert(
-          {
-            supermarket_id: supermarketId,
-            product_id: productId,
-            price: item.price,
-            is_promo: true,
-            promo_label: item.promo_label || "Encarte",
-            in_stock: true,
-            source: "flyer_ocr",
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "supermarket_id,product_id" }
-        )
-        .then(() => {});
+    const ai = new GoogleGenAI({ apiKey });
+    const contentTypePart = mimeType.includes("pdf") ? "document" : "image";
+
+    const interaction = await ai.interactions.create({
+      model: "gemini-3.8-flash",
+      input: [
+        {
+          type: "text",
+          text: "Extraia apenas os produtos reais legíveis neste encarte de supermercado brasileiro que possuam preço numérico claro. Para cada item, informe ean (código de barras numérico se impresso), name, brand, weight, price, promo_label, valid_from e valid_until. Nunca invente produtos que não estejam na imagem.",
+        },
+        {
+          type: contentTypePart,
+          data: base64Data,
+          mime_type: mimeType,
+        },
+      ],
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
+        schema: FLYER_JSON_SCHEMA,
+      },
+    });
+
+    if (!interaction.output_text) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "O modelo não conseguiu extrair dados legíveis deste encarte.",
+          items: [],
+        },
+        { status: 422 }
+      );
+    }
+
+    const parsed = JSON.parse(interaction.output_text) as ExtractedFlyerItem[];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Nenhuma oferta com preço legível foi identificada no encarte enviado.",
+          items: [],
+        },
+        { status: 422 }
+      );
+    }
+
+    const validItems = parsed.filter(
+      (item) =>
+        item &&
+        typeof item.name === "string" &&
+        item.name.trim().length >= 2 &&
+        typeof item.price === "number" &&
+        item.price > 0 &&
+        typeof item.ean === "string" &&
+        validateGtin(item.ean).valid
+    );
+
+    if (validItems.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Os itens lidos no encarte não possuem código EAN válido (GTIN-8/12/13/14) ou preço positivo. Cadastre pelo código de barras ou planilha CSV.",
+          items: [],
+        },
+        { status: 422 }
+      );
+    }
+
+    const nowIso = new Date().toISOString();
+    const productPayloads: Array<Record<string, unknown>> = [];
+    const pricePayloads: Array<Record<string, unknown>> = [];
+
+    for (const item of validItems) {
+      const cleanEan = validateGtin(item.ean).normalized;
+      const productId = `ean-${cleanEan}`;
+      const measure = parseMeasureFromQuantity(item.weight);
+      const catId = inferCategoryId(null, item.name);
+      const cleanBrand = item.brand?.trim() || null;
+
+      productPayloads.push({
+        id: productId,
+        ean: cleanEan,
+        name: item.name.trim(),
+        brand: cleanBrand,
+        category: catId,
+        size_label: measure.sizeLabel,
+        unit_type: measure.unitType,
+        unit_value: measure.unitMultiplier,
+        image_url: null,
+        is_popular: false,
+        description: null,
+        source: "partner",
+        data_status:
+          cleanBrand && measure.sizeLabel && catId
+            ? "completo"
+            : "pendente_revisao",
+      });
+
+      const validFromDate =
+        item.valid_from && !Number.isNaN(Date.parse(item.valid_from))
+          ? new Date(item.valid_from).toISOString()
+          : null;
+      const validUntilDate =
+        item.valid_until && !Number.isNaN(Date.parse(item.valid_until))
+          ? new Date(item.valid_until).toISOString()
+          : null;
+
+      pricePayloads.push({
+        supermarket_id: supermarketId,
+        product_id: productId,
+        price: Math.round(item.price * 100) / 100,
+        is_promo: true,
+        promo_label: item.promo_label?.trim() || null,
+        in_stock: true,
+        source: "flyer_ocr",
+        status: "pendente", // Obrigatório: só vira 'publicado' após revisão humana do dono do mercado
+        valid_from: validFromDate,
+        valid_until: validUntilDate,
+        collected_at: nowIso,
+        evidence_path: storagePath,
+        submitted_by: user.id,
+        updated_at: nowIso,
+      });
+    }
+
+    const { error: prodErr } = await db
+      .from("products")
+      .upsert(productPayloads, { onConflict: "ean", ignoreDuplicates: true });
+
+    if (prodErr) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Erro ao preparar produtos extraídos do encarte: ${prodErr.message}`,
+          items: [],
+        },
+        { status: 500 }
+      );
+    }
+
+    const { error: priceErr } = await db
+      .from("market_prices")
+      .upsert(pricePayloads, { onConflict: "supermarket_id,product_id" });
+
+    if (priceErr) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Erro ao salvar itens do encarte para revisão: ${priceErr.message}`,
+          items: [],
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       model: "gemini-3.8-flash",
-      usedLiveModel,
       source: "flyer_ocr",
+      status: "pendente",
       supermarket_id: supermarketId,
-      items,
+      evidence_path: storagePath,
+      items: validItems,
     });
   } catch (err: unknown) {
+    if (err instanceof ServerAuthError) {
+      return NextResponse.json(
+        { success: false, error: err.message, items: [] },
+        { status: err.status }
+      );
+    }
     const message =
       err instanceof Error ? err.message : "Erro ao processar encarte.";
     return NextResponse.json(

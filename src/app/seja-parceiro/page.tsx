@@ -13,9 +13,10 @@ import {
   Tag,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 export default function SejaParceiroPage() {
-  const { submitPartnerApplication, loginDemoRole } = useApp();
+  const { submitPartnerApplication } = useApp();
 
   const [marketName, setMarketName] = useState("");
   const [responsibleName, setResponsibleName] = useState("");
@@ -23,11 +24,12 @@ export default function SejaParceiroPage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
-  const [city, setCity] = useState("São Paulo");
+  const [city, setCity] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [desiredPlan, setDesiredPlan] = useState<"basico" | "premium">(
     "basico"
   );
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -42,6 +44,7 @@ export default function SejaParceiroPage() {
       newErrors.phone = "Informe um telefone válido com DDD.";
     if (!address.trim()) newErrors.address = "Informe o endereço completo.";
     if (!neighborhood.trim()) newErrors.neighborhood = "Informe o bairro.";
+    if (!city.trim()) newErrors.city = "Informe a cidade.";
     if (!zipCode.trim()) newErrors.zipCode = "Informe o CEP.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -51,18 +54,23 @@ export default function SejaParceiroPage() {
     e.preventDefault();
     if (!validate()) return;
 
-    await submitPartnerApplication({
-      marketName,
-      responsibleName,
-      email,
-      phone,
-      address,
-      neighborhood,
-      city,
-      zipCode,
-      desiredPlan,
-    });
-    setSubmitted(true);
+    const ok = await submitPartnerApplication(
+      {
+        marketName,
+        responsibleName,
+        email,
+        phone,
+        address,
+        neighborhood,
+        city,
+        zipCode,
+        desiredPlan,
+      },
+      turnstileToken
+    );
+    if (ok) {
+      setSubmitted(true);
+    }
   };
 
   return (
@@ -78,25 +86,23 @@ export default function SejaParceiroPage() {
             <h1 className="mt-4 font-heading text-3xl font-extrabold leading-tight sm:text-4xl">
               Mais visibilidade para o seu mercado.{" "}
               <span className="text-brand-yellow">
-                Mais oportunidades para seus clientes.
+                Transparência para os clientes da região.
               </span>
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
-              Seu mercado pode estar onde o consumidor procura. Apresente seu
-              estabelecimento para moradores do bairro, mantenha seu catálogo e
-              ofertas organizados e participe das buscas e listas de compras da
-              sua região.
+              Apresente seu estabelecimento para moradores próximos, mantenha
+              seu catálogo de preços e encartes atualizado e apareça nas buscas
+              e listas de compras da sua região.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 lg:col-span-4 lg:items-end">
             <Link
-              href="/painel-parceiro"
-              onClick={() => loginDemoRole("mercado")}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-6 py-4 text-xs font-extrabold text-white shadow-md transition hover:bg-emerald-700 sm:w-auto sm:text-sm"
+              href="/conta"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-6 py-4 text-xs font-extrabold text-brand-navy shadow-md transition hover:opacity-90 sm:w-auto sm:text-sm"
             >
               <LayoutDashboard className="h-4 w-4" />
-              Testar Painel do Parceiro Agora
+              Acessar Conta de Parceiro
             </Link>
           </div>
         </div>
@@ -115,24 +121,24 @@ export default function SejaParceiroPage() {
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
-              icon: <Store className="h-6 w-6 text-brand-blue" />,
+              icon: <Store className="h-6 w-6 text-brand-navy" />,
               title: "Presença Digital no Bairro",
               desc: "Página exclusiva com endereço, horário de funcionamento, telefone e catálogo atualizado.",
             },
             {
-              icon: <Tag className="h-6 w-6 text-brand-green" />,
+              icon: <Tag className="h-6 w-6 text-brand-blue" />,
               title: "Divulgação de Produtos e Ofertas",
-              desc: "Cadastre preços e promoções para aparecer quando o consumidor comparar itens equivalentes.",
+              desc: "Importe preços por planilha CSV ou revise ofertas extraídas de encartes.",
             },
             {
-              icon: <Megaphone className="h-6 w-6 text-brand-blue" />,
+              icon: <Megaphone className="h-6 w-6 text-brand-navy" />,
               title: "Alcance Regional por Raio/CEP",
               desc: "Possibilidade de ser encontrado por moradores que pesquisam mercados próximos.",
             },
             {
-              icon: <BarChart3 className="h-6 w-6 text-brand-green" />,
-              title: "Gestão e Métricas de Visibilidade",
-              desc: "Acompanhe alertas de preços desatualizados e visualizações do perfil quando disponíveis.",
+              icon: <BarChart3 className="h-6 w-6 text-brand-blue" />,
+              title: "Rastreabilidade e Confiança",
+              desc: "Cada preço exibe a fonte e o horário real da última atualização.",
             },
           ].map((b) => (
             <div
@@ -156,77 +162,70 @@ export default function SejaParceiroPage() {
       {/* Estrutura de Planos Básico e Premium */}
       <section className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
-          <span className="rounded-full bg-brand-light px-3 py-1 text-xs font-bold text-brand-blue">
+          <span className="rounded-full bg-brand-light px-3 py-1 text-xs font-bold text-brand-navy">
             Entrada Local
           </span>
           <h3 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
             Plano Básico
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Ideal para mercados de bairro iniciarem sua presença digital e
-            aparecerem nas comparações.
+            Para mercados de bairro iniciarem sua presença digital e publicarem
+            seu catálogo de preços.
           </p>
           <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-            Valor comercial: <strong>Sob definição comercial</strong> (Sem
-            cobrança ativa no MVP demonstrativo)
+            Condição comercial: <strong>Sob consulta comercial</strong>
           </div>
           <ul className="mt-4 space-y-2 text-xs text-slate-700">
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               Perfil completo com endereço, horário e contato
             </li>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
-              Cadastro e atualização de produtos e preços
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              Importação de preços via CSV e cadastro por EAN
             </li>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               Participação no comparador de listas de compras
             </li>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
-              Alertas automáticos de preços que precisam de atualização
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              Alertas automáticos de preços com mais de 7 dias
             </li>
           </ul>
         </div>
 
-        <div className="rounded-3xl border-2 border-brand-blue bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border-2 border-brand-navy bg-white p-6 shadow-sm">
           <span className="rounded-full bg-brand-yellow px-3 py-1 text-xs font-extrabold text-brand-navy">
-            Maior Visibilidade e Recursos Extras
+            Visibilidade e Recursos Extras
           </span>
           <h3 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
             Plano Premium
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Para mercados que desejam destacar campanhas sazonais e acompanhar
-            estatísticas adicionais.
+            Para mercados que desejam leitura assistida de encartes e destaques
+            publicitários identificados.
           </p>
           <div className="mt-4 rounded-xl bg-brand-light/70 p-3 text-xs font-semibold text-brand-navy">
-            Valor comercial: <strong>Exibido após definição comercial</strong>{" "}
-            (Pagamentos desativados no MVP)
+            Condição comercial: <strong>Sob proposta comercial</strong>
           </div>
           <ul className="mt-4 space-y-2 text-xs text-slate-700">
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               Todos os recursos do Plano Básico
             </li>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               Destaques patrocinados claramente identificados como publicidade
             </li>
             <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
-              Ferramentas de campanhas promocionais e importação de catálogo
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-brand-green" />
-              Painel com estatísticas adicionais de visualização de produtos
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              Extração assistida de ofertas de encartes com revisão prévia
             </li>
           </ul>
           <p className="mt-4 text-[11px] text-slate-500">
             * Nota de transparência: O Plano Premium oferece ferramentas de
-            visibilidade e análise, mas não garante volume de vendas ou novos
-            clientes.
+            visibilidade, sem promessa de volume garantido de vendas.
           </p>
         </div>
       </section>
@@ -234,42 +233,34 @@ export default function SejaParceiroPage() {
       {/* Formulário de Cadastro do Mercado Parceiro */}
       <section className="mt-12 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs sm:p-8">
         <div className="max-w-2xl">
-          <span className="rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900">
-            Fluxo Demonstrativo Integrado ao Supabase
+          <span className="rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-navy">
+            Solicitação de Credenciamento
           </span>
           <h2 className="mt-2 font-heading text-2xl font-bold text-brand-navy">
             Solicitar Cadastro de Mercado Parceiro
           </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Preencha os dados do seu estabelecimento. Este formulário grava a
-            solicitação para revisão no Painel Administrativo.
+            Preencha os dados reais do seu estabelecimento para verificação de
+            CNPJ e endereço pela equipe do Economize+.
           </p>
         </div>
 
         {submitted ? (
-          <div className="mt-6 rounded-2xl border border-brand-green/30 bg-emerald-50 p-6">
-            <h3 className="font-heading text-lg font-bold text-brand-green">
+          <div className="mt-6 rounded-2xl border border-emerald-300 bg-emerald-50 p-6">
+            <h3 className="font-heading text-lg font-bold text-emerald-800">
               Solicitação registrada com sucesso!
             </h3>
             <p className="mt-1 text-xs text-slate-700">
               Os dados do estabelecimento <strong>{marketName}</strong> foram
-              enviados para análise. Você já pode testar o Painel do Parceiro em
-              modo demonstrativo.
+              enviados para verificação cadastral.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Link
-                href="/painel-parceiro"
-                onClick={() => loginDemoRole("mercado")}
-                className="rounded-xl bg-brand-blue px-4 py-2.5 text-xs font-bold text-white"
-              >
-                Abrir Painel do Mercado Parceiro
-              </Link>
               <button
                 type="button"
                 onClick={() => setSubmitted(false)}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700"
+                className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700"
               >
-                Enviar outro cadastro
+                Enviar outra solicitação
               </button>
             </div>
           </div>
@@ -291,7 +282,7 @@ export default function SejaParceiroPage() {
                 type="text"
                 value={marketName}
                 onChange={(e) => setMarketName(e.target.value)}
-                placeholder="Ex.: Supermercado Bom Vizinho"
+                placeholder="Razão social ou nome fantasia"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.marketName && (
@@ -335,7 +326,7 @@ export default function SejaParceiroPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="contato@seumercado.com.br"
+                placeholder="Informe o e-mail corporativo"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.email && (
@@ -350,14 +341,14 @@ export default function SejaParceiroPage() {
                 htmlFor="parceiro-tel"
                 className="block text-xs font-bold text-slate-700"
               >
-                Telefone / WhatsApp *
+                Telefone / WhatsApp Comercial *
               </label>
               <input
                 id="parceiro-tel"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="(11) 99999-0000"
+                placeholder="DDD + Número"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.phone && (
@@ -379,7 +370,7 @@ export default function SejaParceiroPage() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Rua, número e complemento"
+                placeholder="Logradouro, número e complemento"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.address && (
@@ -401,7 +392,7 @@ export default function SejaParceiroPage() {
                 type="text"
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                placeholder="Ex.: Vila Mariana"
+                placeholder="Bairro do estabelecimento"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.neighborhood && (
@@ -424,8 +415,14 @@ export default function SejaParceiroPage() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
+                  placeholder="Cidade"
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
                 />
+                {errors.city && (
+                  <p className="mt-1 text-xs font-semibold text-rose-600">
+                    {errors.city}
+                  </p>
+                )}
               </div>
               <div>
                 <label
@@ -439,7 +436,7 @@ export default function SejaParceiroPage() {
                   type="text"
                   value={zipCode}
                   onChange={(e) => setZipCode(e.target.value)}
-                  placeholder="04101-000"
+                  placeholder="00000-000"
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
                 />
                 {errors.zipCode && (
@@ -458,36 +455,40 @@ export default function SejaParceiroPage() {
                 <button
                   type="button"
                   onClick={() => setDesiredPlan("basico")}
-                  className={`rounded-xl border p-3 text-left text-xs transition ${
+                  className={`min-h-[44px] rounded-xl border p-3 text-left text-xs transition ${
                     desiredPlan === "basico"
-                      ? "border-brand-blue bg-brand-light/70 font-bold text-brand-navy"
+                      ? "border-brand-navy bg-brand-light/70 font-bold text-brand-navy"
                       : "border-slate-200 text-slate-600"
                   }`}
                 >
-                  Plano Básico — Presença digital e cadastro de produtos
+                  Plano Básico — Presença digital e publicação de catálogo
                 </button>
                 <button
                   type="button"
                   onClick={() => setDesiredPlan("premium")}
-                  className={`rounded-xl border p-3 text-left text-xs transition ${
+                  className={`min-h-[44px] rounded-xl border p-3 text-left text-xs transition ${
                     desiredPlan === "premium"
-                      ? "border-brand-blue bg-brand-light/70 font-bold text-brand-navy"
+                      ? "border-brand-navy bg-brand-light/70 font-bold text-brand-navy"
                       : "border-slate-200 text-slate-600"
                   }`}
                 >
-                  Plano Premium — Maior destaque, campanhas e métricas
+                  Plano Premium — Leitura de encartes e destaques patrocinados
                 </button>
               </div>
             </div>
 
+            <div className="sm:col-span-2">
+              <TurnstileWidget onVerify={setTurnstileToken} />
+            </div>
+
             <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-4 pt-2">
               <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                <ShieldCheck className="h-4 w-4 text-brand-green" />
-                Seus dados são protegidos conforme a LGPD.
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                Dados tratados conforme a Política de Privacidade.
               </span>
               <button
                 type="submit"
-                className="rounded-xl bg-brand-blue px-6 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-brand-navy"
+                className="min-h-[44px] rounded-xl bg-brand-navy px-6 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-brand-blue"
               >
                 Enviar Cadastro de Mercado Parceiro
               </button>

@@ -10,8 +10,8 @@ import {
   CloudUpload,
   Loader2,
   MapPin,
+  Package,
   Plus,
-  RotateCcw,
   Search,
   ShoppingBasket,
   Store,
@@ -19,15 +19,15 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { Product } from "@/types/domain";
 import {
-  Product,
   TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
-} from "@/data/mockData";
+} from "@/lib/format";
 import {
   lookupProductByEan,
-  searchProductsOpenFoodFacts,
+  searchProductsForAutocomplete,
 } from "@/services/productLookup";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
@@ -44,16 +44,15 @@ export default function ListaInteligentePage() {
     updateListQuantity,
     toggleListItemChecked,
     clearList,
-    restoreDefaultList,
     saveListToSupabase,
     showToast,
   } = useApp();
 
-  // Estados de Autocomplete (Debounce 300ms) + Open Food Facts + Scanner EAN
+  // Estados de Autocomplete (Debounce 300ms no banco Supabase + Scanner EAN)
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
-  const [remoteResults, setRemoteResults] = useState<Product[]>([]);
-  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [dbResults, setDbResults] = useState<Product[]>([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Debounce de 300ms
@@ -64,25 +63,25 @@ export default function ListaInteligentePage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Busca na API Open Food Facts Brasil quando debouncedTerm muda
+  // Busca trigram no banco de dados (ou por EAN exato) quando debouncedTerm muda
   useEffect(() => {
     let active = true;
     if (debouncedTerm.length < 2) {
-      setRemoteResults([]);
-      setIsSearchingApi(false);
+      setDbResults([]);
+      setIsSearchingDb(false);
       return;
     }
 
-    setIsSearchingApi(true);
-    searchProductsOpenFoodFacts(debouncedTerm)
+    setIsSearchingDb(true);
+    searchProductsForAutocomplete(debouncedTerm)
       .then((res) => {
         if (active) {
-          setRemoteResults(res);
-          setIsSearchingApi(false);
+          setDbResults(res);
+          setIsSearchingDb(false);
         }
       })
       .catch(() => {
-        if (active) setIsSearchingApi(false);
+        if (active) setIsSearchingDb(false);
       });
 
     return () => {
@@ -96,17 +95,20 @@ export default function ListaInteligentePage() {
           const q = debouncedTerm.toLowerCase();
           return (
             p.name.toLowerCase().includes(q) ||
-            p.brand.toLowerCase().includes(q) ||
-            p.ean.includes(q)
+            (p.brand || "").toLowerCase().includes(q) ||
+            (p.ean || "").includes(q)
           );
         })
       : [];
 
   const combinedSuggestions = [
     ...localMatches,
-    ...remoteResults.filter(
+    ...dbResults.filter(
       (rem) =>
-        !localMatches.some((loc) => loc.ean === rem.ean || loc.id === rem.id)
+        !localMatches.some(
+          (loc) =>
+            (loc.ean && rem.ean && loc.ean === rem.ean) || loc.id === rem.id
+        )
     ),
   ].slice(0, 8);
 
@@ -114,7 +116,7 @@ export default function ListaInteligentePage() {
     await registerExternalProduct(product);
     addToList(product.id, 1);
     setSearchTerm("");
-    setRemoteResults([]);
+    setDbResults([]);
   };
 
   const handleBarcodeDetected = async (ean: string) => {
@@ -125,21 +127,23 @@ export default function ListaInteligentePage() {
       return;
     }
 
-    showToast(`Consultando EAN ${ean} no Open Food Facts Brasil...`);
+    showToast(`Consultando código EAN ${ean}...`);
     const remoteProd = await lookupProductByEan(ean);
     if (remoteProd) {
       await registerExternalProduct(remoteProd);
       addToList(remoteProd.id, 1);
     } else {
       showToast(
-        `Produto de código EAN ${ean} não localizado na base Open Food Facts.`
+        `Produto com código EAN ${ean} não encontrado no banco nem no Open Food Facts.`
       );
     }
   };
 
   const activeItems = shoppingList.filter((i) => i.checked);
   const activeMarkets = markets.filter(
-    (m) => m.status === "ativo" && m.distanceKm <= location.maxRadiusKm
+    (m) =>
+      m.status === "ativo" &&
+      (m.distanceKm === null || m.distanceKm <= location.maxRadiusKm)
   );
 
   const marketComparisons = activeMarkets
@@ -150,7 +154,7 @@ export default function ListaInteligentePage() {
         quantity: number;
         unitPrice: number;
         lineTotal: number;
-        unitFormatted: string;
+        unitFormatted: string | null;
         isPromo: boolean;
         promoLabel?: string;
       }> = [];
@@ -174,13 +178,13 @@ export default function ListaInteligentePage() {
         } else {
           const lineTotal = priceEntry.price * item.quantity;
           subtotal += lineTotal;
+          const unitCalc = calculateUnitPrice(priceEntry.price, product);
           foundItems.push({
             product,
             quantity: item.quantity,
             unitPrice: priceEntry.price,
             lineTotal,
-            unitFormatted: calculateUnitPrice(priceEntry.price, product)
-              .formatted,
+            unitFormatted: unitCalc ? unitCalc.formatted : null,
             isPromo: priceEntry.isPromo,
             promoLabel: priceEntry.promoLabel,
           });
@@ -227,12 +231,12 @@ export default function ListaInteligentePage() {
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-brand-green">
-            <ShoppingBasket className="h-3.5 w-3.5" />
-            Lista de Compras Inteligente • Open Food Facts Brasil
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-navy">
+            <ShoppingBasket className="h-3.5 w-3.5 text-brand-blue" />
+            Lista de Compras Inteligente • Leitor EAN
           </span>
           <h1 className="mt-1 font-heading text-2xl font-extrabold text-brand-navy sm:text-3xl">
-            Monte sua lista e descubra onde economizar
+            Monte sua lista e compare o total entre mercados
           </h1>
           <p className="mt-1 text-xs text-slate-500">
             {TRANSPARENCY_DISCLAIMER} • Itens sem preço cadastrado são
@@ -244,18 +248,10 @@ export default function ListaInteligentePage() {
           <button
             type="button"
             onClick={saveListToSupabase}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-blue px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-navy"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-blue"
           >
             <CloudUpload className="h-4 w-4" />
             Salvar Lista na Conta
-          </button>
-          <button
-            type="button"
-            onClick={restoreDefaultList}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:border-brand-blue"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Restaurar Padrão
           </button>
           {shoppingList.length > 0 && (
             <button
@@ -284,7 +280,7 @@ export default function ListaInteligentePage() {
                 Buscar produto por nome, marca ou código EAN:
               </label>
               <span className="text-[11px] font-medium text-brand-blue">
-                Base Local + Open Food Facts
+                Catálogo + EAN Open Food Facts
               </span>
             </div>
 
@@ -295,10 +291,10 @@ export default function ListaInteligentePage() {
                   type="search"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Digite nome ou código EAN (ex: arroz, leite, 789...)"
+                  placeholder="Digite nome ou código EAN-13..."
                   className="min-h-[44px] w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-9 pl-3.5 text-xs text-slate-800 focus:border-brand-blue focus:bg-white focus:outline-none"
                 />
-                {isSearchingApi ? (
+                {isSearchingDb ? (
                   <Loader2 className="absolute top-3 right-3 h-4 w-4 animate-spin text-brand-blue" />
                 ) : (
                   <Search className="absolute top-3 right-3 h-4 w-4 text-slate-400" />
@@ -318,14 +314,16 @@ export default function ListaInteligentePage() {
             {/* Dropdown de Autocomplete */}
             {debouncedTerm.length >= 1 && (
               <div className="mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-lg">
-                {combinedSuggestions.length === 0 && !isSearchingApi ? (
+                {combinedSuggestions.length === 0 && !isSearchingDb ? (
                   <p className="p-3 text-center text-xs text-slate-500">
                     Nenhum produto encontrado para &ldquo;{debouncedTerm}&rdquo;.
+                    Se tiver a embalagem em mãos, escaneie ou digite o código
+                    EAN-13 completo.
                   </p>
                 ) : (
                   <div className="divide-y divide-slate-100">
                     {combinedSuggestions.map((item) => {
-                      const isFromOff = item.id.startsWith("ean-");
+                      const isFromOff = item.source === "open_food_facts";
                       return (
                         <button
                           key={item.id}
@@ -334,32 +332,43 @@ export default function ListaInteligentePage() {
                           className="flex w-full items-center justify-between gap-3 rounded-xl p-2.5 text-left transition hover:bg-brand-light/60"
                         >
                           <div className="flex items-center gap-2.5">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 bg-white object-contain"
-                            />
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="h-10 w-10 shrink-0 rounded-lg border border-slate-100 bg-white object-contain"
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
+                                <Package className="h-5 w-5 text-slate-300" />
+                              </div>
+                            )}
                             <div>
                               <p className="font-heading text-xs font-bold text-brand-navy">
-                                {item.name} — {item.sizeLabel}
+                                {item.name}
+                                {item.sizeLabel ? ` — ${item.sizeLabel}` : ""}
                               </p>
                               <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
-                                <span>{item.brand}</span>
-                                <span>•</span>
-                                <span className="inline-flex items-center gap-0.5">
-                                  <Barcode className="h-2.5 w-2.5" />
-                                  {item.ean}
-                                </span>
+                                {item.brand && <span>{item.brand}</span>}
+                                {item.ean && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="inline-flex items-center gap-0.5">
+                                      <Barcode className="h-2.5 w-2.5" />
+                                      {item.ean}
+                                    </span>
+                                  </>
+                                )}
                                 {isFromOff && (
-                                  <span className="rounded bg-emerald-100 px-1.5 py-0.2 font-bold text-brand-green">
-                                    Open Food Facts BR
+                                  <span className="rounded bg-brand-light px-1.5 py-0.2 font-bold text-brand-navy">
+                                    Open Food Facts
                                   </span>
                                 )}
                               </div>
                             </div>
                           </div>
 
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-brand-blue px-2.5 py-1 text-[11px] font-bold text-white">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-brand-navy px-2.5 py-1 text-[11px] font-bold text-white">
                             <Plus className="h-3 w-3" />
                             Adicionar
                           </span>
@@ -391,15 +400,16 @@ export default function ListaInteligentePage() {
                   Sua lista está vazia
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Pesquise na barra acima, escaneie um código de barras ou
-                  restaure a lista padrão.
+                  Pesquise um produto na barra acima ou escaneie o código de
+                  barras EAN da embalagem para iniciar sua cesta.
                 </p>
                 <button
                   type="button"
-                  onClick={restoreDefaultList}
-                  className="mt-4 min-h-[44px] rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white"
                 >
-                  Restaurar Lista Padrão
+                  <Camera className="h-4 w-4 text-brand-yellow" />
+                  Escanear Código de Barras
                 </button>
               </div>
             ) : (
@@ -423,13 +433,19 @@ export default function ListaInteligentePage() {
                             toggleListItemChecked(item.productId)
                           }
                           aria-label={`Marcar ${product.name}`}
-                          className="h-4 w-4 rounded border-slate-300 text-brand-green focus:ring-brand-green"
+                          className="h-4 w-4 rounded border-slate-300 text-brand-navy focus:ring-brand-blue"
                         />
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="h-12 w-12 rounded-xl border border-slate-100 bg-white object-contain p-0.5"
-                        />
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="h-12 w-12 rounded-xl border border-slate-100 bg-white object-contain p-0.5"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
+                            <Package className="h-6 w-6 text-slate-300" />
+                          </div>
+                        )}
                         <div>
                           <Link
                             href={`/produto/${product.id}`}
@@ -438,10 +454,16 @@ export default function ListaInteligentePage() {
                             {product.name}
                           </Link>
                           <p className="text-[11px] text-slate-500">
-                            {product.brand} •{" "}
-                            <span className="font-semibold text-brand-blue">
-                              {product.sizeLabel}
-                            </span>
+                            {product.brand || "Marca não informada"}
+                            {product.sizeLabel ? (
+                              <>
+                                {" "}
+                                •{" "}
+                                <span className="font-semibold text-brand-navy">
+                                  {product.sizeLabel}
+                                </span>
+                              </>
+                            ) : null}
                           </p>
                         </div>
                       </div>
@@ -456,7 +478,7 @@ export default function ListaInteligentePage() {
                                 item.quantity - 1
                               )
                             }
-                            className="min-h-[38px] min-w-[34px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                            className="min-h-[44px] min-w-[38px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
                             aria-label="Diminuir quantidade"
                           >
                             -
@@ -472,7 +494,7 @@ export default function ListaInteligentePage() {
                                 item.quantity + 1
                               )
                             }
-                            className="min-h-[38px] min-w-[34px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                            className="min-h-[44px] min-w-[38px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
                             aria-label="Aumentar quantidade"
                           >
                             +
@@ -482,7 +504,7 @@ export default function ListaInteligentePage() {
                         <button
                           type="button"
                           onClick={() => removeFromList(item.productId)}
-                          className="min-h-[38px] min-w-[38px] rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="min-h-[44px] min-w-[44px] rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                           aria-label={`Remover ${product.name}`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -499,9 +521,9 @@ export default function ListaInteligentePage() {
         {/* Coluna Direita: Comparativo de Cesta por Mercado */}
         <div className="space-y-5 lg:col-span-7">
           {bestCompleteBasket && estimatedSavings > 0.05 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-brand-green/30 bg-emerald-50/90 p-5 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-300 bg-emerald-50/90 p-5 shadow-2xs">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-green text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-green text-brand-navy">
                   <TrendingDown className="h-5 w-5" />
                 </div>
                 <div>
@@ -509,180 +531,213 @@ export default function ListaInteligentePage() {
                     Menor custo estimado completo:{" "}
                     {bestCompleteBasket.market.shortName}
                   </p>
-                  <p className="tabular-price text-xs font-semibold text-brand-green">
-                    Economia estimada de {formatBRL(estimatedSavings)} na cesta
+                  <p className="tabular-price text-xs font-semibold text-emerald-800">
+                    Diferença estimada de {formatBRL(estimatedSavings)} na cesta
                     completa em relação ao{" "}
                     {highestCompleteBasket?.market.shortName}.
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="block text-[10px] font-bold uppercase text-brand-green">
+                <span className="block text-[10px] font-bold uppercase text-emerald-800">
                   Total estimado
                 </span>
-                <span className="tabular-price font-heading text-2xl font-extrabold text-brand-green">
+                <span className="tabular-price font-heading text-2xl font-extrabold text-emerald-700">
                   {formatBRL(bestCompleteBasket.subtotal)}
                 </span>
               </div>
             </div>
           )}
 
-          {marketComparisons.map(
-            ({ market, subtotal, foundItems, missingItems, isComplete }) => {
-              const isBestComplete =
-                bestCompleteBasket?.market.id === market.id;
+          {marketComparisons.length === 0 ? (
+            <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-2xs">
+              <Store className="mx-auto h-10 w-10 text-brand-blue" />
+              <h3 className="mt-3 font-heading text-base font-bold text-brand-navy">
+                Nenhum mercado ativo no raio selecionado
+              </h3>
+              <p className="mx-auto mt-1 max-w-md text-xs text-slate-500">
+                Sua lista fica salva automaticamente no seu dispositivo ou na
+                sua conta. Assim que mercados parceiros estiverem ativos no seu
+                raio de busca, o comparativo completo aparecerá aqui.
+              </p>
+            </div>
+          ) : (
+            marketComparisons.map(
+              ({ market, subtotal, foundItems, missingItems, isComplete }) => {
+                const isBestComplete =
+                  bestCompleteBasket?.market.id === market.id;
 
-              return (
-                <div
-                  key={market.id}
-                  className={`overflow-hidden rounded-3xl border bg-white shadow-xs transition ${
-                    isBestComplete
-                      ? "border-2 border-brand-green"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <div className="border-b border-slate-100 p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-heading text-lg font-extrabold text-brand-navy">
-                            {market.name}
-                          </h3>
-                          {isBestComplete && (
-                            <span className="rounded-full bg-brand-green px-3 py-0.5 text-xs font-bold text-white">
-                              Menor preço estimado (Cesta Completa)
+                return (
+                  <div
+                    key={market.id}
+                    className={`overflow-hidden rounded-3xl border bg-white shadow-xs transition ${
+                      isBestComplete
+                        ? "border-2 border-emerald-600"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <div className="border-b border-slate-100 p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-heading text-lg font-extrabold text-brand-navy">
+                              {market.name}
+                            </h3>
+                            {isBestComplete && (
+                              <span className="rounded-full bg-brand-green px-3 py-0.5 text-xs font-bold text-brand-navy">
+                                Menor preço estimado (Cesta Completa)
+                              </span>
+                            )}
+                            {!isComplete && activeItems.length > 0 && (
+                              <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-bold text-amber-900">
+                                Cesta Parcial ({missingItems.length} sem preço)
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-1.5 flex flex-wrap items-center gap-3 text-xs font-semibold text-emerald-700">
+                            <span>
+                              ✓ Encontrados: {foundItems.length} de{" "}
+                              {activeItems.length}
                             </span>
-                          )}
-                          {!isComplete && activeItems.length > 0 && (
-                            <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-bold text-amber-900">
-                              Cesta Parcial ({missingItems.length} sem preço)
+                            <span className="text-slate-400">•</span>
+                            <span
+                              className={
+                                missingItems.length > 0
+                                  ? "text-amber-700"
+                                  : "text-slate-500"
+                              }
+                            >
+                              Sem preço / Indisponíveis: {missingItems.length}
                             </span>
-                          )}
+                            {market.distanceKm !== null && (
+                              <>
+                                <span className="text-slate-400">•</span>
+                                <span className="tabular-price flex items-center gap-1 text-slate-500">
+                                  <MapPin className="h-3.5 w-3.5 text-brand-blue" />
+                                  ~ {market.distanceKm} km ({market.neighborhood})
+                                </span>
+                              </>
+                            )}
+                          </p>
                         </div>
 
-                        <p className="mt-1.5 flex flex-wrap items-center gap-3 text-xs font-semibold text-brand-green">
-                          <span>
-                            ✓ Encontrados: {foundItems.length} de{" "}
-                            {activeItems.length}
+                        <div className="text-right">
+                          <span className="block text-[10px] font-semibold uppercase text-slate-400">
+                            {isComplete
+                              ? "Total estimado da cesta"
+                              : "Subtotal parcial (incompleto)"}
                           </span>
-                          <span className="text-slate-400">•</span>
                           <span
-                            className={
-                              missingItems.length > 0
-                                ? "text-amber-700"
-                                : "text-slate-500"
-                            }
+                            className={`tabular-price font-heading text-2xl font-extrabold ${
+                              isBestComplete
+                                ? "text-emerald-700"
+                                : "text-brand-navy"
+                            }`}
                           >
-                            Sem preço / Indisponíveis: {missingItems.length}
+                            {formatBRL(subtotal)}
                           </span>
-                          <span className="text-slate-400">•</span>
-                          <span className="tabular-price flex items-center gap-1 text-slate-500">
-                            <MapPin className="h-3.5 w-3.5 text-brand-blue" />
-                            {market.distanceKm} km ({market.neighborhood})
-                          </span>
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="block text-[10px] font-semibold uppercase text-slate-400">
-                          {isComplete
-                            ? "Total estimado da cesta"
-                            : "Subtotal parcial (incompleto)"}
-                        </span>
-                        <span
-                          className={`tabular-price font-heading text-2xl font-extrabold ${
-                            isBestComplete
-                              ? "text-brand-green"
-                              : "text-brand-navy"
-                          }`}
-                        >
-                          {formatBRL(subtotal)}
-                        </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="divide-y divide-slate-100 px-5 py-2">
-                    {foundItems.map((fi) => (
-                      <div
-                        key={fi.product.id}
-                        className="flex items-center justify-between gap-3 py-2.5 text-xs"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={fi.product.imageUrl}
-                            alt={fi.product.name}
-                            className="h-9 w-9 rounded-lg border border-slate-100 bg-white object-contain p-0.5"
-                          />
-                          <div>
-                            <p className="font-semibold text-brand-navy">
-                              {fi.product.name} — {fi.product.sizeLabel}
-                            </p>
-                            <div className="tabular-price flex items-center gap-2 text-[11px] text-slate-500">
-                              <span>
-                                Qtd: <strong>{fi.quantity}x</strong>{" "}
-                                {formatBRL(fi.unitPrice)}
-                              </span>
-                              <span>({fi.unitFormatted})</span>
-                              {fi.isPromo && (
-                                <span className="rounded-sm bg-brand-yellow px-1.5 py-0.2 text-[10px] font-bold text-brand-navy">
-                                  {fi.promoLabel || "Oferta"}
+                    <div className="divide-y divide-slate-100 px-5 py-2">
+                      {foundItems.map((fi) => (
+                        <div
+                          key={fi.product.id}
+                          className="flex items-center justify-between gap-3 py-2.5 text-xs"
+                        >
+                          <div className="flex items-center gap-3">
+                            {fi.product.imageUrl ? (
+                              <img
+                                src={fi.product.imageUrl}
+                                alt={fi.product.name}
+                                className="h-9 w-9 rounded-lg border border-slate-100 bg-white object-contain p-0.5"
+                              />
+                            ) : (
+                              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-100 bg-slate-50">
+                                <Package className="h-4 w-4 text-slate-300" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-brand-navy">
+                                {fi.product.name}
+                                {fi.product.sizeLabel
+                                  ? ` — ${fi.product.sizeLabel}`
+                                  : ""}
+                              </p>
+                              <div className="tabular-price flex items-center gap-2 text-[11px] text-slate-500">
+                                <span>
+                                  Qtd: <strong>{fi.quantity}x</strong>{" "}
+                                  {formatBRL(fi.unitPrice)}
                                 </span>
-                              )}
+                                {fi.unitFormatted && (
+                                  <span>({fi.unitFormatted})</span>
+                                )}
+                                {fi.isPromo && (
+                                  <span className="rounded-sm bg-brand-yellow px-1.5 py-0.2 text-[10px] font-bold text-brand-navy">
+                                    {fi.promoLabel || "Oferta"}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <span className="tabular-price font-heading text-sm font-bold text-brand-navy">
+                              {formatBRL(fi.lineTotal)}
+                            </span>
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          </div>
                         </div>
+                      ))}
 
-                        <div className="flex items-center gap-2.5">
-                          <span className="tabular-price font-heading text-sm font-bold text-brand-navy">
-                            {formatBRL(fi.lineTotal)}
-                          </span>
-                          <CheckCircle2 className="h-4 w-4 text-brand-green" />
+                      {missingItems.length > 0 && (
+                        <div className="my-2 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
+                          <p className="flex items-center gap-1.5 font-bold">
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                            Itens não incluídos neste subtotal (nunca somados
+                            como R$ 0,00):
+                          </p>
+                          <ul className="mt-1 list-inside list-disc space-y-0.5 text-[11px]">
+                            {missingItems.map((mi) => (
+                              <li key={mi.product.id}>
+                                <strong>
+                                  {mi.product.name}
+                                  {mi.product.sizeLabel
+                                    ? ` (${mi.product.sizeLabel})`
+                                    : ""}
+                                </strong>{" "}
+                                —{" "}
+                                {mi.reason === "indisponivel"
+                                  ? "Sem estoque informado neste mercado"
+                                  : "Sem preço cadastrado neste mercado"}
+                              </li>
+                            ))}
+                          </ul>
                         </div>
-                      </div>
-                    ))}
-
-                    {missingItems.length > 0 && (
-                      <div className="my-2 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
-                        <p className="flex items-center gap-1.5 font-bold">
-                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                          Itens não incluídos neste subtotal (nunca somados como
-                          R$ 0,00):
-                        </p>
-                        <ul className="mt-1 list-inside list-disc space-y-0.5 text-[11px]">
-                          {missingItems.map((mi) => (
-                            <li key={mi.product.id}>
-                              <strong>
-                                {mi.product.name} ({mi.product.sizeLabel})
-                              </strong>{" "}
-                              —{" "}
-                              {mi.reason === "indisponivel"
-                                ? "Sem estoque informado neste mercado"
-                                : "Sem preço cadastrado neste mercado"}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-5 py-3.5">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-600">
-                        {market.deliveryInfo}
-                      </span>
+                      )}
                     </div>
-                    <Link
-                      href={`/mercados/${market.id}`}
-                      className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-brand-green px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
-                    >
-                      <Store className="h-3.5 w-3.5" />
-                      Ver catálogo do {market.shortName}
-                    </Link>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 px-5 py-3.5">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-600">
+                          {market.deliveryInfo ||
+                            "Consulte opções de retirada ou entrega diretamente com a loja."}
+                        </span>
+                      </div>
+                      <Link
+                        href={`/mercados/${market.id}`}
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white transition hover:bg-brand-blue"
+                      >
+                        <Store className="h-3.5 w-3.5" />
+                        Ver catálogo do {market.shortName}
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
+            )
           )}
         </div>
       </div>

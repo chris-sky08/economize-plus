@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Instagram, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
-import { TRANSPARENCY_DISCLAIMER } from "@/data/mockData";
+import { Database, ExternalLink } from "lucide-react";
+import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
 
 export default function Footer() {
   return (
@@ -22,7 +22,7 @@ export default function Footer() {
             />
             <div>
               <span className="font-heading text-xl font-extrabold text-white">
-                Economize<span className="text-brand-yellow">+</span>
+                Economize<span className="text-brand-green">+</span>
               </span>
               <p className="text-xs text-brand-light">
                 Compare. Escolha. Economize.
@@ -30,14 +30,10 @@ export default function Footer() {
             </div>
           </div>
           <p className="mt-4 text-xs leading-relaxed text-slate-300">
-            Plataforma para comparação de preços entre mercados locais, catálogo
-            integrado ao Open Food Facts Brasil e conexão entre consumidores e
-            comerciantes de bairro.
+            Plataforma de comparação de preços entre mercados locais, com
+            rastreabilidade de origem, horário de coleta e cálculo proporcional
+            por unidade de medida.
           </p>
-          <div className="mt-4 flex items-center gap-2 text-xs text-brand-yellow">
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-            <span>Compatível com a LGPD e Marco Civil da Internet</span>
-          </div>
         </div>
 
         <div>
@@ -52,7 +48,7 @@ export default function Footer() {
             </li>
             <li>
               <Link href="/lista" className="hover:text-brand-yellow">
-                Lista Inteligente + Scanner EAN
+                Lista de Compras + Leitor EAN
               </Link>
             </li>
             <li>
@@ -75,22 +71,17 @@ export default function Footer() {
           <ul className="mt-3 space-y-2 text-xs text-slate-300">
             <li>
               <Link href="/seja-parceiro" className="hover:text-brand-yellow">
-                Seja um Mercado Parceiro (Planos Básico e Premium)
+                Cadastro de Supermercado Parceiro
               </Link>
             </li>
             <li>
               <Link href="/painel-parceiro" className="hover:text-brand-yellow">
-                Painel do Parceiro (Upload CSV e Encartes IA)
+                Painel do Parceiro (CSV e Encartes)
               </Link>
             </li>
             <li>
               <Link href="/entregas" className="hover:text-brand-yellow">
-                Entregadores Parceiros
-              </Link>
-            </li>
-            <li>
-              <Link href="/admin" className="hover:text-brand-yellow">
-                Painel Administrativo e Moderação
+                Cadastro de Entregadores Parceiros
               </Link>
             </li>
           </ul>
@@ -98,7 +89,7 @@ export default function Footer() {
 
         <div>
           <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-white">
-            Ajuda, Privacidade e Contato
+            Transparência e Termos
           </h3>
           <ul className="mt-3 space-y-2 text-xs text-slate-300">
             <li>
@@ -106,7 +97,7 @@ export default function Footer() {
                 href="/institucional?aba=ajuda"
                 className="hover:text-brand-yellow"
               >
-                Central de Ajuda e Como Funciona
+                Como os Preços São Coletados
               </Link>
             </li>
             <li>
@@ -114,7 +105,7 @@ export default function Footer() {
                 href="/institucional?aba=privacidade"
                 className="hover:text-brand-yellow"
               >
-                Política de Privacidade (LGPD)
+                Política de Privacidade
               </Link>
             </li>
             <li>
@@ -125,23 +116,46 @@ export default function Footer() {
                 Termos de Uso da Plataforma
               </Link>
             </li>
-            <li className="flex items-center gap-2 pt-1 text-slate-300">
-              <Mail className="h-3.5 w-3.5 text-brand-yellow" />
-              <span>contato@economizemais.com.br</span>
-            </li>
-            <li className="flex items-center gap-2 text-slate-300">
-              <Phone className="h-3.5 w-3.5 text-brand-yellow" />
-              <span>(11) 4000-1234</span>
-            </li>
-            <li className="flex items-center gap-2 text-slate-300">
-              <Instagram className="h-3.5 w-3.5 text-brand-yellow" />
-              <span>@economizemais</span>
-            </li>
-            <li className="flex items-center gap-2 text-slate-300">
-              <MapPin className="h-3.5 w-3.5 text-brand-yellow" />
-              <span>São Paulo - SP • Mercados de Bairro</span>
-            </li>
           </ul>
+
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-[11px] leading-relaxed text-slate-300">
+            <div className="flex items-center gap-1.5 font-semibold text-brand-yellow">
+              <Database className="h-3.5 w-3.5 shrink-0" />
+              <span>Atribuição Open Food Facts</span>
+            </div>
+            <p className="mt-1">
+              Dados cadastrais e imagens de produtos consultados por EAN podem
+              ter origem no{" "}
+              <a
+                href="https://br.openfoodfacts.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 font-semibold text-white underline hover:text-brand-yellow"
+              >
+                Open Food Facts Brasil
+                <ExternalLink className="h-2.5 w-2.5" />
+              </a>{" "}
+              (dados sob licença{" "}
+              <a
+                href="https://opendatacommons.org/licenses/odbl/1-0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-brand-yellow"
+              >
+                ODbL 1.0
+              </a>{" "}
+              e imagens sob{" "}
+              <a
+                href="https://creativecommons.org/licenses/by-sa/3.0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-brand-yellow"
+              >
+                CC BY-SA 3.0
+              </a>
+              ).
+            </p>
+          </div>
         </div>
       </div>
 

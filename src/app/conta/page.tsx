@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
+  ClipboardCheck,
   CloudUpload,
   KeyRound,
   LogIn,
@@ -13,14 +14,13 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
-import { useApp, UserRole } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
 
 export default function ContaPage() {
   const {
     user,
-    setAuthUser,
-    loginDemoRole,
+    syncSessionFromToken,
     logoutUser,
     shoppingList,
     saveListToSupabase,
@@ -31,7 +31,6 @@ export default function ContaPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("consumidor");
   const [lgpdConsent, setLgpdConsent] = useState(true);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
@@ -50,13 +49,13 @@ export default function ContaPage() {
         if (error) throw error;
         setFeedback({
           type: "success",
-          text: "Instruções de redefinição de senha enviadas para o seu e-mail (via Supabase Auth).",
+          text: "Instruções de redefinição de senha enviadas para o seu e-mail.",
         });
       } else if (mode === "cadastro") {
         if (!lgpdConsent) {
           setFeedback({
             type: "error",
-            text: "É necessário concordar com a Política de Privacidade (LGPD) para criar sua conta.",
+            text: "É necessário concordar com a Política de Privacidade e os Termos de Uso para criar sua conta.",
           });
           setLoading(false);
           return;
@@ -66,22 +65,19 @@ export default function ContaPage() {
           password,
           options: {
             data: {
-              full_name: name || "Usuário Economize+",
-              role,
+              full_name: name.trim(),
             },
           },
         });
         if (error) throw error;
-        if (data.user) {
-          setAuthUser({
-            id: data.user.id,
-            name: name || email.split("@")[0],
-            email,
-            role,
-            marketId: "mercado-a",
-            isDemoAuth: false,
+        if (data.session?.access_token) {
+          await syncSessionFromToken(data.session.access_token);
+          showToast("Conta criada e autenticada com sucesso!");
+        } else {
+          setFeedback({
+            type: "success",
+            text: "Cadastro realizado! Verifique a confirmação no seu e-mail para entrar.",
           });
-          showToast("Conta criada com sucesso no Supabase Auth!");
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -89,26 +85,16 @@ export default function ContaPage() {
           password,
         });
         if (error) throw error;
-        if (data.user) {
-          setAuthUser({
-            id: data.user.id,
-            name:
-              data.user.user_metadata?.full_name ||
-              data.user.email?.split("@")[0] ||
-              "Usuário",
-            email: data.user.email || email,
-            role: (data.user.user_metadata?.role as UserRole) || "consumidor",
-            marketId: "mercado-a",
-            isDemoAuth: false,
-          });
-          showToast("Login realizado com sucesso via Supabase!");
+        if (data.session?.access_token) {
+          await syncSessionFromToken(data.session.access_token);
+          showToast("Login realizado com sucesso!");
         }
       }
     } catch (err: unknown) {
       const msg =
         err instanceof Error
           ? err.message
-          : "Não foi possível autenticar. Verifique suas credenciais ou use o acesso rápido demonstrativo.";
+          : "Não foi possível autenticar. Verifique seu e-mail e senha.";
       setFeedback({ type: "error", text: msg });
     } finally {
       setLoading(false);
@@ -121,23 +107,17 @@ export default function ContaPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-navy text-white">
                 <User className="h-7 w-7" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-brand-light px-3 py-0.5 text-xs font-bold text-brand-blue uppercase">
-                    Perfil: {user.role}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-brand-light px-3 py-0.5 text-xs font-bold text-brand-navy uppercase">
+                    Papel: {user.role}
                   </span>
-                  {user.isDemoAuth ? (
-                    <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-semibold text-amber-900">
-                      Sessão Demonstrativa
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-brand-green">
-                      Autenticado via Supabase
-                    </span>
-                  )}
+                  <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-emerald-800">
+                    Sessão Verificada (Supabase Auth)
+                  </span>
                 </div>
                 <h1 className="mt-1 font-heading text-2xl font-extrabold text-brand-navy">
                   {user.name}
@@ -149,7 +129,7 @@ export default function ContaPage() {
             <button
               type="button"
               onClick={logoutUser}
-              className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100"
             >
               <LogOut className="h-4 w-4" />
               Sair da Conta
@@ -159,7 +139,7 @@ export default function ContaPage() {
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
               <h2 className="flex items-center gap-2 font-heading text-base font-bold text-brand-navy">
-                <ShoppingBasket className="h-5 w-5 text-brand-green" />
+                <ShoppingBasket className="h-5 w-5 text-brand-blue" />
                 Sua Lista de Compras Salva
               </h2>
               <p className="mt-1 text-xs text-slate-600">
@@ -170,14 +150,14 @@ export default function ContaPage() {
                 <button
                   type="button"
                   onClick={saveListToSupabase}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white"
                 >
                   <CloudUpload className="h-4 w-4" />
-                  Sincronizar Lista com o Supabase
+                  Sincronizar Lista na Conta
                 </button>
                 <Link
                   href="/lista"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-brand-navy"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-brand-navy"
                 >
                   Ver Comparativo da Lista
                 </Link>
@@ -186,33 +166,44 @@ export default function ContaPage() {
 
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
               <h2 className="font-heading text-base font-bold text-brand-navy">
-                Atalhos do Seu Perfil
+                Acessos da Sua Conta
               </h2>
               <p className="mt-1 text-xs text-slate-600">
-                Acesse as áreas correspondentes à sua permissão de acesso:
+                O papel da sua conta é validado no servidor via{" "}
+                <code>public.profiles</code> e{" "}
+                <code>public.market_members</code>.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href="/buscar"
-                  className="rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-brand-blue shadow-2xs"
+                  className="inline-flex min-h-[44px] items-center rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-brand-navy shadow-2xs"
                 >
                   Comparador de Preços
                 </Link>
                 {(user.role === "mercado" || user.role === "admin") && (
                   <Link
                     href="/painel-parceiro"
-                    className="rounded-xl bg-brand-green px-3.5 py-2 text-xs font-bold text-white"
+                    className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-green px-3.5 py-2 text-xs font-bold text-brand-navy"
                   >
                     Painel do Mercado Parceiro
                   </Link>
                 )}
                 {user.role === "admin" && (
-                  <Link
-                    href="/admin"
-                    className="rounded-xl bg-brand-navy px-3.5 py-2 text-xs font-bold text-brand-yellow"
-                  >
-                    Painel Administrativo
-                  </Link>
+                  <>
+                    <Link
+                      href="/admin/coleta"
+                      className="inline-flex min-h-[44px] items-center gap-1 rounded-xl bg-brand-blue px-3.5 py-2 text-xs font-bold text-white"
+                    >
+                      <ClipboardCheck className="h-3.5 w-3.5" />
+                      Coleta Presencial em Loja
+                    </Link>
+                    <Link
+                      href="/admin"
+                      className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-navy px-3.5 py-2 text-xs font-bold text-brand-yellow"
+                    >
+                      Painel Administrativo
+                    </Link>
+                  </>
                 )}
               </div>
             </div>
@@ -235,19 +226,19 @@ export default function ContaPage() {
                   {mode === "recuperar" && "Recuperar acesso à conta"}
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Explore produtos livremente; use a conta para salvar listas e
-                  gerenciar perfis.
+                  A pesquisa de preços é aberta; use sua conta para salvar
+                  listas ou acessar áreas de parceiro.
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 flex gap-2 border-b border-slate-100 pb-4">
+            <div className="mt-5 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
               <button
                 type="button"
                 onClick={() => setMode("login")}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
                   mode === "login"
-                    ? "bg-brand-blue text-white"
+                    ? "bg-brand-navy text-white"
                     : "bg-slate-100 text-slate-600"
                 }`}
               >
@@ -257,9 +248,9 @@ export default function ContaPage() {
               <button
                 type="button"
                 onClick={() => setMode("cadastro")}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
                   mode === "cadastro"
-                    ? "bg-brand-blue text-white"
+                    ? "bg-brand-navy text-white"
                     : "bg-slate-100 text-slate-600"
                 }`}
               >
@@ -269,9 +260,9 @@ export default function ContaPage() {
               <button
                 type="button"
                 onClick={() => setMode("recuperar")}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
                   mode === "recuperar"
-                    ? "bg-brand-blue text-white"
+                    ? "bg-brand-navy text-white"
                     : "bg-slate-100 text-slate-600"
                 }`}
               >
@@ -284,7 +275,7 @@ export default function ContaPage() {
               <div
                 className={`mt-4 rounded-xl p-3.5 text-xs font-semibold ${
                   feedback.type === "success"
-                    ? "border border-brand-green/30 bg-emerald-50 text-brand-green"
+                    ? "border border-emerald-300 bg-emerald-50 text-emerald-800"
                     : "border border-rose-200 bg-rose-50 text-rose-700"
                 }`}
               >
@@ -318,7 +309,7 @@ export default function ContaPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seuemail@exemplo.com"
+                  placeholder="Informe seu e-mail"
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm"
                 />
               </div>
@@ -341,63 +332,40 @@ export default function ContaPage() {
               )}
 
               {mode === "cadastro" && (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700">
-                      Tipo de Perfil
-                    </label>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value as UserRole)}
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
+                <label className="flex items-start gap-2.5 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={lgpdConsent}
+                    onChange={(e) => setLgpdConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded text-brand-navy"
+                  />
+                  <span>
+                    Concordo com os{" "}
+                    <Link
+                      href="/institucional?aba=termos"
+                      className="font-bold text-brand-navy underline"
                     >
-                      <option value="consumidor">
-                        Consumidor (Comparar e salvar listas)
-                      </option>
-                      <option value="mercado">
-                        Comerciante / Mercado Parceiro
-                      </option>
-                      <option value="entregador">
-                        Entregador Parceiro (Pré-cadastro)
-                      </option>
-                    </select>
-                  </div>
-
-                  <label className="flex items-start gap-2.5 text-xs text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={lgpdConsent}
-                      onChange={(e) => setLgpdConsent(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded text-brand-blue"
-                    />
-                    <span>
-                      Concordo com os{" "}
-                      <Link
-                        href="/institucional?aba=termos"
-                        className="font-bold text-brand-blue hover:underline"
-                      >
-                        Termos de Uso
-                      </Link>{" "}
-                      e{" "}
-                      <Link
-                        href="/institucional?aba=privacidade"
-                        className="font-bold text-brand-blue hover:underline"
-                      >
-                        Política de Privacidade (LGPD)
-                      </Link>
-                      .
-                    </span>
-                  </label>
-                </>
+                      Termos de Uso
+                    </Link>{" "}
+                    e a{" "}
+                    <Link
+                      href="/institucional?aba=privacidade"
+                      className="font-bold text-brand-navy underline"
+                    >
+                      Política de Privacidade
+                    </Link>
+                    .
+                  </span>
+                </label>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-brand-blue py-3 text-sm font-bold text-white shadow-xs transition hover:bg-brand-navy disabled:opacity-50"
+                className="min-h-[44px] w-full rounded-xl bg-brand-navy py-3 text-sm font-bold text-white shadow-xs transition hover:bg-brand-blue disabled:opacity-50"
               >
                 {loading
-                  ? "Processando no Supabase..."
+                  ? "Autenticando..."
                   : mode === "login"
                     ? "Entrar na Conta"
                     : mode === "cadastro"
@@ -407,68 +375,46 @@ export default function ContaPage() {
             </form>
           </div>
 
-          {/* Coluna Direita: Acesso Demonstrativo Instantâneo por Perfil */}
+          {/* Coluna Direita: Explicação de Segurança e Papéis */}
           <div className="space-y-4 lg:col-span-5">
-            <div className="rounded-3xl border border-brand-blue/25 bg-brand-light/70 p-6">
-              <span className="rounded-md bg-brand-blue px-2.5 py-0.5 text-[11px] font-bold text-white">
-                Avaliação Rápida do MVP
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
+              <span className="rounded-md bg-brand-light px-2.5 py-0.5 text-[11px] font-bold text-brand-navy">
+                Segurança & Controle de Acesso
               </span>
               <h2 className="mt-2 font-heading text-lg font-extrabold text-brand-navy">
-                Testar Perfis de Acesso com 1 Clique
+                Como funcionam os perfis no Economize+
               </h2>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                Para avaliar imediatamente todas as rotas protegidas (Painel do
-                Mercado Parceiro, Consumidor e Painel Administrativo), selecione
-                um perfil demonstrativo abaixo:
-              </p>
-
-              <div className="mt-4 space-y-2.5">
-                {(
-                  [
-                    {
-                      role: "consumidor",
-                      title: "Entrar como Consumidor (Demo)",
-                      desc: "Salva listas de compras e compara cestas entre mercados.",
-                    },
-                    {
-                      role: "mercado",
-                      title: "Entrar como Mercado Parceiro (Demo)",
-                      desc: "Libera o Painel do Mercado Exemplo A para editar preços e promoções.",
-                    },
-                    {
-                      role: "entregador",
-                      title: "Entrar como Entregador Parceiro (Demo)",
-                      desc: "Visualiza o pré-cadastro e etapas da futura operação.",
-                    },
-                    {
-                      role: "admin",
-                      title: "Entrar como Administrador (Demo)",
-                      desc: "Libera o Painel Administrativo para moderar mercados e denúncias.",
-                    },
-                  ] as const
-                ).map((item) => (
-                  <button
-                    key={item.role}
-                    type="button"
-                    onClick={() => loginDemoRole(item.role)}
-                    className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 text-left transition hover:border-brand-blue hover:shadow-xs"
-                  >
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-green" />
-                    <div>
-                      <p className="font-heading text-xs font-bold text-brand-navy sm:text-sm">
-                        {item.title}
-                      </p>
-                      <p className="text-[11px] text-slate-500">{item.desc}</p>
-                    </div>
-                  </button>
-                ))}
+              <div className="mt-4 space-y-3 text-xs text-slate-600">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  <div>
+                    <strong className="text-brand-navy">Consumidor:</strong>{" "}
+                    Criado automaticamente ao se cadastrar. Permite sincronizar
+                    sua lista de compras entre dispositivos.
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
+                  <div>
+                    <strong className="text-brand-navy">
+                      Mercado Parceiro:
+                    </strong>{" "}
+                    Habilitado após verificação cadastral e vínculo do usuário
+                    na tabela <code>public.market_members</code>.
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-navy" />
+                  <div>
+                    <strong className="text-brand-navy">
+                      Validação no Servidor:
+                    </strong>{" "}
+                    Todas as rotas administrativas e de ingestão validam o token
+                    JWT e as políticas Row Level Security (RLS) diretamente no
+                    Supabase.
+                  </div>
+                </div>
               </div>
-
-              <p className="mt-4 flex items-center gap-1.5 text-[11px] text-slate-500">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-brand-green" />
-                No banco Supabase real, as políticas RLS isolam cada perfil no
-                servidor.
-              </p>
             </div>
           </div>
         </div>
