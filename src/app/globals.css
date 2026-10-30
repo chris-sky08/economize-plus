@@ -2,10 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-surface: #f8fbff;
+  --bg-card: #ffffff;
+  --bg-soft: #eaf3ff;
+  --text-primary: #041834;
+  --text-secondary: #475569;
+  --accent: #176bce;
+  --accent-economy: #159447;
+  --accent-promo: #ffd447;
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
   body {
-    background-color: #f8fbff;
-    color: #041834;
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overflow-x: hidden;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
@@ -17,4 +38,22 @@
   h6 {
     font-family: var(--font-poppins), sans-serif;
   }
+
+  button,
+  a {
+    transition:
+      transform 180ms var(--ease-smooth),
+      opacity 180ms var(--ease-smooth),
+      background-color 180ms var(--ease-smooth),
+      border-color 180ms var(--ease-smooth),
+      color 180ms var(--ease-smooth);
+  }
+
+  button:active {
+    transform: scale(0.97);
+  }
+}
+
+.tabular-price {
+  font-variant-numeric: tabular-nums;
 }
