@@ -142,10 +142,20 @@ alter table public.market_prices alter column source drop default;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
+  email text,
   app_role text not null default 'consumidor'
     check (app_role in ('consumidor','mercado','entregador','admin')),
   created_at timestamptz not null default now()
 );
+
+-- Compatibilidade com schemas legados onde email era not null
+alter table public.profiles add column if not exists email text;
+do $$
+begin
+  alter table public.profiles alter column email drop not null;
+exception when others then null;
+end $$;
+
 alter table public.profiles add column if not exists app_role text not null default 'consumidor'
   check (app_role in ('consumidor','mercado','entregador','admin'));
 
@@ -160,23 +170,34 @@ create table if not exists public.market_members (
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, full_name, app_role)
+  insert into public.profiles (id, full_name, email, app_role)
   values (
     new.id,
     new.raw_user_meta_data->>'full_name',
-    case when lower(new.email) = 'skyleywinfoster@gmail.com' then 'admin' else 'consumidor' end
+    new.email,
+    case when lower(coalesce(new.email, '')) = 'skyleywinfoster@gmail.com' then 'admin' else 'consumidor' end
   )
   on conflict (id) do update
-    set app_role = case when lower(new.email) = 'skyleywinfoster@gmail.com' then 'admin' else public.profiles.app_role end;
+    set
+      email = coalesce(excluded.email, public.profiles.email),
+      app_role = case when lower(coalesce(new.email, '')) = 'skyleywinfoster@gmail.com' then 'admin' else public.profiles.app_role end;
   return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
-insert into public.profiles (id, full_name)
-select id, raw_user_meta_data->>'full_name' from auth.users
-on conflict (id) do nothing;
+insert into public.profiles (id, full_name, email, app_role)
+select
+  id,
+  raw_user_meta_data->>'full_name',
+  email,
+  case when lower(coalesce(email, '')) = 'skyleywinfoster@gmail.com' then 'admin' else 'consumidor' end
+from auth.users
+on conflict (id) do update
+  set
+    email = coalesce(excluded.email, public.profiles.email),
+    app_role = case when lower(coalesce(excluded.email, '')) = 'skyleywinfoster@gmail.com' then 'admin' else public.profiles.app_role end;
 
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
