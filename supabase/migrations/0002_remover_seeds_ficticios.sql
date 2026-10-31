@@ -25,6 +25,9 @@ begin
       ''mercado-a'', ''mercado-b'', ''mercado-c'', ''mercado-d''
     )';
   end if;
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'market_prices' and column_name = 'is_demo') then
+    execute 'delete from public.market_prices where is_demo = true';
+  end if;
   if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'is_demo') then
     execute 'delete from public.products where is_demo = true';
   end if;
