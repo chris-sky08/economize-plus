@@ -93,6 +93,7 @@ alter table public.products add column if not exists category text;
 alter table public.products add column if not exists size_label text;
 alter table public.products add column if not exists unit_value numeric(10, 4);
 alter table public.products add column if not exists description text;
+alter table public.products add column if not exists is_popular boolean default false;
 
 alter table public.market_prices add column if not exists supermarket_id text references public.supermarkets(id) on delete cascade;
 alter table public.market_prices add column if not exists price numeric(10, 2);

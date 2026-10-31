@@ -192,9 +192,7 @@ export async function fetchCatalogFromSupabase(
 
     let productsQuery = supabase
       .from("products")
-      .select(
-        "id, ean, name, brand, category, size_label, unit_type, unit_value, image_url, is_popular, description, source, data_status, off_fetched_at"
-      )
+      .select("*")
       .range(from, to);
 
     if (
@@ -273,9 +271,7 @@ export async function searchProductsInDatabase(
   const clean = query.trim();
   const { data, error } = await supabase
     .from("products")
-    .select(
-      "id, ean, name, brand, category, size_label, unit_type, unit_value, image_url, is_popular, description, source, data_status, off_fetched_at"
-    )
+    .select("*")
     .or(`name.ilike.%${clean}%,brand.ilike.%${clean}%,ean.eq.${clean}`)
     .limit(limit);
 
