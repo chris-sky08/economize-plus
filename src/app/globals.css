@@ -57,3 +57,16 @@
 .tabular-price {
   font-variant-numeric: tabular-nums;
 }
+
+/* Pulso do contador da lista na barra inferior móvel (apenas transform/opacity) */
+@keyframes nav-badge-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.nav-badge-pop {
+  animation: nav-badge-pop 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-badge-pop { animation: none; }
+}

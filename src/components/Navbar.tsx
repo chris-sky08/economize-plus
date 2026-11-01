@@ -7,14 +7,13 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
-  Home,
   MapPin,
   Search,
   ShoppingBasket,
-  Store,
   User,
 } from "lucide-react";
 import AnimatedSubnav from "@/components/AnimatedSubnav";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { useApp } from "@/context/AppContext";
 import { TRANSPARENCY_DISCLAIMER, formatBRL } from "@/lib/format";
 
@@ -225,64 +224,7 @@ export default function Navbar() {
         <AnimatedSubnav categories={categories} user={user} />
       </header>
 
-      <nav
-        aria-label="Navegação rápida móvel"
-        className="safe-bottom fixed right-0 bottom-0 left-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white py-2 shadow-lg md:hidden"
-      >
-        <Link
-          href="/"
-          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-            pathname === "/" ? "text-brand-navy font-bold" : "text-slate-600"
-          }`}
-        >
-          <Home className="h-5 w-5" />
-          <span>Início</span>
-        </Link>
-        <Link
-          href="/buscar"
-          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-            pathname.startsWith("/buscar")
-              ? "text-brand-navy font-bold"
-              : "text-slate-600"
-          }`}
-        >
-          <Search className="h-5 w-5" />
-          <span>Comparar</span>
-        </Link>
-        <Link
-          href="/lista"
-          className={`relative flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-            pathname.startsWith("/lista")
-              ? "text-brand-navy font-bold"
-              : "text-slate-600"
-          }`}
-        >
-          <ShoppingBasket className="h-5 w-5" />
-          <span>Lista ({totalItemsInList})</span>
-        </Link>
-        <Link
-          href="/mercados"
-          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-            pathname.startsWith("/mercados")
-              ? "text-brand-navy font-bold"
-              : "text-slate-600"
-          }`}
-        >
-          <Store className="h-5 w-5" />
-          <span>Mercados</span>
-        </Link>
-        <Link
-          href="/conta"
-          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
-            pathname.startsWith("/conta")
-              ? "text-brand-navy font-bold"
-              : "text-slate-600"
-          }`}
-        >
-          <User className="h-5 w-5" />
-          <span>Conta</span>
-        </Link>
-      </nav>
+      <MobileBottomNav totalItemsInList={totalItemsInList} />
     </>
   );
 }
