@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Relatório de Evolução e Entrega do MVP — Economize+</title>
+  <title>Relatório de Evolução e Roteiro de Dublagem — Economize+</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
       padding: 32px 20px 64px;
     }
     .page {
-      max-width: 960px;
+      max-width: 980px;
       margin: 0 auto;
       background: #FFFFFF;
       border-radius: 24px;
@@ -64,13 +64,17 @@
       border-radius: 12px;
       padding: 12px 18px;
       font-family: 'Inter', sans-serif;
-      font-size: 0.86rem;
+      font-size: 0.85rem;
       font-weight: 800;
       cursor: pointer;
       min-height: 44px;
     }
     .btn-primary {
       background: var(--green);
+      color: var(--navy-deep);
+    }
+    .btn-yellow {
+      background: var(--yellow);
       color: var(--navy-deep);
     }
     .btn-secondary {
@@ -93,6 +97,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .whatsapp-text {
       white-space: pre-wrap;
@@ -136,6 +142,23 @@
       font-size: 0.85em;
       color: var(--navy);
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #E2E8F0;
+      padding: 10px 14px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--soft);
+      color: var(--navy);
+      font-weight: 800;
+    }
     @media print {
       body { background: #FFFFFF; padding: 0; }
       .page { box-shadow: none; border: none; }
@@ -147,12 +170,13 @@
   <div class="page">
     <header class="header">
       <div>
-        <h1>Relatório de Entrega — Economize<span>+</span></h1>
-        <p>Resumo executivo e técnico das atualizações do site para envio à equipe</p>
+        <h1>Relatório de Entrega &amp; Roteiro — Economize<span>+</span></h1>
+        <p>Resumo executivo, novidades do site e roteiro oficial de dublagem dos vídeos</p>
       </div>
       <div class="actions">
-        <button class="btn btn-primary" onclick="copyWhatsapp()">📋 Copiar Resumo para WhatsApp</button>
-        <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimir / Salvar em PDF</button>
+        <button class="btn btn-primary" onclick="copyWhatsapp()">📋 Copiar Resumo WhatsApp</button>
+        <button class="btn btn-yellow" onclick="copyScript()">🎙️ Copiar Roteiro de Dublagem</button>
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
       </div>
     </header>
 
@@ -170,7 +194,7 @@ O que entrou no ar:
 3️⃣ *Histórico de Atualização de Preços (/api/precos/historico):* Linha do tempo nas páginas de produto, mercado e painel do parceiro mostrando se o preço subiu (↑), baixou (↓) ou se manteve (=), com valor anterior e data/hora.
 4️⃣ *Como os Mercados Cadastram e Atualizam Preços (/seja-parceiro e /painel-parceiro):* Guia em 4 etapas + download do modelo oficial de planilha (modelo-precos-economize.csv), validação GTIN/EAN-13 e leitura de encartes por IA com revisão humana obrigatória antes de publicar.
 5️⃣ *Central de QR Code de Divulgação e Cartaz (/divulgacao):* Gera QR Code em SVG/PNG e Cartaz Oficial (1080×1350px) pronto para imprimir no caixa/balcão ou postar nas redes sociais.
-6️⃣ *Acabamento Mobile/Desktop e Materiais de Lançamento:* Ícone circular oficial da marca, barras de navegação com animação deslizante 60fps no celular e no PC, vídeos de lançamento (16:9 e 9:16 Shorts/Reels) e Manual Digital Interativo.</div>
+6️⃣ *Vídeos Narrados (16:9 e 9:16 Shorts) + Roteiro de Dublagem + Manual Digital Interativo:* Vídeos com locução neural PT-BR (Kokoro-82M open-source) e legendas sincronizadas.</div>
       </div>
 
       <div class="section">
@@ -213,6 +237,104 @@ O que entrou no ar:
           <li><strong>Etapa 4 — Leitura de Encartes por IA com Revisão Humana:</strong> Extração via Gemini Vision onde todos os preços entram obrigatoriamente como <code>pendente</code> até revisão e aprovação do responsável pelo mercado.</li>
         </ul>
       </div>
+
+      <div class="section">
+        <span class="badge">🎙️ Roteiro Oficial de Dublagem e Locução</span>
+        <h3>5. Roteiro para Dublagem (Vídeo Principal 16:9 e Vídeo Vertical Shorts/Reels 9:16)</h3>
+        <p style="color: var(--slate); font-size: 0.92rem; margin-bottom: 10px;">
+          Os vídeos já acompanham narração neural em Português gerada com o modelo open-source <strong>Kokoro-82M v1.0 (<code>pf_dora</code>)</strong>. Caso deseje gravar dublagem humana depois, utilize os roteiros sincronizados abaixo:
+        </p>
+
+        <h4 style="margin-top: 14px; font-family: 'Poppins', sans-serif;">A) Roteiro Vídeo Principal Widescreen (1920×1080 · 6 Cenas)</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Cena</th>
+              <th>Texto Exato para Locução / Dublagem</th>
+              <th>Dica de Entonação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Cena 1 · O Desafio</strong></td>
+              <td>"Você já reparou que o mesmo carrinho de compras muda de valor no mesmo bairro? Sem calcular o preço por quilo ou por litro, fica difícil saber qual embalagem compensa."</td>
+              <td>Curioso e próximo</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 2 · A Marca</strong></td>
+              <td>"Para resolver isso nasceu o Economize Mais! Compare, escolha e economize com dados cem por cento rastreáveis nos supermercados da sua região."</td>
+              <td>Entusiasmado e confiante</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 3 · Passos 1 e 2</strong></td>
+              <td>"No passo um, informe seu CEP ou ative o GPS para filtrar mercados próximos. No passo dois, busque o produto ou bipe o código de barras, comparando o preço total e o valor por quilo ou litro."</td>
+              <td>Didático e ritmado</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 4 · Passo 3</strong></td>
+              <td>"No passo três, monte sua Lista de Compras Inteligente. O aplicativo separa cestas completas de cestas parciais, e nunca soma item sem preço como zero reais."</td>
+              <td>Firme em "nunca soma como zero reais"</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 5 · Passo 4</strong></td>
+              <td>"Os mercados parceiros atualizam ofertas por planilha CSV ou leitura de encartes com inteligência artificial e revisão humana, registrando o histórico completo de preços."</td>
+              <td>Credibilidade e segurança</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 6 · Chamada Final</strong></td>
+              <td>"Acesse grátis pelo celular ou computador e faça sua próxima compra com transparência. Economize Mais: compare, escolha, economize!"</td>
+              <td>Caloroso e convidativo</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin-top: 20px; font-family: 'Poppins', sans-serif;">B) Roteiro Vídeo Vertical Shorts / Reels / TikTok (1080×1920 · 4 Cenas)</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Cena</th>
+              <th>Texto Exato para Locução / Dublagem</th>
+              <th>Dica de Entonação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Cena 1 · Hook</strong></td>
+              <td>"Quer descobrir onde sua compra do mês sai mais em conta no seu bairro? Conheça o Economize Mais!"</td>
+              <td>Rápido e energético</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 2 · Passos 1 e 2</strong></td>
+              <td>"Informe seu CEP, busque ou bipe o código de barras e compare o preço total e o valor por quilo ou litro, com fonte e horário da coleta."</td>
+              <td>Ágil e explicativo</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 3 · Passo 3</strong></td>
+              <td>"Monte sua Lista Inteligente no celular: o aplicativo separa cestas completas de parciais sem somar produto em falta como zero reais."</td>
+              <td>Destaque em "completas de parciais"</td>
+            </tr>
+            <tr>
+              <td><strong>Cena 4 · Fechamento</strong></td>
+              <td>"Acompanhe o histórico de preços e economize de verdade. Acesse grátis no celular ou computador!"</td>
+              <td>Convite direto para ação</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div id="dubScriptRaw" style="display:none;">ROTEIRO 1 — VÍDEO PRINCIPAL (16:9):
+Cena 1: Você já reparou que o mesmo carrinho de compras muda de valor no mesmo bairro? Sem calcular o preço por quilo ou por litro, fica difícil saber qual embalagem compensa.
+Cena 2: Para resolver isso nasceu o Economize Mais! Compare, escolha e economize com dados cem por cento rastreáveis nos supermercados da sua região.
+Cena 3: No passo um, informe seu CEP ou ative o GPS para filtrar mercados próximos. No passo dois, busque o produto ou bipe o código de barras, comparando o preço total e o valor por quilo ou litro.
+Cena 4: No passo três, monte sua Lista de Compras Inteligente. O aplicativo separa cestas completas de cestas parciais, e nunca soma item sem preço como zero reais.
+Cena 5: Os mercados parceiros atualizam ofertas por planilha CSV ou leitura de encartes com inteligência artificial e revisão humana, registrando o histórico completo de preços.
+Cena 6: Acesse grátis pelo celular ou computador e faça sua próxima compra com transparência. Economize Mais: compare, escolha, economize!
+
+ROTEIRO 2 — VÍDEO VERTICAL SHORTS / REELS (9:16):
+Cena 1: Quer descobrir onde sua compra do mês sai mais em conta no seu bairro? Conheça o Economize Mais!
+Cena 2: Informe seu CEP, busque ou bipe o código de barras e compare o preço total e o valor por quilo ou litro, com fonte e horário da coleta.
+Cena 3: Monte sua Lista Inteligente no celular: o aplicativo separa cestas completas de parciais sem somar produto em falta como zero reais.
+Cena 4: Acompanhe o histórico de preços e economize de verdade. Acesse grátis no celular ou computador!</div>
+      </div>
     </main>
   </div>
 
@@ -221,7 +343,15 @@ O que entrou no ar:
       const text = document.getElementById('whatsappMsg').innerText;
       navigator.clipboard.writeText(text).then(() => {
         const st = document.getElementById('copyStatus');
-        st.textContent = '✓ Copiado para a área de transferência!';
+        st.textContent = '✓ Resumo copiado para a área de transferência!';
+        setTimeout(() => { st.textContent = ''; }, 3500);
+      });
+    }
+    function copyScript() {
+      const text = document.getElementById('dubScriptRaw').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const st = document.getElementById('copyStatus');
+        st.textContent = '✓ Roteiro de dublagem copiado para a área de transferência!';
         setTimeout(() => { st.textContent = ''; }, 3500);
       });
     }

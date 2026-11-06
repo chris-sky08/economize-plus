@@ -9,7 +9,7 @@
 > 3. **Histórico de Atualização de Preços (`/api/precos/historico`):** Linha do tempo nas páginas de produto, mercado e painel do parceiro mostrando se o preço subiu (`↑`), baixou (`↓`) ou se manteve (`=`), com o valor anterior e a data/hora de cada coleta.
 > 4. **Fluxo Oficial de Cadastro e Atualização de Preços para Mercados (`/seja-parceiro` e `/painel-parceiro`):** Guia passo a passo em 4 etapas, download do modelo oficial de planilha (`modelo-precos-economize.csv`), validação de código de barras GTIN/EAN e leitura de encartes com IA + revisão humana obrigatória antes de publicar.
 > 5. **Central de QR Code de Divulgação e Cartaz (`/divulgacao`):** Gerador automático de QR Code (SVG e PNG) e Cartaz Oficial (`1080×1350px`) pronto para impressão de balcão/caixa ou postagem nas redes sociais assim que o link de demonstração/produção é aberto.
-> 6. **Acabamento Mobile/Desktop, SEO e Material de Lançamento:** Ícone circular oficial da marca, animações fluidas a 60fps nas barras de navegação (Desktop e Mobile), `sitemap.xml`/`robots.txt`, vídeos de lançamento (16:9 e 9:16 Shorts/Reels) e Manual Digital Interativo (`/material-digital-economize.html`).
+> 6. **Vídeos Narrados com Voz Neural Open-Source (`Kokoro-82M v1.0`) + Roteiro de Dublagem + Manual Digital:** Vídeos de lançamento 16:9 (`58,8s`) e Shorts/Reels 9:16 (`28,0s`) com locução neural PT-BR (`pf_dora`), trilha ambiente, legendas sincronizadas e roteiro completo de dublagem humana incluso.
 
 ---
 
@@ -74,17 +74,43 @@ flowchart LR
 
 ---
 
-## 6. Vídeos de Lançamento, Material Digital e SEO Técnico
+## 6. Vídeos de Lançamento Narrados (`Kokoro-82M`), Material Digital e SEO Técnico
+- **Motor de Voz Neural Open-Source (`Kokoro-82M v1.0 ONNX`):**
+  - Instalado localmente (`kokoro-onnx` + `espeakng-loader` PT-BR, voz `pf_dora`), gerando narração em português brasileiro (`24 kHz WAV`) combinada com trilha sonora ambiente (`ambient-bg.wav`) e legendas sincronizadas na tela.
 - **Vídeos Explicativos (Gerados em Código com Remotion):**
-  - Versão Widescreen (`1920×1080`, 24s): [`public/video-lancamento-economize.mp4`](file:///c:/Users/leywin/Downloads/economize/public/video-lancamento-economize.mp4)
-  - Versão Vertical Shorts/Reels/TikTok/WhatsApp (`1080×1920`, 18s): [`public/video-shorts-economize.mp4`](file:///c:/Users/leywin/Downloads/economize/public/video-shorts-economize.mp4)
+  - Versão Widescreen Narrada (`1920×1080`, `58,8s` / `1765 frames`): [`public/video-lancamento-economize.mp4`](file:///c:/Users/leywin/Downloads/economize/public/video-lancamento-economize.mp4)
+  - Versão Vertical Narrada Shorts/Reels/TikTok/WhatsApp (`1080×1920`, `28,0s` / `839 frames`): [`public/video-shorts-economize.mp4`](file:///c:/Users/leywin/Downloads/economize/public/video-shorts-economize.mp4)
 - **Material Digital Interativo:**
-  - Disponível em [`public/material-digital-economize.html`](file:///c:/Users/leywin/Downloads/economize/public/material-digital-economize.html) com simulador interativo de `R$/kg` e simulador da **Lista de Compras Inteligente** (demonstrando a separação entre Cestas Completas e Cestas Parciais sem somar item em falta como `R$ 0,00`).
+  - Disponível em [`public/material-digital-economize.html`](file:///c:/Users/leywin/Downloads/economize/public/material-digital-economize.html) com simulador interativo de `R$/kg` e simulador da **Lista de Compras Inteligente**.
 - **SEO Técnico (`OpenSEO`):**
   - Adicionados [`src/app/sitemap.ts`](file:///c:/Users/leywin/Downloads/economize/src/app/sitemap.ts) e [`src/app/robots.ts`](file:///c:/Users/leywin/Downloads/economize/src/app/robots.ts) indexando todas as páginas públicas e protegendo rotas administrativas e de API.
 
 ---
 
-## 7. Checklist Rápido para o Administrador (Banco de Dados)
+## 7. Roteiro Oficial de Dublagem (Para Gravar com a Sua Voz)
+
+### 7.1 Roteiro — Vídeo Principal Widescreen (`16:9` · `58,8s`)
+
+| Cena | Tempo | Fala para Dublagem |
+| :--- | :--- | :--- |
+| **Cena 1 — Gancho** | `00:00 – 00:09.8` | *"Você já reparou que o mesmo carrinho de compras muda de valor no mesmo bairro? Sem calcular o preço por quilo ou por litro, fica difícil saber qual embalagem compensa."* |
+| **Cena 2 — Marca** | `00:09.8 – 00:18.4` | *"Para resolver isso nasceu o Economize Mais! Compare, escolha e economize com dados cem por cento rastreáveis nos supermercados da sua região."* |
+| **Cena 3 — Passos 1 e 2** | `00:18.4 – 00:29.8` | *"No passo um, informe seu CEP ou ative o GPS para filtrar mercados próximos. No passo dois, busque o produto ou bipe o código de barras, comparando o preço total e o valor por quilo ou litro."* |
+| **Cena 4 — Passo 3** | `00:29.8 – 00:39.9` | *"No passo três, monte sua Lista de Compras Inteligente. O aplicativo separa cestas completas de cestas parciais, e nunca soma item sem preço como zero reais."* |
+| **Cena 5 — Passo 4** | `00:39.9 – 00:50.6` | *"Os mercados parceiros atualizam ofertas por planilha CSV ou leitura de encartes com inteligência artificial e revisão humana, registrando o histórico completo de preços."* |
+| **Cena 6 — Fechamento** | `00:50.6 – 00:58.8` | *"Acesse grátis pelo celular ou computador e faça sua próxima compra com transparência. Economize Mais: compare, escolha, economize!"* |
+
+### 7.2 Roteiro — Vídeo Vertical Shorts / Reels / TikTok (`9:16` · `28,0s`)
+
+| Cena | Tempo | Fala para Dublagem |
+| :--- | :--- | :--- |
+| **Cena 1 — Gancho** | `00:00 – 00:05.6` | *"Quer descobrir onde sua compra do mês sai mais em conta no seu bairro? Conheça o Economize Mais!"* |
+| **Cena 2 — Passos 1 e 2** | `00:05.6 – 00:13.5` | *"Informe seu CEP, busque ou bipe o código de barras e compare o preço total e o valor por quilo ou litro, com fonte e horário da coleta."* |
+| **Cena 3 — Passo 3** | `00:13.5 – 00:21.8` | *"Monte sua Lista Inteligente no celular: o aplicativo separa cestas completas de parciais sem somar produto em falta como zero reais."* |
+| **Cena 4 — Fechamento** | `00:21.8 – 00:28.0` | *"Acompanhe o histórico de preços e economize de verdade. Acesse grátis no celular ou computador!"* |
+
+---
+
+## 8. Checklist Rápido para o Administrador (Banco de Dados)
 - [x] Migration [`0001_dados_reais.sql`](file:///c:/Users/leywin/Downloads/economize/supabase/migrations/0001_dados_reais.sql) aplicada no Supabase.
 - [ ] Executar a nova migration complementar [`supabase/migrations/0002_consumidor_historico.sql`](file:///c:/Users/leywin/Downloads/economize/supabase/migrations/0002_consumidor_historico.sql) no **SQL Editor** do Supabase para liberar as colunas extras de contato/endereço (`phone`, `cep`, `neighborhood`, `city`, `lgpd_consent`) na edição de perfil dos consumidores.
