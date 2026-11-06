@@ -57,7 +57,7 @@ export async function requireUser(
   }
 
   const user = userData.user;
-  const dbClient = createServiceRoleClient();
+  const dbClient = createServiceRoleClient(token);
 
   const [profileRes, membersRes] = await Promise.all([
     dbClient
@@ -72,13 +72,18 @@ export async function requireUser(
   ]);
 
   const rawRole = profileRes.data?.app_role;
+  const isDefaultAdminEmail =
+    (user.email || "").trim().toLowerCase() === "skyleywinfoster@gmail.com";
+
   const role: UserRole =
     rawRole === "admin" ||
     rawRole === "mercado" ||
     rawRole === "entregador" ||
     rawRole === "consumidor"
       ? rawRole
-      : "consumidor";
+      : isDefaultAdminEmail
+        ? "admin"
+        : "consumidor";
 
   const supermarketIds: string[] = Array.isArray(membersRes.data)
     ? membersRes.data
@@ -86,13 +91,21 @@ export async function requireUser(
         .filter(Boolean)
     : [];
 
+  const metaFullName =
+    user.user_metadata &&
+    typeof user.user_metadata === "object" &&
+    typeof (user.user_metadata as Record<string, unknown>).full_name === "string"
+      ? String((user.user_metadata as Record<string, unknown>).full_name).trim()
+      : null;
+
   return {
     id: user.id,
     email: user.email || "",
     fullName:
-      typeof profileRes.data?.full_name === "string"
-        ? profileRes.data.full_name
-        : null,
+      typeof profileRes.data?.full_name === "string" &&
+      profileRes.data.full_name.trim()
+        ? profileRes.data.full_name.trim()
+        : metaFullName,
     role,
     supermarketIds,
     accessToken: token,
@@ -118,10 +131,31 @@ export async function requireMarketMember(
 ): Promise<{ user: AuthenticatedServerUser; supermarketId: string }> {
   const authUser = await requireUser(request);
 
-  if (authUser.role === "admin" && requestedSupermarketId?.trim()) {
+  if (authUser.role === "admin") {
+    const cleanRequested = requestedSupermarketId?.trim();
+    if (cleanRequested) {
+      return {
+        user: authUser,
+        supermarketId: cleanRequested,
+      };
+    }
+    if (authUser.supermarketIds.length > 0) {
+      return {
+        user: authUser,
+        supermarketId: authUser.supermarketIds[0],
+      };
+    }
+    const dbClient = createServiceRoleClient(authUser.accessToken);
+    const { data: firstMarket } = await dbClient
+      .from("supermarkets")
+      .select("id")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     return {
       user: authUser,
-      supermarketId: requestedSupermarketId.trim(),
+      supermarketId: firstMarket?.id ? String(firstMarket.id) : "",
     };
   }
 

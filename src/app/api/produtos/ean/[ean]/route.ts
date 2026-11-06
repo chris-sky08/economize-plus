@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateGtin } from "@/lib/format";
 import { mapDbProductRow } from "@/lib/supabase";
+import {
+  extractTokenFromRequest,
+  requireUser,
+  ServerAuthError,
+} from "@/lib/server/auth";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import {
+  inferCategoryId,
   mapOpenFoodFactsRawToProduct,
   OpenFoodFactsProductRaw,
+  parseMeasureFromQuantity,
 } from "@/services/productLookup";
 
 interface OffByEanApiResponse {
@@ -41,9 +48,10 @@ export async function GET(
   }
 
   const cleanEan = gtin.normalized;
+  const token = extractTokenFromRequest(request);
 
   try {
-    const db = createServiceRoleClient();
+    const db = createServiceRoleClient(token || undefined);
 
     // 1) Verifica se já existe no banco e foi consultado há menos de 30 dias
     const { data: existingRow } = await db
@@ -161,25 +169,125 @@ export async function GET(
       { onConflict: "ean" }
     );
 
-    if (upsertErr) {
-      return NextResponse.json(
-        {
-          error: `Produto encontrado no Open Food Facts, mas houve erro ao salvar no banco: ${upsertErr.message}`,
-          product: mapped,
-        },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({
       product: mapped,
       cached: false,
+      persisted: !upsertErr,
     });
   } catch (err: unknown) {
     const message =
       err instanceof Error
         ? err.message
         : "Falha ao consultar produto por código de barras.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ ean: string }> }
+) {
+  try {
+    const authUser = await requireUser(request);
+    const { ean } = await context.params;
+    const gtin = validateGtin(ean);
+
+    if (!gtin.valid) {
+      return NextResponse.json(
+        { error: gtin.reason || "Código EAN inválido." },
+        { status: 400 }
+      );
+    }
+
+    const body = (await request.json().catch(() => ({}))) as {
+      name?: string;
+      brand?: string | null;
+      category?: string | null;
+      size_label?: string | null;
+      unit_type?: "kg" | "L" | "un" | "rolo" | null;
+      unit_value?: number | null;
+      image_url?: string | null;
+      description?: string | null;
+    };
+
+    const cleanEan = gtin.normalized;
+    const productId = `ean-${cleanEan}`;
+    const name = (body.name || "").trim();
+
+    if (name.length < 2) {
+      return NextResponse.json(
+        { error: "Informe o nome do produto para cadastrá-lo." },
+        { status: 400 }
+      );
+    }
+
+    const brand = body.brand?.trim() || null;
+    const parsedMeasure = parseMeasureFromQuantity(body.size_label);
+    const sizeLabel = body.size_label?.trim() || parsedMeasure.sizeLabel;
+    const unitType =
+      body.unit_type === "kg" ||
+      body.unit_type === "L" ||
+      body.unit_type === "un" ||
+      body.unit_type === "rolo"
+        ? body.unit_type
+        : parsedMeasure.unitType;
+    const unitValue =
+      typeof body.unit_value === "number" &&
+      !Number.isNaN(body.unit_value) &&
+      body.unit_value > 0
+        ? body.unit_value
+        : parsedMeasure.unitMultiplier;
+    const categoryId =
+      body.category?.trim() || inferCategoryId(null, name);
+
+    const dataStatus =
+      name && brand && sizeLabel && categoryId
+        ? "completo"
+        : "pendente_revisao";
+
+    const db = createServiceRoleClient(authUser.accessToken);
+    const payload = {
+      id: productId,
+      ean: cleanEan,
+      name,
+      brand,
+      category: categoryId,
+      size_label: sizeLabel,
+      unit_type: unitType,
+      unit_value: unitValue,
+      image_url: body.image_url?.trim() || null,
+      is_popular: true,
+      description: body.description?.trim() || null,
+      source: "partner",
+      data_status: dataStatus,
+    };
+
+    const { data, error } = await db
+      .from("products")
+      .upsert(payload, { onConflict: "ean" })
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json(
+        {
+          error: `Erro ao salvar produto no catálogo: ${
+            error?.message || "permissão negada"
+          }`,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      product: mapDbProductRow(data as Record<string, unknown>),
+    });
+  } catch (err: unknown) {
+    if (err instanceof ServerAuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    const message =
+      err instanceof Error ? err.message : "Erro ao salvar produto por EAN.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

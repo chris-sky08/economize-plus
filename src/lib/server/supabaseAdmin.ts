@@ -18,22 +18,25 @@ export function createServerAnonClient(accessToken?: string): SupabaseClient {
       "Configuração ausente: NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY são obrigatórias."
     );
   }
+  const cleanToken = accessToken?.trim();
   return createClient(url, anonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
-    global: accessToken
+    global: cleanToken
       ? {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${cleanToken}`,
           },
         }
       : undefined,
   });
 }
 
-export function createServiceRoleClient(): SupabaseClient {
+export function createServiceRoleClient(
+  fallbackAccessToken?: string
+): SupabaseClient {
   const { url, serviceRoleKey, anonKey } = getServerSupabaseConfig();
   if (!url) {
     throw new Error(
@@ -46,11 +49,21 @@ export function createServiceRoleClient(): SupabaseClient {
       "Configuração ausente: SUPABASE_SERVICE_ROLE_KEY é obrigatória para operações privilegiadas no servidor."
     );
   }
+  const cleanFallbackToken = fallbackAccessToken?.trim();
+  const useUserJwt = !serviceRoleKey && Boolean(cleanFallbackToken);
+
   return createClient(url, keyToUse, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
+    global: useUserJwt
+      ? {
+          headers: {
+            Authorization: `Bearer ${cleanFallbackToken}`,
+          },
+        }
+      : undefined,
   });
 }
 

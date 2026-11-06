@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
               count: 0,
               items: [],
               lineErrors: [],
+              errors: [],
             },
             { status: 413 }
           );
@@ -118,6 +119,7 @@ export async function POST(request: NextRequest) {
             count: 0,
             items: [],
             lineErrors: [],
+            errors: [],
           },
           { status: 413 }
         );
@@ -129,6 +131,20 @@ export async function POST(request: NextRequest) {
       request,
       requestedMarketId
     );
+
+    if (!supermarketId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Selecione ou vincule um supermercado antes de importar CSV.",
+          count: 0,
+          items: [],
+          lineErrors: [],
+          errors: [],
+        },
+        { status: 400 }
+      );
+    }
 
     const allLines = rawCsv
       .split(/\r?\n/)
@@ -143,6 +159,7 @@ export async function POST(request: NextRequest) {
           count: 0,
           items: [],
           lineErrors: [],
+          errors: [],
         },
         { status: 400 }
       );
@@ -156,6 +173,7 @@ export async function POST(request: NextRequest) {
           count: 0,
           items: [],
           lineErrors: [],
+          errors: [],
         },
         { status: 413 }
       );
@@ -247,12 +265,13 @@ export async function POST(request: NextRequest) {
           count: 0,
           items: [],
           lineErrors,
+          errors: lineErrors,
         },
         { status: 422 }
       );
     }
 
-    const db = createServiceRoleClient();
+    const db = createServiceRoleClient(user.accessToken);
     const eanList = parsedRows.map((r) => r.ean);
 
     // Consulta produtos já cadastrados no banco
@@ -269,6 +288,7 @@ export async function POST(request: NextRequest) {
           count: 0,
           items: [],
           lineErrors,
+          errors: lineErrors,
         },
         { status: 500 }
       );
@@ -379,6 +399,7 @@ export async function POST(request: NextRequest) {
             count: 0,
             items: [],
             lineErrors,
+            errors: lineErrors,
           },
           { status: 500 }
         );
@@ -413,6 +434,7 @@ export async function POST(request: NextRequest) {
           count: 0,
           items: [],
           lineErrors,
+          errors: lineErrors,
         },
         { status: 500 }
       );
@@ -430,6 +452,7 @@ export async function POST(request: NextRequest) {
       count: parsedRows.length,
       items: parsedRows,
       lineErrors,
+      errors: lineErrors,
     });
   } catch (err: unknown) {
     if (err instanceof ServerAuthError) {
@@ -440,6 +463,7 @@ export async function POST(request: NextRequest) {
           count: 0,
           items: [],
           lineErrors: [],
+          errors: [],
         },
         { status: err.status }
       );
@@ -453,6 +477,7 @@ export async function POST(request: NextRequest) {
         count: 0,
         items: [],
         lineErrors: [],
+        errors: [],
       },
       { status: 500 }
     );

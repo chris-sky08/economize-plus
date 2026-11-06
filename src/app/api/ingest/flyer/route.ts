@@ -65,15 +65,116 @@ const FLYER_JSON_SCHEMA = {
   },
 };
 
+export function getCandidateGeminiKeys(): string[] {
+  const rawSources = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_1,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GOOGLE_API_KEY,
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+  ];
+  const unique = new Set<string>();
+  for (const raw of rawSources) {
+    if (!raw) continue;
+    const parts = raw
+      .split(/[,;\s]+/)
+      .map((k) => k.trim())
+      .filter((k) => k.length > 10);
+    for (const part of parts) {
+      unique.add(part);
+    }
+  }
+  return Array.from(unique);
+}
+
+async function extractFlyerJsonWithMultiKeyFallback(
+  candidateKeys: string[],
+  base64Data: string,
+  mimeType: string
+): Promise<{ rawJson: string; usedModel: string } | { error: string }> {
+  const promptText =
+    "Extraia apenas os produtos reais legíveis neste encarte de supermercado brasileiro que possuam preço numérico claro. Para cada item, informe ean (código de barras numérico se impresso), name, brand, weight, price, promo_label, valid_from e valid_until. Nunca invente produtos que não estejam na imagem.";
+  const contentTypePart = mimeType.includes("pdf") ? "document" : "image";
+  let lastError = "O modelo não conseguiu extrair dados legíveis deste encarte.";
+
+  for (const apiKey of candidateKeys) {
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Tentativa 1: Interactions API com gemini-3.8-flash
+    try {
+      const interaction = await ai.interactions.create({
+        model: "gemini-3.8-flash",
+        input: [
+          {
+            type: "text",
+            text: promptText,
+          },
+          {
+            type: contentTypePart,
+            data: base64Data,
+            mime_type: mimeType,
+          },
+        ],
+        response_format: {
+          type: "text",
+          mime_type: "application/json",
+          schema: FLYER_JSON_SCHEMA,
+        },
+      });
+
+      if (interaction.output_text && interaction.output_text.trim()) {
+        return {
+          rawJson: interaction.output_text.trim(),
+          usedModel: "gemini-3.8-flash",
+        };
+      }
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+
+    // Tentativa 2: Fallback para generateContent com gemini-2.5-flash na mesma chave
+    try {
+      const genRes = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: promptText },
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType,
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: FLYER_JSON_SCHEMA,
+        },
+      });
+
+      if (genRes.text && genRes.text.trim()) {
+        return {
+          rawJson: genRes.text.trim(),
+          usedModel: "gemini-2.5-flash",
+        };
+      }
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  return { error: lastError };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = (
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      ""
-    ).trim();
+    const candidateKeys = getCandidateGeminiKeys();
 
-    if (!apiKey) {
+    if (candidateKeys.length === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -106,6 +207,17 @@ export async function POST(request: NextRequest) {
       typeof requestedMarketId === "string" ? requestedMarketId : null
     );
 
+    if (!supermarketId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Selecione ou vincule um supermercado antes de enviar um encarte.",
+          items: [],
+        },
+        { status: 400 }
+      );
+    }
+
     if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json(
         {
@@ -133,9 +245,10 @@ export async function POST(request: NextRequest) {
     const storagePath = `${supermarketId}/${Date.now()}-${safeFileName}`;
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    const db = createServiceRoleClient();
+    const db = createServiceRoleClient(user.accessToken);
+    let base64Data = fileBuffer.toString("base64");
 
-    // 1) Armazena o encarte no bucket privado 'encartes'
+    // 1) Armazena o encarte no bucket privado 'encartes' (com fallback em memória caso o bucket ainda não exista no banco remoto)
     const { error: uploadErr } = await db.storage
       .from("encartes")
       .upload(storagePath, fileBuffer, {
@@ -143,71 +256,36 @@ export async function POST(request: NextRequest) {
         upsert: false,
       });
 
-    if (uploadErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Falha ao salvar o arquivo no bucket privado 'encartes': ${uploadErr.message}`,
-          items: [],
-        },
-        { status: 500 }
-      );
+    if (!uploadErr) {
+      // 2) Baixa do bucket privado 'encartes' para processar a partir do Storage
+      const { data: downloadedBlob, error: downloadErr } = await db.storage
+        .from("encartes")
+        .download(storagePath);
+
+      if (!downloadErr && downloadedBlob) {
+        const storedBuffer = Buffer.from(await downloadedBlob.arrayBuffer());
+        base64Data = storedBuffer.toString("base64");
+      }
     }
 
-    // 2) Baixa do bucket privado 'encartes' para processar a partir do Storage
-    const { data: downloadedBlob, error: downloadErr } = await db.storage
-      .from("encartes")
-      .download(storagePath);
+    const extraction = await extractFlyerJsonWithMultiKeyFallback(
+      candidateKeys,
+      base64Data,
+      mimeType
+    );
 
-    if (downloadErr || !downloadedBlob) {
+    if ("error" in extraction) {
       return NextResponse.json(
         {
           success: false,
-          error: "Não foi possível ler o encarte armazenado no Storage para processamento.",
-          items: [],
-        },
-        { status: 500 }
-      );
-    }
-
-    const storedBuffer = Buffer.from(await downloadedBlob.arrayBuffer());
-    const base64Data = storedBuffer.toString("base64");
-
-    const ai = new GoogleGenAI({ apiKey });
-    const contentTypePart = mimeType.includes("pdf") ? "document" : "image";
-
-    const interaction = await ai.interactions.create({
-      model: "gemini-3.8-flash",
-      input: [
-        {
-          type: "text",
-          text: "Extraia apenas os produtos reais legíveis neste encarte de supermercado brasileiro que possuam preço numérico claro. Para cada item, informe ean (código de barras numérico se impresso), name, brand, weight, price, promo_label, valid_from e valid_until. Nunca invente produtos que não estejam na imagem.",
-        },
-        {
-          type: contentTypePart,
-          data: base64Data,
-          mime_type: mimeType,
-        },
-      ],
-      response_format: {
-        type: "text",
-        mime_type: "application/json",
-        schema: FLYER_JSON_SCHEMA,
-      },
-    });
-
-    if (!interaction.output_text) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "O modelo não conseguiu extrair dados legíveis deste encarte.",
+          error: extraction.error,
           items: [],
         },
         { status: 422 }
       );
     }
 
-    const parsed = JSON.parse(interaction.output_text) as ExtractedFlyerItem[];
+    const parsed = JSON.parse(extraction.rawJson) as ExtractedFlyerItem[];
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return NextResponse.json(
         {
@@ -332,11 +410,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      model: "gemini-3.8-flash",
+      model: extraction.usedModel,
       source: "flyer_ocr",
       status: "pendente",
       supermarket_id: supermarketId,
       evidence_path: storagePath,
+      count: validItems.length,
+      message: `${validItems.length} ofertas extraídas com status pendente de revisão!`,
       items: validItems,
     });
   } catch (err: unknown) {

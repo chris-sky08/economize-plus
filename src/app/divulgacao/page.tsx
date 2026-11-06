@@ -6,6 +6,8 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  ExternalLink,
+  Instagram,
   ListChecks,
   Megaphone,
   Printer,
@@ -16,9 +18,18 @@ import {
   Store,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import QrCodePromoCard from "@/components/QrCodePromoCard";
+import QrCodePromoCard, {
+  OFFICIAL_INSTAGRAM_HANDLE,
+  OFFICIAL_INSTAGRAM_URL,
+} from "@/components/QrCodePromoCard";
 
-type PromoModeId = "geral" | "buscar" | "lista" | "parceiro" | "mercado";
+type PromoModeId =
+  | "geral"
+  | "buscar"
+  | "lista"
+  | "parceiro"
+  | "mercado"
+  | "instagram";
 
 interface PromoPreset {
   id: PromoModeId;
@@ -118,6 +129,24 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: <Store className="h-5 w-5" />,
   },
+  {
+    id: "instagram",
+    label: "QR Code do Instagram Oficial",
+    shortDescription:
+      "Leva ao perfil oficial @economizemais_oficial no Instagram com novidades e dicas.",
+    path: OFFICIAL_INSTAGRAM_URL,
+    badgeLabel: "INSTAGRAM OFICIAL • @ECONOMIZEMAIS_OFICIAL",
+    posterTitle: "Siga @economizemais_oficial no Instagram",
+    posterSubtitle:
+      "Aponte a câmera do celular para acompanhar novidades da plataforma, mercados parceiros e dicas de economia na sua região.",
+    steps: [
+      "Aponte a câmera do celular para o QR Code",
+      "Abra o perfil oficial @economizemais_oficial",
+      "Siga para acompanhar novidades e parceiros",
+      "Acesse economize-nine.vercel.app e economize",
+    ],
+    icon: <Instagram className="h-5 w-5" />,
+  },
 ];
 
 export default function DivulgacaoPage() {
@@ -182,13 +211,64 @@ export default function DivulgacaoPage() {
               Gere instantaneamente o QR Code vetorial (SVG) e o cartaz pronto em alta
               resolução (<span className="font-mono">1080×1350px</span> PNG) para
               balcão de caixa, gôndola de supermercado ou postagem no Instagram e
-              WhatsApp — sempre com o endereço real de demonstração ou produção.
+              WhatsApp — sempre com o endereço oficial de produção.
             </p>
           </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-7xl space-y-10 px-4 pt-8 sm:px-6">
+        {/* Card Oficial do Instagram @economizemais_oficial */}
+        <section
+          aria-label="Canal Oficial no Instagram"
+          className="rounded-3xl border border-brand-blue/30 bg-white p-5 shadow-xs sm:p-6 print:hidden"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-navy text-brand-yellow shadow-xs">
+                <Instagram className="h-6 w-6" />
+              </div>
+              <div>
+                <span className="inline-block rounded-md bg-brand-light px-2.5 py-0.5 text-[11px] font-extrabold text-brand-navy">
+                  Canal Oficial Verificado
+                </span>
+                <h2 className="mt-1 font-heading text-base font-extrabold text-brand-navy sm:text-lg">
+                  Instagram Oficial Economize+ ({OFFICIAL_INSTAGRAM_HANDLE})
+                </h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                  Acompanhe nosso perfil oficial no Instagram ou gere um Cartaz
+                  QR Code exclusivo apontando diretamente para{" "}
+                  <strong className="font-mono text-brand-navy">
+                    {OFFICIAL_INSTAGRAM_HANDLE}
+                  </strong>
+                  .
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setSelectedMode("instagram")}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-brand-navy bg-brand-light px-4 py-2.5 text-xs font-bold text-brand-navy transition hover:bg-brand-navy hover:text-white active:scale-95"
+              >
+                <QrCode className="h-4 w-4" />
+                <span>Gerar QR Code do Instagram</span>
+              </button>
+              <a
+                href={OFFICIAL_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95"
+              >
+                <Instagram className="h-4 w-4 text-brand-yellow" />
+                <span>Abrir {OFFICIAL_INSTAGRAM_HANDLE}</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          </div>
+        </section>
+
         {/* Seletor de Modalidade de QR Code (oculto na impressão) */}
         <section aria-labelledby="seletor-modalidade-heading" className="print:hidden">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -200,12 +280,12 @@ export default function DivulgacaoPage() {
                 1. Escolha o destino do QR Code de Divulgação
               </h2>
               <p className="text-xs text-slate-600 sm:text-sm">
-                Selecione qual funcionalidade ou supermercado você deseja destacar no cartaz.
+                Selecione qual funcionalidade, rede oficial ou supermercado você deseja destacar no cartaz.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PROMO_PRESETS.map((preset) => {
               const isSelected = selectedMode === preset.id;
               return (
@@ -249,13 +329,16 @@ export default function DivulgacaoPage() {
                     </p>
                   </div>
                   <div
-                    className={`mt-3 inline-block rounded-lg px-2 py-1 font-mono text-[11px] font-semibold ${
+                    className={`mt-3 inline-block truncate rounded-lg px-2 py-1 font-mono text-[11px] font-semibold ${
                       isSelected
                         ? "bg-white/15 text-brand-yellow"
                         : "bg-slate-100 text-slate-700"
                     }`}
                   >
-                    Rota: {preset.path}
+                    Destino:{" "}
+                    {preset.id === "instagram"
+                      ? OFFICIAL_INSTAGRAM_HANDLE
+                      : preset.path}
                   </div>
                 </button>
               );

@@ -25,8 +25,6 @@ import type {
 import {
   CATEGORIES,
   formatDateTimeBR,
-  getPriceSourceBadgeLabel,
-  isTimestampStale,
 } from "@/lib/format";
 import {
   fetchCatalogFromSupabase,
@@ -401,8 +399,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const registerExternalProduct = (product: Product) => {
     setProducts((prev) => {
-      if (prev.some((p) => p.id === product.id || p.ean === product.ean)) {
-        return prev;
+      const existingIdx = prev.findIndex(
+        (p) => p.id === product.id || (product.ean && p.ean === product.ean)
+      );
+      if (existingIdx !== -1) {
+        return prev.map((p, idx) => (idx === existingIdx ? product : p));
       }
       return [product, ...prev];
     });
@@ -583,14 +584,75 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanEan = product.ean.replace(/\D/g, "");
     const newId = `ean-${cleanEan}`;
 
-    // Consulta ou cria o produto via rota de servidor do EAN antes de vincular o preço
-    await fetch(`/api/produtos/ean/${encodeURIComponent(cleanEan)}`).catch(
-      () => null
-    );
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data.session?.access_token || accessToken;
+    const authHeaders: Record<string, string> = token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
 
+    // 1) Consulta produto via rota de servidor do EAN
+    let ensuredProduct: Product | null = null;
+    try {
+      const getRes = await fetch(
+        `/api/produtos/ean/${encodeURIComponent(cleanEan)}`,
+        { headers: authHeaders }
+      );
+      if (getRes.ok) {
+        const getData = (await getRes.json()) as { product?: Product };
+        if (getData.product) {
+          ensuredProduct = getData.product;
+        }
+      }
+    } catch {
+      // Prossegue para criação explícita via POST
+    }
+
+    // 2) Caso o EAN não conste no Open Food Facts ou o parceiro tenha informado dados cadastrais, garante o upsert em public.products via POST autenticado
+    if (!ensuredProduct || product.name?.trim()) {
+      try {
+        const postRes = await fetch(
+          `/api/produtos/ean/${encodeURIComponent(cleanEan)}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...authHeaders,
+            },
+            body: JSON.stringify({
+              name: product.name || ensuredProduct?.name || "",
+              brand: product.brand ?? ensuredProduct?.brand ?? null,
+              category:
+                product.categoryId ?? ensuredProduct?.categoryId ?? null,
+              size_label:
+                product.sizeLabel ?? ensuredProduct?.sizeLabel ?? null,
+              unit_type: product.unitType ?? ensuredProduct?.unitType ?? null,
+              unit_value:
+                product.unitMultiplier ?? ensuredProduct?.unitMultiplier ?? null,
+              image_url: product.imageUrl ?? ensuredProduct?.imageUrl ?? null,
+              description:
+                product.description ?? ensuredProduct?.description ?? null,
+            }),
+          }
+        );
+        if (postRes.ok) {
+          const postData = (await postRes.json()) as { product?: Product };
+          if (postData.product) {
+            ensuredProduct = postData.product;
+          }
+        }
+      } catch {
+        // Segue para tentativa de vinculação de preço
+      }
+    }
+
+    if (ensuredProduct) {
+      registerExternalProduct(ensuredProduct);
+    }
+
+    const targetProductId = ensuredProduct?.id || newId;
     const ok = await upsertMarketPrice(
       marketId,
-      newId,
+      targetProductId,
       price,
       isPromo,
       promoLabel,
@@ -598,11 +660,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       source
     );
 
-    if (ok) {
+    if (ok && !ensuredProduct) {
       const { data: prodRow } = await supabase
         .from("products")
         .select("*")
-        .eq("id", newId)
+        .eq("id", targetProductId)
         .maybeSingle();
       if (prodRow) {
         registerExternalProduct(
@@ -698,17 +760,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || !data.success) {
+        const errMsg = data.error || "Não foi possível enviar a solicitação.";
+        showToast(errMsg);
         return {
           ok: false,
-          error: data.error || "Não foi possível enviar a solicitação.",
+          error: errMsg,
         };
       }
       showToast("Solicitação de parceria registrada com sucesso!");
       return { ok: true };
     } catch {
+      const errMsg = "Falha de comunicação ao enviar a solicitação.";
+      showToast(errMsg);
       return {
         ok: false,
-        error: "Falha de comunicação ao enviar a solicitação.",
+        error: errMsg,
       };
     }
   };
@@ -729,17 +795,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || !data.success) {
+        const errMsg = data.error || "Não foi possível enviar o cadastro.";
+        showToast(errMsg);
         return {
           ok: false,
-          error: data.error || "Não foi possível enviar o cadastro.",
+          error: errMsg,
         };
       }
       showToast("Cadastro de entregador registrado com sucesso!");
       return { ok: true };
     } catch {
+      const errMsg = "Falha de comunicação ao enviar o cadastro.";
+      showToast(errMsg);
       return {
         ok: false,
-        error: "Falha de comunicação ao enviar o cadastro.",
+        error: errMsg,
       };
     }
   };
@@ -763,17 +833,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || !data.success) {
+        const errMsg = data.error || "Não foi possível enviar o relato.";
+        showToast(errMsg);
         return {
           ok: false,
-          error: data.error || "Não foi possível enviar o relato.",
+          error: errMsg,
         };
       }
       showToast("Relato enviado para revisão administrativa!");
       return { ok: true };
     } catch {
+      const errMsg = "Falha de comunicação ao enviar o relato.";
+      showToast(errMsg);
       return {
         ok: false,
-        error: "Falha de comunicação ao enviar o relato.",
+        error: errMsg,
       };
     }
   };
@@ -820,15 +894,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const current = rawMarkets.find((m) => m.id === marketId);
     if (!current) return;
     const nextStatus = current.status === "ativo" ? "suspenso" : "ativo";
-    const { error } = await supabase
-      .from("supermarkets")
-      .update({ status: nextStatus })
-      .eq("id", marketId);
 
-    if (error) {
-      showToast(`Erro ao alterar status do mercado: ${error.message}`);
-      return;
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data.session?.access_token || accessToken;
+
+    let updatedViaApi = false;
+    if (token) {
+      try {
+        const res = await fetch("/api/admin/mercados", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            id: marketId,
+            action: "toggle_status",
+            status: nextStatus,
+          }),
+        });
+        if (res.ok) {
+          updatedViaApi = true;
+        }
+      } catch {
+        // Fallback para update direto
+      }
     }
+
+    if (!updatedViaApi) {
+      const { error } = await supabase
+        .from("supermarkets")
+        .update({ status: nextStatus })
+        .eq("id", marketId);
+
+      if (error) {
+        showToast(`Erro ao alterar status do mercado: ${error.message}`);
+        return;
+      }
+    }
+
     setRawMarkets((prev) =>
       prev.map((m) => (m.id === marketId ? { ...m, status: nextStatus } : m))
     );

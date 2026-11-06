@@ -322,7 +322,7 @@ export default function SejaParceiroPage() {
                 value={marketName}
                 onChange={(e) => setMarketName(e.target.value)}
                 placeholder="Razão social ou nome fantasia"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.marketName && (
                 <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -344,7 +344,7 @@ export default function SejaParceiroPage() {
                 value={responsibleName}
                 onChange={(e) => setResponsibleName(e.target.value)}
                 placeholder="Nome completo do proprietário ou gerente"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.responsibleName && (
                 <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -366,7 +366,7 @@ export default function SejaParceiroPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Informe o e-mail corporativo"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.email && (
                 <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -388,7 +388,7 @@ export default function SejaParceiroPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="DDD + Número"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.phone && (
                 <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -411,7 +411,7 @@ export default function SejaParceiroPage() {
                   value={zipCode}
                   onChange={(e) => void handleCepChange(e.target.value)}
                   placeholder="00000-000"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                  className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
                 />
                 {errors.zipCode && (
                   <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -432,7 +432,7 @@ export default function SejaParceiroPage() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Cidade"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                  className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
                 />
                 {errors.city && (
                   <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -455,7 +455,7 @@ export default function SejaParceiroPage() {
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
                 placeholder="Bairro do estabelecimento"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.neighborhood && (
                 <p className="mt-1 text-xs font-semibold text-rose-600">
@@ -477,7 +477,7 @@ export default function SejaParceiroPage() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Logradouro, número e complemento"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
               />
               {errors.address && (
                 <p className="mt-1 text-xs font-semibold text-rose-600">

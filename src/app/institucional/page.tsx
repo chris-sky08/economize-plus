@@ -5,8 +5,10 @@ import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Database,
+  ExternalLink,
   FileText,
   HelpCircle,
+  Instagram,
   ShieldCheck,
 } from "lucide-react";
 
@@ -40,10 +42,10 @@ function InstitucionalContent() {
           <button
             type="button"
             onClick={() => setActiveTab("ajuda")}
-            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
               activeTab === "ajuda"
                 ? "bg-brand-navy text-white"
-                : "bg-slate-100 text-slate-600"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <HelpCircle className="h-4 w-4" />
@@ -52,10 +54,10 @@ function InstitucionalContent() {
           <button
             type="button"
             onClick={() => setActiveTab("privacidade")}
-            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
               activeTab === "privacidade"
                 ? "bg-brand-navy text-white"
-                : "bg-slate-100 text-slate-600"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <ShieldCheck className="h-4 w-4" />
@@ -64,10 +66,10 @@ function InstitucionalContent() {
           <button
             type="button"
             onClick={() => setActiveTab("termos")}
-            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold ${
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
               activeTab === "termos"
                 ? "bg-brand-navy text-white"
-                : "bg-slate-100 text-slate-600"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <FileText className="h-4 w-4" />
@@ -261,6 +263,45 @@ function InstitucionalContent() {
             </ul>
           </div>
         )}
+
+        {/* CANAL OFICIAL DE COMUNICAÇÃO E NOVIDADES DA COMUNIDADE */}
+        <div className="mt-8 rounded-2xl border border-brand-blue/30 bg-brand-light/60 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-navy text-white shadow-xs">
+                <Instagram className="h-5 w-5 text-brand-yellow" />
+              </div>
+              <div>
+                <span className="inline-block rounded-md bg-brand-green/25 px-2 py-0.5 text-[11px] font-extrabold text-brand-navy">
+                  Canal Oficial Verificado
+                </span>
+                <h2 className="mt-1 font-heading text-base font-bold text-brand-navy sm:text-lg">
+                  Comunidade e Novidades no Instagram Oficial
+                </h2>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Acompanhe comunicados de novos mercados parceiros, dicas de
+                  economia doméstica e atualizações da plataforma no único perfil
+                  oficial do Economize+ no Instagram:{" "}
+                  <strong className="font-mono text-brand-navy">
+                    @economizemais_oficial
+                  </strong>
+                  .
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="https://www.instagram.com/economizemais_oficial"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+            >
+              <Instagram className="h-4 w-4 text-brand-yellow" />
+              <span>Acessar @economizemais_oficial</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

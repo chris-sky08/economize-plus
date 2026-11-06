@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Database, ExternalLink, QrCode } from "lucide-react";
+import { Database, ExternalLink, Instagram, QrCode } from "lucide-react";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
 
 export default function Footer() {
@@ -34,6 +34,28 @@ export default function Footer() {
             rastreabilidade de origem, horário de coleta, histórico de variação
             e cálculo proporcional por unidade de medida.
           </p>
+          <div className="mt-4">
+            <a
+              href="https://www.instagram.com/economizemais_oficial"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram oficial do Economize+ (@economizemais_oficial)"
+              className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-brand-blue/40 bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition hover:border-brand-green hover:bg-brand-blue/25 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-blue text-white">
+                <Instagram className="h-4 w-4" />
+              </span>
+              <span className="text-left leading-tight">
+                <span className="block text-[10px] font-semibold uppercase tracking-wider text-brand-green">
+                  Instagram Oficial
+                </span>
+                <span className="font-mono text-xs text-white">
+                  @economizemais_oficial
+                </span>
+              </span>
+              <ExternalLink className="ml-1 h-3.5 w-3.5 shrink-0 text-brand-light" />
+            </a>
+          </div>
         </div>
 
         <div>

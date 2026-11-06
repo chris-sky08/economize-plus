@@ -154,9 +154,10 @@ export default function ProductComparisonCard({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Comparativo nos mercados ({sorted.length}):
           </p>
-          {sorted.slice(0, 3).map(({ priceEntry, market }, idx) => {
+          {sorted.slice(0, 3).map(({ priceEntry, market }) => {
             const unit = calculateUnitPrice(priceEntry.price, product);
-            const isLowest = idx === 0 && priceEntry.inStock;
+            const isLowest =
+              bestOffer?.priceEntry.id === priceEntry.id && priceEntry.inStock;
             return (
               <div
                 key={priceEntry.id}

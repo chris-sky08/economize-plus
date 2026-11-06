@@ -147,8 +147,10 @@ export default function ContaPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const urlMode = params.get("mode");
-      if (
-        urlMode === "redefinir" ||
+      const hasRecoveryHash = window.location.hash.includes("type=recovery");
+      if (urlMode === "redefinir" || hasRecoveryHash) {
+        setMode("redefinir");
+      } else if (
         urlMode === "cadastro" ||
         urlMode === "recuperar" ||
         urlMode === "login"

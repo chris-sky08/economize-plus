@@ -267,7 +267,7 @@ function BuscarContent() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="flex items-center gap-1 text-xs font-semibold text-brand-navy hover:underline"
+                className="inline-flex min-h-[44px] items-center gap-1 px-2 text-xs font-semibold text-brand-navy hover:underline"
               >
                 <RotateCcw className="h-3 w-3" />
                 Limpar
@@ -289,7 +289,7 @@ function BuscarContent() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Ex: arroz, leite, 789..."
-                  className="w-full rounded-xl border border-slate-200 py-2 pr-8 pl-3 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
+                  className="min-h-[44px] w-full rounded-xl border border-slate-200 py-2 pr-8 pl-3 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
                 />
                 <Search className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400" />
               </div>
@@ -302,7 +302,7 @@ function BuscarContent() {
                 <button
                   type="button"
                   onClick={() => setSelectedCategory("todas")}
-                  className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
+                  className={`flex min-h-[44px] w-full items-center rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
                     selectedCategory === "todas"
                       ? "bg-brand-navy font-bold text-white"
                       : "text-slate-600 hover:bg-slate-100"
@@ -315,7 +315,7 @@ function BuscarContent() {
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`block w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
+                    className={`flex min-h-[44px] w-full items-center rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
                       selectedCategory === cat.id
                         ? "bg-brand-navy font-bold text-white"
                         : "text-slate-600 hover:bg-slate-100"
@@ -339,7 +339,7 @@ function BuscarContent() {
                 id="filter-market"
                 value={selectedMarketId}
                 onChange={(e) => setSelectedMarketId(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-brand-blue focus:outline-none"
+                className="mt-1.5 min-h-[44px] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-brand-blue focus:outline-none"
               >
                 <option value="todos">
                   Todos no raio ({activeMarkets.length})
@@ -394,7 +394,7 @@ function BuscarContent() {
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     placeholder="Mín R$"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+                    className="min-h-[44px] w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
                   />
                 </div>
                 <div>
@@ -409,7 +409,7 @@ function BuscarContent() {
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     placeholder="Máx R$"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
+                    className="min-h-[44px] w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs"
                   />
                 </div>
               </div>

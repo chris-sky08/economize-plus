@@ -257,7 +257,7 @@ export default function HomePage() {
                           key={prod.id}
                           type="button"
                           onClick={() => setSelectedFeaturedId(prod.id)}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                          className={`min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                             selectedFeaturedProduct?.id === prod.id
                               ? "bg-brand-navy text-white"
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -293,13 +293,13 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => setIsLocationModalOpen(true)}
-                        className="min-h-[40px] rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white hover:bg-brand-blue"
+                        className="min-h-[44px] rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white hover:bg-brand-blue"
                       >
                         Definir CEP ou GPS
                       </button>
                       <Link
                         href="/seja-parceiro"
-                        className="inline-flex min-h-[40px] items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-brand-navy hover:border-brand-blue"
+                        className="inline-flex min-h-[44px] items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-brand-navy hover:border-brand-blue"
                       >
                         Indicar ou cadastrar mercado
                       </Link>
@@ -430,7 +430,7 @@ export default function HomePage() {
           </div>
           <Link
             href="/buscar"
-            className="flex items-center gap-1 text-xs font-bold text-brand-navy hover:underline sm:text-sm"
+            className="inline-flex min-h-[44px] items-center gap-1 text-xs font-bold text-brand-navy hover:underline sm:text-sm"
           >
             Ver todos <ArrowRight className="h-4 w-4" />
           </Link>

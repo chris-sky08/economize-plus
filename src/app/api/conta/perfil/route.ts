@@ -74,7 +74,7 @@ function normalizeRole(value: unknown, fallback: UserRole): UserRole {
 export async function GET(request: NextRequest) {
   try {
     const authUser = await requireUser(request);
-    const supabaseAdmin = createServiceRoleClient();
+    const supabaseAdmin = createServiceRoleClient(authUser.accessToken);
 
     let row: RawProfileRow | null = null;
 
@@ -179,31 +179,50 @@ export async function PATCH(request: NextRequest) {
       typeof body.lgpd_consent === "boolean" ? body.lgpd_consent : true;
     const nowIso = new Date().toISOString();
 
-    const supabaseAdmin = createServiceRoleClient();
+    const supabaseAdmin = createServiceRoleClient(authUser.accessToken);
 
-    const fullUpdatePayload = {
-      id: authUser.id,
-      full_name: fullName,
-      email: authUser.email,
-      phone,
-      city,
-      neighborhood,
-      cep,
-      lgpd_consent: lgpdConsent,
-      lgpd_consent_at: nowIso,
-      updated_at: nowIso,
-    };
-
-    const { error: upsertErr } = await supabaseAdmin
+    // 1) Tenta atualizar as colunas permitidas pela policy RLS "perfil_edicao"
+    const { data: updatedRow, error: updateErr } = await supabaseAdmin
       .from("profiles")
-      .upsert(fullUpdatePayload, { onConflict: "id" });
+      .update({
+        full_name: fullName,
+        phone,
+        city,
+        neighborhood,
+        cep,
+        lgpd_consent: lgpdConsent,
+        lgpd_consent_at: nowIso,
+        updated_at: nowIso,
+      })
+      .eq("id", authUser.id)
+      .select("id")
+      .maybeSingle();
 
-    if (upsertErr) {
-      // Caso a migration 0002 ainda não tenha sido rodada no banco remoto, garante atualização de full_name
-      await supabaseAdmin
-        .from("profiles")
-        .update({ full_name: fullName })
-        .eq("id", authUser.id);
+    if (updateErr || !updatedRow) {
+      // 2) Tenta upsert completo (caso service_role esteja ativa e a linha não exista)
+      const { error: upsertErr } = await supabaseAdmin.from("profiles").upsert(
+        {
+          id: authUser.id,
+          full_name: fullName,
+          email: authUser.email,
+          phone,
+          city,
+          neighborhood,
+          cep,
+          lgpd_consent: lgpdConsent,
+          lgpd_consent_at: nowIso,
+          updated_at: nowIso,
+        },
+        { onConflict: "id" }
+      );
+
+      if (upsertErr) {
+        // 3) Fallback caso a migration 0002 ainda não tenha sido aplicada no banco remoto
+        await supabaseAdmin
+          .from("profiles")
+          .update({ full_name: fullName })
+          .eq("id", authUser.id);
+      }
     }
 
     // Sincroniza também os metadados do usuário no Supabase Auth

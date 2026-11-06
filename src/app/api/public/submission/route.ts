@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractTokenFromRequest } from "@/lib/server/auth";
 import { checkRateLimit, getClientIp } from "@/lib/server/rateLimit";
 import { verifyTurnstileToken } from "@/lib/server/turnstile";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = body.payload || {};
-    const db = createServiceRoleClient();
+    const token = extractTokenFromRequest(request);
+    const db = createServiceRoleClient(token || undefined);
 
     if (body.type === "partner") {
       const marketName = String(payload.marketName || "").trim();
@@ -46,6 +48,7 @@ export async function POST(request: NextRequest) {
       const neighborhood = String(payload.neighborhood || "").trim();
       const city = String(payload.city || "").trim();
       const zipCode = String(payload.zipCode || "").trim();
+      const state = String(payload.state || "SP").trim().toUpperCase() || "SP";
       const desiredPlan =
         payload.desiredPlan === "premium" ? "premium" : "basico";
 
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { error } = await db.from("partner_applications").insert({
+      const baseRow = {
         market_name: marketName,
         responsible_name: responsibleName,
         email,
@@ -75,7 +78,16 @@ export async function POST(request: NextRequest) {
         city,
         zip_code: zipCode,
         desired_plan: desiredPlan,
-      });
+      };
+
+      let { error } = await db.from("partner_applications").insert(baseRow);
+
+      if (error && /state/i.test(error.message)) {
+        const retryRes = await db
+          .from("partner_applications")
+          .insert({ ...baseRow, state });
+        error = retryRes.error;
+      }
 
       if (error) {
         return NextResponse.json(
@@ -91,9 +103,18 @@ export async function POST(request: NextRequest) {
       const fullName = String(payload.fullName || "").trim();
       const email = String(payload.email || "").trim();
       const phone = String(payload.phone || "").trim();
-      const vehicleType = String(payload.vehicleType || "moto").trim();
+      const rawVehicle = String(payload.vehicleType || "moto").trim();
+      const vehicleType =
+        rawVehicle === "bicicleta" ||
+        rawVehicle === "moto" ||
+        rawVehicle === "carro" ||
+        rawVehicle === "utilitario"
+          ? rawVehicle
+          : "moto";
       const serviceNeighborhoods = Array.isArray(payload.serviceNeighborhoods)
-        ? payload.serviceNeighborhoods.map((s) => String(s).trim()).filter(Boolean)
+        ? payload.serviceNeighborhoods
+            .map((s) => String(s).trim())
+            .filter(Boolean)
         : [];
 
       if (!fullName || !email || !phone || serviceNeighborhoods.length === 0) {

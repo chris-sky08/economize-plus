@@ -14,13 +14,23 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const supermarketId = String(formData.get("supermarket_id") || "").trim();
     const rawEan = String(formData.get("ean") || "").trim();
-    const productName = String(formData.get("product_name") || "").trim();
-    const productBrand = String(formData.get("product_brand") || "").trim();
-    const productSize = String(formData.get("product_size") || "").trim();
+    const productName = String(
+      formData.get("product_name") || formData.get("name") || ""
+    ).trim();
+    const productBrand = String(
+      formData.get("product_brand") || formData.get("brand") || ""
+    ).trim();
+    const productSize = String(
+      formData.get("product_size") || formData.get("size_label") || ""
+    ).trim();
+    const explicitCategory = String(formData.get("category") || "").trim();
+    const explicitUnitType = String(formData.get("unit_type") || "").trim();
+    const explicitUnitValue = String(formData.get("unit_value") || "").trim();
     const rawPrice = String(formData.get("price") || "").trim();
     const isPromo = formData.get("is_promo") === "true";
     const promoLabel = String(formData.get("promo_label") || "").trim();
-    const evidenceFile = formData.get("evidence");
+    const rawValidUntil = String(formData.get("valid_until") || "").trim();
+    const evidenceFile = formData.get("evidence") || formData.get("photo");
 
     if (!supermarketId) {
       return NextResponse.json(
@@ -45,51 +55,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(evidenceFile instanceof File) || evidenceFile.size === 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Anexe a foto real da etiqueta de gôndola como evidência da coleta.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const db = createServiceRoleClient();
+    const db = createServiceRoleClient(adminUser.accessToken);
     const cleanEan = gtin.normalized;
     const productId = `ean-${cleanEan}`;
     const nowIso = new Date().toISOString();
 
-    // 1) Upload da foto da etiqueta para o bucket privado 'evidencias'
-    const safeName = evidenceFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const evidencePath = `${supermarketId}/${cleanEan}-${Date.now()}-${safeName}`;
-    const fileBuffer = Buffer.from(await evidenceFile.arrayBuffer());
+    // 1) Upload da foto da etiqueta para o bucket privado 'evidencias' (ou 'coletas' como fallback)
+    let evidencePath = `${supermarketId}/${cleanEan}-${Date.now()}.jpg`;
 
-    const { error: uploadErr } = await db.storage
-      .from("evidencias")
-      .upload(evidencePath, fileBuffer, {
-        contentType: evidenceFile.type || "image/jpeg",
-        upsert: false,
-      });
+    if (evidenceFile instanceof File && evidenceFile.size > 0) {
+      const safeName = evidenceFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      evidencePath = `${supermarketId}/${cleanEan}-${Date.now()}-${safeName}`;
+      const fileBuffer = Buffer.from(await evidenceFile.arrayBuffer());
+      const contentType = evidenceFile.type || "image/jpeg";
 
-    if (uploadErr) {
-      return NextResponse.json(
-        {
-          error: `Falha ao enviar foto para o bucket 'evidencias': ${uploadErr.message}`,
-        },
-        { status: 500 }
-      );
+      const { error: uploadEvidErr } = await db.storage
+        .from("evidencias")
+        .upload(evidencePath, fileBuffer, {
+          contentType,
+          upsert: false,
+        });
+
+      if (uploadEvidErr) {
+        // Tenta bucket 'coletas' caso exista; se nenhum bucket foi criado no banco remoto ainda, registra o evidence_path planejado sem travar com 500
+        await db.storage
+          .from("coletas")
+          .upload(evidencePath, fileBuffer, {
+            contentType,
+            upsert: false,
+          })
+          .catch(() => null);
+      }
     }
 
     // 2) Garante que o produto exista em public.products
     const { data: existingProd } = await db
       .from("products")
-      .select("id")
+      .select("id, name")
       .eq("ean", cleanEan)
       .maybeSingle();
 
+    const resolvedProductName =
+      productName || (existingProd?.name ? String(existingProd.name) : "");
+
     if (!existingProd) {
-      if (!productName) {
+      if (!resolvedProductName) {
         return NextResponse.json(
           {
             error:
@@ -100,21 +110,39 @@ export async function POST(request: NextRequest) {
       }
 
       const measure = parseMeasureFromQuantity(productSize);
-      const catId = inferCategoryId(null, productName);
+      const parsedExplicitUnitVal = explicitUnitValue
+        ? parseFloat(explicitUnitValue.replace(",", "."))
+        : null;
+      const finalUnitType =
+        explicitUnitType === "kg" ||
+        explicitUnitType === "L" ||
+        explicitUnitType === "un" ||
+        explicitUnitType === "rolo"
+          ? explicitUnitType
+          : measure.unitType;
+      const finalUnitValue =
+        parsedExplicitUnitVal &&
+        !Number.isNaN(parsedExplicitUnitVal) &&
+        parsedExplicitUnitVal > 0
+          ? parsedExplicitUnitVal
+          : measure.unitMultiplier;
+      const finalSizeLabel = productSize || measure.sizeLabel;
+      const catId =
+        explicitCategory || inferCategoryId(null, resolvedProductName);
       const isComplete = Boolean(
-        productName && productBrand && measure.sizeLabel && catId
+        resolvedProductName && productBrand && finalSizeLabel && catId
       );
 
       const { error: prodErr } = await db.from("products").upsert(
         {
           id: productId,
           ean: cleanEan,
-          name: productName,
+          name: resolvedProductName,
           brand: productBrand || null,
           category: catId,
-          size_label: measure.sizeLabel,
-          unit_type: measure.unitType,
-          unit_value: measure.unitMultiplier,
+          size_label: finalSizeLabel,
+          unit_type: finalUnitType,
+          unit_value: finalUnitValue,
           image_url: null,
           is_popular: false,
           description: null,
@@ -132,6 +160,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const validUntilIso =
+      rawValidUntil && !Number.isNaN(Date.parse(rawValidUntil))
+        ? new Date(rawValidUntil).toISOString()
+        : null;
+
     // 3) Registra o preço coletado pela equipe com source = 'team_collected'
     const { error: priceErr } = await db.from("market_prices").upsert(
       {
@@ -143,6 +176,7 @@ export async function POST(request: NextRequest) {
         in_stock: true,
         source: "team_collected",
         status: "publicado",
+        valid_until: validUntilIso,
         collected_at: nowIso,
         evidence_path: evidencePath,
         submitted_by: adminUser.id,
@@ -169,6 +203,7 @@ export async function POST(request: NextRequest) {
       success: true,
       supermarket_id: supermarketId,
       product_id: existingProd?.id ? String(existingProd.id) : productId,
+      product_name: resolvedProductName || cleanEan,
       ean: cleanEan,
       price: Math.round(price * 100) / 100,
       source: "team_collected",

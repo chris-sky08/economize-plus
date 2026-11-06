@@ -32,13 +32,37 @@ export default function MercadoPerfilPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { markets, products, prices, categories, addToList, showToast } =
-    useApp();
+  const {
+    markets,
+    products,
+    prices,
+    categories,
+    catalogLoading,
+    addToList,
+    showToast,
+  } = useApp();
 
   const [searchCat, setSearchCat] = useState("todas");
   const [searchText, setSearchText] = useState("");
 
   const market = markets.find((m) => m.id === id);
+
+  if (catalogLoading && !market) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
+        <div className="h-6 w-48 animate-pulse rounded-lg bg-slate-200" />
+        <div className="h-72 animate-pulse rounded-3xl border border-slate-200 bg-white p-6" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((n) => (
+            <div
+              key={n}
+              className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-white p-4"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (!market) {
     return (

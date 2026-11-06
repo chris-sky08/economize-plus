@@ -150,7 +150,7 @@ export default function ListaInteligentePage() {
     .map((market) => {
       let subtotal = 0;
       const foundItems: Array<{
-        product: Product;
+        product: Pick<Product, "id" | "name"> & Partial<Product>;
         quantity: number;
         unitPrice: number;
         lineTotal: number;
@@ -159,13 +159,23 @@ export default function ListaInteligentePage() {
         promoLabel?: string;
       }> = [];
       const missingItems: Array<{
-        product: Product;
+        product: Pick<Product, "id" | "name"> & Partial<Product>;
         reason: "sem_preco" | "indisponivel";
       }> = [];
 
       activeItems.forEach((item) => {
         const product = products.find((p) => p.id === item.productId);
-        if (!product) return;
+        if (!product) {
+          missingItems.push({
+            product: {
+              id: item.productId,
+              name: `Item (${item.productId})`,
+              categoryId: "mercearia",
+            },
+            reason: "sem_preco",
+          });
+          return;
+        }
 
         const priceEntry = prices.find(
           (p) => p.marketId === market.id && p.productId === product.id
@@ -192,7 +202,10 @@ export default function ListaInteligentePage() {
       });
 
       const isComplete =
-        activeItems.length > 0 && missingItems.length === 0;
+        activeItems.length > 0 &&
+        foundItems.length === activeItems.length &&
+        missingItems.length === 0 &&
+        subtotal > 0;
 
       return {
         market,
@@ -329,7 +342,7 @@ export default function ListaInteligentePage() {
                           key={item.id}
                           type="button"
                           onClick={() => handleSelectSuggestion(item)}
-                          className="flex w-full items-center justify-between gap-3 rounded-xl p-2.5 text-left transition hover:bg-brand-light/60"
+                          className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl p-2.5 text-left transition hover:bg-brand-light/60"
                         >
                           <div className="flex items-center gap-2.5">
                             {item.imageUrl ? (
@@ -478,7 +491,7 @@ export default function ListaInteligentePage() {
                                 item.quantity - 1
                               )
                             }
-                            className="min-h-[44px] min-w-[38px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                            className="min-h-[44px] min-w-[44px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 active:scale-95"
                             aria-label="Diminuir quantidade"
                           >
                             -
@@ -494,7 +507,7 @@ export default function ListaInteligentePage() {
                                 item.quantity + 1
                               )
                             }
-                            className="min-h-[44px] min-w-[38px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                            className="min-h-[44px] min-w-[44px] px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 active:scale-95"
                             aria-label="Aumentar quantidade"
                           >
                             +

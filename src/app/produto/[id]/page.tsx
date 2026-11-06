@@ -32,8 +32,15 @@ export default function ProdutoDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { products, markets, prices, categories, addToList, submitPriceReport } =
-    useApp();
+  const {
+    products,
+    markets,
+    prices,
+    categories,
+    catalogLoading,
+    addToList,
+    submitPriceReport,
+  } = useApp();
 
   const [qty, setQty] = useState(1);
   const [reportingMarketId, setReportingMarketId] = useState<string | null>(
@@ -41,9 +48,29 @@ export default function ProdutoDetalhePage({
   );
   const [reportReason, setReportReason] = useState("Preço divergente na loja");
   const [reportDetails, setReportDetails] = useState("");
+  const [reportError, setReportError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>("");
 
   const product = products.find((p) => p.id === id);
+
+  if (catalogLoading && !product) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+        <div className="h-6 w-48 animate-pulse rounded-lg bg-slate-200" />
+        <div className="grid grid-cols-1 gap-8 rounded-3xl border border-slate-200 bg-white p-6 lg:grid-cols-12">
+          <div className="h-64 animate-pulse rounded-2xl bg-slate-100 lg:col-span-4" />
+          <div className="space-y-4 lg:col-span-8">
+            <div className="h-6 w-36 animate-pulse rounded-full bg-slate-100" />
+            <div className="h-10 w-3/4 animate-pulse rounded-xl bg-slate-100" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+              <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -97,15 +124,23 @@ export default function ProdutoDetalhePage({
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportingMarketId) return;
-    await submitPriceReport(
+    setReportError(null);
+    const res = await submitPriceReport(
       reportingMarketId,
       product.id,
       reportReason,
       reportDetails,
       turnstileToken
     );
-    setReportingMarketId(null);
-    setReportDetails("");
+    if (res.ok) {
+      setReportingMarketId(null);
+      setReportDetails("");
+      setReportError(null);
+    } else {
+      setReportError(
+        res.error || "Não foi possível registrar a divergência no momento."
+      );
+    }
   };
 
   return (
@@ -293,9 +328,10 @@ export default function ProdutoDetalhePage({
           </div>
         ) : (
           <div className="mt-5 space-y-3">
-            {productOffers.map(({ priceEntry, market }, index) => {
+            {productOffers.map(({ priceEntry, market }) => {
               const unit = calculateUnitPrice(priceEntry.price, product);
-              const isBest = index === 0 && priceEntry.inStock;
+              const isBest =
+                bestOffer?.priceEntry.id === priceEntry.id && priceEntry.inStock;
 
               return (
                 <div
@@ -380,15 +416,18 @@ export default function ProdutoDetalhePage({
                     <div className="flex flex-col gap-1.5">
                       <Link
                         href={`/mercados/${market.id}`}
-                        className="inline-flex min-h-[38px] items-center gap-1 rounded-xl bg-brand-light px-3 py-1.5 text-xs font-bold text-brand-navy hover:bg-brand-navy hover:text-white"
+                        className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl bg-brand-light px-3 py-2 text-xs font-bold text-brand-navy transition hover:bg-brand-navy hover:text-white"
                       >
                         <Store className="h-3.5 w-3.5" />
                         Ver mercado
                       </Link>
                       <button
                         type="button"
-                        onClick={() => setReportingMarketId(market.id)}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-rose-600"
+                        onClick={() => {
+                          setReportingMarketId(market.id);
+                          setReportError(null);
+                        }}
+                        className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                       >
                         <Flag className="h-3 w-3" />
                         Informar divergência
@@ -414,12 +453,20 @@ export default function ProdutoDetalhePage({
               </h3>
               <button
                 type="button"
-                onClick={() => setReportingMarketId(null)}
-                className="text-xs font-semibold text-slate-500 hover:underline"
+                onClick={() => {
+                  setReportingMarketId(null);
+                  setReportError(null);
+                }}
+                className="min-h-[44px] px-2 text-xs font-semibold text-slate-500 hover:underline"
               >
                 Cancelar
               </button>
             </div>
+            {reportError && (
+              <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                {reportError}
+              </div>
+            )}
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700">
@@ -428,7 +475,7 @@ export default function ProdutoDetalhePage({
                 <select
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+                  className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
                 >
                   <option>Preço divergente na loja</option>
                   <option>Produto indisponível no mercado</option>
@@ -444,7 +491,7 @@ export default function ProdutoDetalhePage({
                   value={reportDetails}
                   onChange={(e) => setReportDetails(e.target.value)}
                   placeholder="Ex.: O preço na etiqueta mudou hoje..."
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+                  className="mt-1 min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
                 />
               </div>
             </div>

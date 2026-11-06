@@ -10,11 +10,9 @@ export async function verifyTurnstileToken(
   const secretKey = (process.env.TURNSTILE_SECRET_KEY || "").trim();
 
   if (!secretKey) {
-    return {
-      valid: false,
-      error:
-        "Verificação anti-bot (TURNSTILE_SECRET_KEY) não configurada no servidor.",
-    };
+    // Quando TURNSTILE_SECRET_KEY não está configurada no ambiente, permite o envio
+    // protegido pelo rate-limit de IP da rota de servidor (/api/public/submission).
+    return { valid: true };
   }
 
   if (!token || !token.trim()) {

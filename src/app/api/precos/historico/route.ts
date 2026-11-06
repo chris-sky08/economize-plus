@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { extractTokenFromRequest } from "@/lib/server/auth";
 import {
   createServiceRoleClient,
-   getServerSupabaseConfig,
+  getServerSupabaseConfig,
 } from "@/lib/server/supabaseAdmin";
 import type { PriceSource } from "@/types/domain";
 
@@ -88,7 +89,8 @@ export async function GET(request: NextRequest) {
       ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100)
       : 30;
 
-    const db = createServiceRoleClient();
+    const token = extractTokenFromRequest(request);
+    const db = createServiceRoleClient(token || undefined);
 
     // Busca uma janela maior para calcular a variação em relação à coleta anterior de cada par (supermarket_id, product_id)
     const fetchLimit = Math.min(limit * 3, 250);

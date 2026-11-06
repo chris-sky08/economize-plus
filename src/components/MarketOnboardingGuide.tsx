@@ -25,7 +25,7 @@ export default function MarketOnboardingGuide({
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownloadCsvTemplate = () => {
-    // Cabeçalho oficial sem dados fictícios (UTF-8 com BOM para abertura direta no Excel/LibreOffice)
+    // Cabeçalho oficial limpo (UTF-8 com BOM para abertura direta no Excel/LibreOffice)
     const csvHeaderContent = "\uFEFFean,nome,preco,oferta\n";
     const blob = new Blob([csvHeaderContent], {
       type: "text/csv;charset=utf-8;",
@@ -149,10 +149,10 @@ export default function MarketOnboardingGuide({
             <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
               No Painel do Mercado Parceiro (
               <Link
-                href="/painel-mercado"
+                href="/painel-parceiro"
                 className="font-bold text-brand-blue hover:underline"
               >
-                /painel-mercado
+                /painel-parceiro
               </Link>
               ), o lojista altera o preço de qualquer item já cadastrado em um
               toque ou adiciona novos produtos pelo código de barras. O sistema
