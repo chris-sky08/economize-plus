@@ -11,6 +11,7 @@ import {
   Package,
   Phone,
   Plus,
+  QrCode,
   Search,
   ShoppingBasket,
   Store,
@@ -23,6 +24,7 @@ import {
   calculateUnitPrice,
   formatBRL,
 } from "@/lib/format";
+import PriceHistorySection from "@/components/PriceHistorySection";
 
 export default function MercadoPerfilPage({
   params,
@@ -150,6 +152,13 @@ export default function MercadoPerfilPage({
                   Adicionar Principais Ofertas à Lista
                 </button>
               )}
+              <Link
+                href="/divulgacao"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/20"
+              >
+                <QrCode className="h-4 w-4 text-brand-yellow" />
+                QR Code da Loja
+              </Link>
               <Link
                 href="/lista"
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-brand-navy hover:bg-brand-light"
@@ -372,6 +381,15 @@ export default function MercadoPerfilPage({
             })}
           </div>
         )}
+      </div>
+
+      {/* Histórico Real de Atualizações de Preço da Loja */}
+      <div className="mt-8">
+        <PriceHistorySection
+          supermarketId={market.id}
+          title={`Histórico de Atualizações de Preço — ${market.shortName}`}
+          limit={20}
+        />
       </div>
     </div>
   );

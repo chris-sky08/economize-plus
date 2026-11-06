@@ -12,6 +12,7 @@ import {
   Loader2,
   Package,
   Plus,
+  QrCode,
   RefreshCw,
   Save,
   ShieldAlert,
@@ -24,6 +25,9 @@ import { useApp } from "@/context/AppContext";
 import { formatBRL, validateGtin } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { CsvLineError } from "@/app/api/ingest/csv/route";
+import MarketOnboardingGuide from "@/components/MarketOnboardingGuide";
+import PriceHistorySection from "@/components/PriceHistorySection";
+import QrCodePromoCard from "@/components/QrCodePromoCard";
 
 interface PendingReviewItem {
   id: string;
@@ -74,7 +78,13 @@ export default function PainelParceiroPage() {
   const myMarket = markets.find((m) => m.id === effectiveMarketId) || null;
 
   const [activeTab, setActiveTab] = useState<
-    "catalogo" | "novo_produto" | "importar" | "encarte_ia" | "perfil" | "metricas"
+    | "catalogo"
+    | "novo_produto"
+    | "importar"
+    | "encarte_ia"
+    | "perfil"
+    | "metricas"
+    | "qrcode"
   >("catalogo");
 
   const [editingPriceMap, setEditingPriceMap] = useState<
@@ -166,7 +176,7 @@ export default function PainelParceiroPage() {
 
   if (!user || (user.role !== "mercado" && user.role !== "admin")) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-12">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
           <ShieldAlert className="mx-auto h-12 w-12 text-brand-navy" />
           <h1 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
@@ -177,22 +187,30 @@ export default function PainelParceiroPage() {
             extraídas de encartes, faça login com uma conta vinculada a um
             supermercado em <code>public.market_members</code>.
           </p>
-          <div className="mt-6 flex justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
               href="/conta"
               className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-navy px-6 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue sm:text-sm"
             >
               Fazer Login na Conta
             </Link>
+            <Link
+              href="/seja-parceiro"
+              className="inline-flex min-h-[44px] items-center rounded-xl border border-slate-200 bg-slate-50 px-6 py-3 text-xs font-bold text-brand-navy transition hover:bg-slate-100 sm:text-sm"
+            >
+              Solicitar Credenciamento de Mercado
+            </Link>
           </div>
         </div>
+
+        <MarketOnboardingGuide showPartnerCta={true} />
       </div>
     );
   }
 
   if (!myMarket) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-12">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
           <Building2 className="mx-auto h-12 w-12 text-brand-blue" />
           <h1 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
@@ -201,7 +219,8 @@ export default function PainelParceiroPage() {
           <p className="mx-auto mt-2 max-w-lg text-xs text-slate-600 sm:text-sm">
             Sua conta ainda não possui vínculo ativo em{" "}
             <code>public.market_members</code> ou ainda não há mercados
-            cadastrados.{user.role === "admin" && " Cadastre um mercado no Painel Admin."}
+            cadastrados.
+            {user.role === "admin" && " Cadastre um mercado no Painel Admin."}
           </p>
           {user.role === "admin" && (
             <Link
@@ -212,6 +231,8 @@ export default function PainelParceiroPage() {
             </Link>
           )}
         </div>
+
+        <MarketOnboardingGuide showPartnerCta={true} />
       </div>
     );
   }
@@ -269,7 +290,7 @@ export default function PainelParceiroPage() {
       parsedPrice,
       newPromo,
       newPromo ? newPromoLabel.trim() || "Oferta" : undefined,
-      "partner_csv"
+      "partner_manual"
     );
     setNewEan("");
     setNewName("");
@@ -494,7 +515,8 @@ export default function PainelParceiroPage() {
               { id: "importar", label: "Subir Planilha CSV" },
               { id: "encarte_ia", label: "Encartes IA & Revisão" },
               { id: "perfil", label: "Perfil e Horários" },
-              { id: "metricas", label: "Resumo" },
+              { id: "metricas", label: "Resumo & Histórico" },
+              { id: "qrcode", label: "QR Code da Loja" },
             ] as const
           ).map((t) => (
             <button
@@ -564,7 +586,8 @@ export default function PainelParceiroPage() {
                 Produtos e Preços Publicados ({myPrices.length})
               </h2>
               <p className="text-xs text-slate-500">
-                Altere o valor ou marque itens em oferta.
+                Altere o valor ou marque itens em oferta. Toda alteração é
+                registrada automaticamente no histórico de preços.
               </p>
             </div>
           </div>
@@ -868,85 +891,90 @@ export default function PainelParceiroPage() {
 
       {/* ABA 3: IMPORTAR CATÁLOGO VIA ROTA POST /api/ingest/csv */}
       {activeTab === "importar" && (
-        <form
-          onSubmit={handleCsvIngest}
-          className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs"
-        >
-          <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
-            <FileSpreadsheet className="h-5 w-5 text-brand-blue" />
-            Importação de Planilha CSV (<code>POST /api/ingest/csv</code>)
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Envie um arquivo <code>.csv</code> (máx. 2 MB / 5.000 linhas) no
-            formato <code>ean,nome,preco,oferta</code>. Todos os códigos EAN são
-            validados pelo dígito verificador GTIN.
-          </p>
+        <div className="mt-6 space-y-6">
+          <MarketOnboardingGuide compact showPartnerCta={false} />
 
-          <div className="mt-4">
-            <label className="block text-xs font-bold text-slate-700">
-              Selecionar arquivo .csv do computador:
-            </label>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-              className="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-light file:px-4 file:py-2 file:text-xs file:font-bold file:text-brand-navy hover:file:bg-brand-navy hover:file:text-white"
-            />
-          </div>
-
-          <div className="mt-4">
-            <label className="block text-xs font-bold text-slate-700">
-              Ou cole as linhas CSV diretamente (cabeçalho:{" "}
-              <code>ean,nome,preco,oferta</code>):
-            </label>
-            <textarea
-              rows={5}
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              placeholder={"ean,nome,preco,oferta\n"}
-              className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 font-mono text-xs text-slate-800"
-            />
-          </div>
-
-          {csvSummary && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-brand-navy">
-              {csvSummary}
-            </div>
-          )}
-
-          {csvLineErrors.length > 0 && (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-900">
-              <p className="font-bold">
-                Erros por linha encontrados na planilha ({csvLineErrors.length}):
-              </p>
-              <ul className="mt-2 max-h-40 list-inside list-disc space-y-1 overflow-y-auto">
-                {csvLineErrors.map((err, i) => (
-                  <li key={i}>
-                    <strong>Linha {err.line}:</strong> {err.reason}{" "}
-                    {err.rawEan && (
-                      <code className="text-[10px] text-rose-700">
-                        (EAN: {err.rawEan})
-                      </code>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loadingCsv}
-            className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-brand-blue disabled:opacity-50"
+          <form
+            onSubmit={handleCsvIngest}
+            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs"
           >
-            {loadingCsv ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <FileUp className="h-4 w-4" />
+            <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
+              <FileSpreadsheet className="h-5 w-5 text-brand-blue" />
+              Importação de Planilha CSV (<code>POST /api/ingest/csv</code>)
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Envie um arquivo <code>.csv</code> (máx. 2 MB / 5.000 linhas) no
+              formato <code>ean,nome,preco,oferta</code>. Todos os códigos EAN
+              são validados pelo dígito verificador GTIN.
+            </p>
+
+            <div className="mt-4">
+              <label className="block text-xs font-bold text-slate-700">
+                Selecionar arquivo .csv do computador:
+              </label>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                className="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-brand-light file:px-4 file:py-2 file:text-xs file:font-bold file:text-brand-navy hover:file:bg-brand-navy hover:file:text-white"
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-bold text-slate-700">
+                Ou cole as linhas CSV diretamente (cabeçalho:{" "}
+                <code>ean,nome,preco,oferta</code>):
+              </label>
+              <textarea
+                rows={5}
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                placeholder={"ean,nome,preco,oferta\n"}
+                className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 font-mono text-xs text-slate-800"
+              />
+            </div>
+
+            {csvSummary && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-brand-navy">
+                {csvSummary}
+              </div>
             )}
-            Validar e Importar Planilha CSV
-          </button>
-        </form>
+
+            {csvLineErrors.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-900">
+                <p className="font-bold">
+                  Erros por linha encontrados na planilha (
+                  {csvLineErrors.length}):
+                </p>
+                <ul className="mt-2 max-h-40 list-inside list-disc space-y-1 overflow-y-auto">
+                  {csvLineErrors.map((err, i) => (
+                    <li key={i}>
+                      <strong>Linha {err.line}:</strong> {err.reason}{" "}
+                      {err.rawEan && (
+                        <code className="text-[10px] text-rose-700">
+                          (EAN: {err.rawEan})
+                        </code>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loadingCsv}
+              className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white hover:bg-brand-blue disabled:opacity-50"
+            >
+              {loadingCsv ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4" />
+              )}
+              Validar e Importar Planilha CSV
+            </button>
+          </form>
+        </div>
       )}
 
       {/* ABA 4: CAPTURA DE PREÇOS DE ENCARTE VIA GEMINI OCR + REVISÃO HUMANA */}
@@ -1182,47 +1210,84 @@ export default function PainelParceiroPage() {
         </form>
       )}
 
-      {/* ABA 6: RESUMO DO CATÁLOGO */}
+      {/* ABA 6: RESUMO DO CATÁLOGO E HISTÓRICO DE ATUALIZAÇÕES */}
       {activeTab === "metricas" && (
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
-                <BarChart3 className="h-5 w-5 text-brand-blue" />
-                Resumo do Catálogo Publicado
-              </h2>
-              <p className="text-xs text-slate-500">
-                Contagem real de preços e promoções ativas em {myMarket.name}.
-              </p>
+        <div className="mt-6 space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
+                  <BarChart3 className="h-5 w-5 text-brand-blue" />
+                  Resumo do Catálogo Publicado
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Contagem real de preços e promoções ativas em {myMarket.name}.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-100 bg-brand-light/50 p-4">
+                <span className="text-xs font-semibold text-slate-600">
+                  Produtos com Preço Publicado
+                </span>
+                <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-brand-navy">
+                  {myPrices.length} itens
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-emerald-50/60 p-4">
+                <span className="text-xs font-semibold text-slate-600">
+                  Ofertas Promocionais Ativas
+                </span>
+                <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-emerald-700">
+                  {myPrices.filter((p) => p.priceEntry.isPromo).length} ofertas
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-amber-50/70 p-4">
+                <span className="text-xs font-semibold text-slate-600">
+                  Itens com mais de 7 dias
+                </span>
+                <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-amber-800">
+                  {outdatedItems.length} itens
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-100 bg-brand-light/50 p-4">
-              <span className="text-xs font-semibold text-slate-600">
-                Produtos com Preço Publicado
-              </span>
-              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-brand-navy">
-                {myPrices.length} itens
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-100 bg-emerald-50/60 p-4">
-              <span className="text-xs font-semibold text-slate-600">
-                Ofertas Promocionais Ativas
-              </span>
-              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-emerald-700">
-                {myPrices.filter((p) => p.priceEntry.isPromo).length} ofertas
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-100 bg-amber-50/70 p-4">
-              <span className="text-xs font-semibold text-slate-600">
-                Itens com mais de 7 dias
-              </span>
-              <p className="tabular-price mt-1 font-heading text-2xl font-extrabold text-amber-800">
-                {outdatedItems.length} itens
-              </p>
+          <PriceHistorySection
+            supermarketId={myMarket.id}
+            title={`Histórico de Atualizações de Preço — ${myMarket.name}`}
+            limit={40}
+          />
+        </div>
+      )}
+
+      {/* ABA 7: QR CODE DE DIVULGAÇÃO DA LOJA */}
+      {activeTab === "qrcode" && (
+        <div className="mt-6 space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-brand-navy">
+                  <QrCode className="h-5 w-5 text-brand-blue" />
+                  QR Code &amp; Cartaz de Divulgação da Loja
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Gere e imprima o cartaz oficial com o QR Code apontando
+                  diretamente para o catálogo verificado de{" "}
+                  <strong>{myMarket.name}</strong>.
+                </p>
+              </div>
             </div>
           </div>
+
+          <QrCodePromoCard
+            defaultPath={`/mercados/${myMarket.id}`}
+            marketName={myMarket.name}
+            marketAddress={`${myMarket.address} — ${myMarket.neighborhood}, ${myMarket.city}`}
+            title={`Confira as Ofertas de ${myMarket.shortName}`}
+            subtitle="Escaneie o QR Code para ver os preços atualizados e montar sua Lista Inteligente."
+          />
         </div>
       )}
     </div>

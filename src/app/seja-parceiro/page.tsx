@@ -8,12 +8,14 @@ import {
   CheckCircle2,
   LayoutDashboard,
   Megaphone,
+  QrCode,
   ShieldCheck,
   Store,
   Tag,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import MarketOnboardingGuide from "@/components/MarketOnboardingGuide";
 
 export default function SejaParceiroPage() {
   const { submitPartnerApplication } = useApp();
@@ -32,6 +34,29 @@ export default function SejaParceiroPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+
+  const handleCepChange = async (value: string) => {
+    setZipCode(value);
+    const digits = value.replace(/\D/g, "");
+    if (digits.length === 8) {
+      try {
+        const res = await fetch(`/api/cep/${digits}`);
+        if (res.ok) {
+          const data = (await res.json()) as {
+            city?: string;
+            neighborhood?: string;
+            street?: string;
+          };
+          if (data.city && !city) setCity(data.city);
+          if (data.neighborhood && !neighborhood)
+            setNeighborhood(data.neighborhood);
+          if (data.street && !address) setAddress(data.street);
+        }
+      } catch {
+        // preenchimento manual continua disponível
+      }
+    }
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -54,7 +79,7 @@ export default function SejaParceiroPage() {
     e.preventDefault();
     if (!validate()) return;
 
-    const ok = await submitPartnerApplication(
+    const result = await submitPartnerApplication(
       {
         marketName,
         responsibleName,
@@ -68,7 +93,7 @@ export default function SejaParceiroPage() {
       },
       turnstileToken
     );
-    if (ok) {
+    if (result.ok) {
       setSubmitted(true);
     }
   };
@@ -104,9 +129,21 @@ export default function SejaParceiroPage() {
               <LayoutDashboard className="h-4 w-4" />
               Acessar Conta de Parceiro
             </Link>
+            <Link
+              href="/divulgacao"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-xs font-bold text-white transition hover:bg-white/20 sm:w-auto"
+            >
+              <QrCode className="h-4 w-4 text-brand-yellow" />
+              Gerar QR Code de Divulgação
+            </Link>
           </div>
         </div>
       </section>
+
+      {/* Guia Completo: Como os Mercados Cadastram e Atualizam os Preços */}
+      <div className="mt-10">
+        <MarketOnboardingGuide showPartnerCta={false} />
+      </div>
 
       {/* Benefícios Claros e Sem Promessas Enganosas */}
       <section className="mt-12">
@@ -137,8 +174,8 @@ export default function SejaParceiroPage() {
             },
             {
               icon: <BarChart3 className="h-6 w-6 text-brand-blue" />,
-              title: "Rastreabilidade e Confiança",
-              desc: "Cada preço exibe a fonte e o horário real da última atualização.",
+              title: "Rastreabilidade e Histórico",
+              desc: "Cada preço exibe a fonte, o histórico de variações e o horário real da última atualização.",
             },
           ].map((b) => (
             <div
@@ -252,7 +289,9 @@ export default function SejaParceiroPage() {
             </h3>
             <p className="mt-1 text-xs text-slate-700">
               Os dados do estabelecimento <strong>{marketName}</strong> foram
-              enviados para verificação cadastral.
+              enviados para verificação cadastral. Após a aprovação, sua conta
+              receberá o vínculo em <code>public.market_members</code> para
+              acessar o Painel do Parceiro.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
@@ -358,26 +397,49 @@ export default function SejaParceiroPage() {
               )}
             </div>
 
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="parceiro-end"
-                className="block text-xs font-bold text-slate-700"
-              >
-                Endereço Completo *
-              </label>
-              <input
-                id="parceiro-end"
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Logradouro, número e complemento"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
-              />
-              {errors.address && (
-                <p className="mt-1 text-xs font-semibold text-rose-600">
-                  {errors.address}
-                </p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="parceiro-cep"
+                  className="block text-xs font-bold text-slate-700"
+                >
+                  CEP *
+                </label>
+                <input
+                  id="parceiro-cep"
+                  type="text"
+                  value={zipCode}
+                  onChange={(e) => void handleCepChange(e.target.value)}
+                  placeholder="00000-000"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                />
+                {errors.zipCode && (
+                  <p className="mt-1 text-xs font-semibold text-rose-600">
+                    {errors.zipCode}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label
+                  htmlFor="parceiro-cidade"
+                  className="block text-xs font-bold text-slate-700"
+                >
+                  Cidade *
+                </label>
+                <input
+                  id="parceiro-cidade"
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Cidade"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+                />
+                {errors.city && (
+                  <p className="mt-1 text-xs font-semibold text-rose-600">
+                    {errors.city}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div>
@@ -402,49 +464,26 @@ export default function SejaParceiroPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="parceiro-cidade"
-                  className="block text-xs font-bold text-slate-700"
-                >
-                  Cidade *
-                </label>
-                <input
-                  id="parceiro-cidade"
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Cidade"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
-                />
-                {errors.city && (
-                  <p className="mt-1 text-xs font-semibold text-rose-600">
-                    {errors.city}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label
-                  htmlFor="parceiro-cep"
-                  className="block text-xs font-bold text-slate-700"
-                >
-                  CEP *
-                </label>
-                <input
-                  id="parceiro-cep"
-                  type="text"
-                  value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value)}
-                  placeholder="00000-000"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
-                />
-                {errors.zipCode && (
-                  <p className="mt-1 text-xs font-semibold text-rose-600">
-                    {errors.zipCode}
-                  </p>
-                )}
-              </div>
+            <div className="sm:col-span-2">
+              <label
+                htmlFor="parceiro-end"
+                className="block text-xs font-bold text-slate-700"
+              >
+                Endereço Completo *
+              </label>
+              <input
+                id="parceiro-end"
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Logradouro, número e complemento"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand-blue focus:outline-none"
+              />
+              {errors.address && (
+                <p className="mt-1 text-xs font-semibold text-rose-600">
+                  {errors.address}
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">

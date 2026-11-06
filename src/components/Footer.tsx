@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Database, ExternalLink } from "lucide-react";
+import { Database, ExternalLink, QrCode } from "lucide-react";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
 
 export default function Footer() {
@@ -31,8 +31,8 @@ export default function Footer() {
           </div>
           <p className="mt-4 text-xs leading-relaxed text-slate-300">
             Plataforma de comparação de preços entre mercados locais, com
-            rastreabilidade de origem, horário de coleta e cálculo proporcional
-            por unidade de medida.
+            rastreabilidade de origem, horário de coleta, histórico de variação
+            e cálculo proporcional por unidade de medida.
           </p>
         </div>
 
@@ -58,15 +58,26 @@ export default function Footer() {
             </li>
             <li>
               <Link href="/conta" className="hover:text-brand-yellow">
-                Criar Conta / Salvar Listas
+                Cadastro de Consumidor &amp; Conta
               </Link>
+            </li>
+            <li>
+              <a
+                href="/material-digital-economize.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-brand-yellow"
+              >
+                Material Digital Explicativo
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </li>
           </ul>
         </div>
 
         <div>
           <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-white">
-            Parceiros Locais
+            Parceiros &amp; Divulgação
           </h3>
           <ul className="mt-3 space-y-2 text-xs text-slate-300">
             <li>
@@ -82,6 +93,15 @@ export default function Footer() {
             <li>
               <Link href="/entregas" className="hover:text-brand-yellow">
                 Cadastro de Entregadores Parceiros
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/divulgacao"
+                className="inline-flex items-center gap-1.5 font-semibold text-brand-yellow hover:underline"
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                QR Code de Divulgação &amp; Cartaz
               </Link>
             </li>
           </ul>

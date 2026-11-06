@@ -24,6 +24,7 @@ import {
   formatBRL,
 } from "@/lib/format";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import PriceHistorySection from "@/components/PriceHistorySection";
 
 export default function ProdutoDetalhePage({
   params,
@@ -458,6 +459,14 @@ export default function ProdutoDetalhePage({
             </button>
           </form>
         )}
+      </div>
+
+      {/* Histórico Real de Atualização de Preços */}
+      <div className="mt-8">
+        <PriceHistorySection
+          productId={product.id}
+          title="Histórico de Atualização de Preços deste Produto"
+        />
       </div>
     </div>
   );
