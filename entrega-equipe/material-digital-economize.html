@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Economize+ · Material Digital Interativo — Como Funciona o App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-surface: #F4FAFC;
+      --bg-card: #FFFFFF;
+      --bg-soft: #E6F7FB;
+      --brand-navy: #063A6B;
+      --brand-navy-deep: #031F3D;
+      --text-secondary: #475569;
+      --brand-blue: #00AFCF;
+      --brand-green: #52D95D;
+      --brand-green-dark: #16803C;
+      --brand-yellow: #FFC928;
+      --border: #DCEBF2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-surface);
+      color: var(--brand-navy);
+      line-height: 1.55;
+      padding-bottom: 64px;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Poppins', sans-serif;
+      letter-spacing: -0.025em;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Hero Header */
+    .hero {
+      background: radial-gradient(circle at 20% 20%, #0A5296 0%, var(--brand-navy) 55%, var(--brand-navy-deep) 100%);
+      color: #FFFFFF;
+      padding: 44px 24px 36px;
+      border-bottom: 4px solid var(--brand-blue);
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--brand-yellow);
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.9rem, 3.5vw, 2.75rem);
+      font-weight: 800;
+      line-height: 1.12;
+    }
+
+    .hero h1 span {
+      color: var(--brand-green);
+    }
+
+    .hero-slogan {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--brand-yellow);
+      margin-top: 6px;
+    }
+
+    .hero-desc {
+      color: #DCEBF2;
+      max-width: 720px;
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+
+    /* Animated Pill Navigation */
+    .nav-wrapper {
+      background: var(--brand-navy-deep);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 12px 24px;
+      box-shadow: 0 10px 25px rgba(3, 31, 61, 0.16);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
+    .nav-btn {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: #E2E8F0;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 0.92rem;
+      padding: 11px 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      min-height: 44px;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .nav-btn.active {
+      background: #FFFFFF;
+      color: var(--brand-navy);
+      border-color: #FFFFFF;
+      box-shadow: 0 6px 18px rgba(0, 175, 207, 0.35);
+      transform: translateY(-1px);
+    }
+
+    /* Content Sections */
+    .section {
+      display: none;
+      padding: 36px 24px 0;
+      animation: fadeSlide 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    @keyframes fadeSlide {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 22px;
+      margin-top: 22px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(6, 58, 107, 0.05);
+    }
+
+    .step-badge {
+      display: inline-block;
+      background: var(--bg-soft);
+      color: var(--brand-blue);
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 5px 12px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .card h3 {
+      font-size: 1.22rem;
+      margin-bottom: 8px;
+      color: var(--brand-navy);
+    }
+
+    .card p {
+      color: var(--text-secondary);
+      font-size: 0.94rem;
+    }
+
+    .pill-highlight {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      color: var(--brand-green-dark);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Interactive Simulators */
+    .sim-box {
+      background: #FFFFFF;
+      border: 2px solid var(--brand-blue);
+      border-radius: 22px;
+      padding: 26px;
+      box-shadow: 0 12px 32px rgba(0, 175, 207, 0.1);
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    input[type="number"], select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1.5px solid #CBD5E1;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--brand-navy);
+      min-height: 44px;
+    }
+
+    .result-banner {
+      margin-top: 18px;
+      padding: 16px 20px;
+      border-radius: 16px;
+      background: var(--brand-navy);
+      color: #FFFFFF;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .badge-economy {
+      background: var(--brand-green);
+      color: var(--brand-navy-deep);
+      font-weight: 800;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+
+    .badge-partial {
+      background: var(--brand-yellow);
+      color: var(--brand-navy-deep);
+      font-weight: 800;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+
+    .toggle-btn {
+      appearance: none;
+      border: 1.5px solid var(--brand-blue);
+      background: var(--bg-soft);
+      color: var(--brand-navy);
+      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      min-height: 44px;
+      transition: transform 0.15s ease;
+    }
+
+    .toggle-btn:active {
+      transform: scale(0.96);
+    }
+
+    .table-clean {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 0.92rem;
+    }
+
+    .table-clean th, .table-clean td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .table-clean th {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .footer-note {
+      margin-top: 40px;
+      padding: 20px 24px;
+      border-radius: 16px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="container">
+      <div class="brand-badge">
+        <span>📘 MATERIAL DIGITAL INTERATIVO</span>
+        <span>•</span>
+        <span>GUIA OFICIAL DE FUNCIONAMENTO</span>
+      </div>
+      <div class="hero-top">
+        <div>
+          <h1>Economize<span>+</span></h1>
+          <div class="hero-slogan">Compare. Escolha. Economize.</div>
+          <p class="hero-desc">
+            Explore passo a passo como o aplicativo funciona para consumidores e supermercados parceiros: cálculo automático por quilo/litro, cesta inteligente sem distorção e rastreabilidade total de preços.
+          </p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav-wrapper" aria-label="Seções do Material Digital">
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="openTab('passo-a-passo', this)">1. Jornada do Consumidor (4 Passos)</button>
+      <button class="nav-btn" onclick="openTab('simuladores', this)">2. Simulador Ao Vivo: R$/kg & Cesta Inteligente</button>
+      <button class="nav-btn" onclick="openTab('parceiros', this)">3. Portal de Mercados Parceiros (CSV & OCR)</button>
+      <button class="nav-btn" onclick="openTab('arquitetura', this)">4. Regras de Ouro & Transparência</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- ABA 1: PASSO A PASSO DO CONSUMIDOR -->
+    <section id="passo-a-passo" class="section active">
+      <h2>Como o Consumidor Economiza no Dia a Dia</h2>
+      <p style="color: var(--text-secondary); margin-top: 4px;">
+        O fluxo do aplicativo foi desenhado para responder com transparência onde comprar cada item ou a compra inteira do mês.
+      </p>
+
+      <div class="grid-4">
+        <article class="card">
+          <span class="step-badge">Passo 1 · Localização</span>
+          <h3>Informe seu CEP ou use o GPS</h3>
+          <p>
+            Ao abrir o app, você define seu CEP ou localização. O Economize+ calcula a distância real até cada mercado usando coordenadas geográficas (fórmula de Haversine).
+          </p>
+          <div class="pill-highlight">
+            ✓ Sem mercados fictícios: mostra apenas supermercados reais da sua região.
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Passo 2 · Busca & Código EAN</span>
+          <h3>Busque por Nome ou Bipe o Código de Barras</h3>
+          <p>
+            Digite o nome do produto ou use a câmera do celular para ler o código de barras (EAN-13). O catálogo é integrado ao <strong>Open Food Facts Brasil</strong>.
+          </p>
+          <div class="pill-highlight">
+            ✓ Cada embalagem tem seu próprio EAN: nunca mistura pacote de 5 kg com o de 1 kg.
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Passo 3 · Comparação Justa</span>
+          <h3>Veja o Preço Total e o Preço por Quilo/Litro</h3>
+          <p>
+            Todo card mostra o preço da embalagem e calcula automaticamente o valor proporcional (<code>R$/kg</code>, <code>R$/L</code>, <code>R$/un</code>), além da origem e horário da coleta.
+          </p>
+          <div class="pill-highlight">
+            ✓ Preços com mais de 7 dias recebem automaticamente o aviso "Desatualizado".
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Passo 4 · Lista Inteligente</span>
+          <h3>Compare sua Cesta Completa vs. Parcial</h3>
+          <p>
+            Monte sua lista com quantidades. O app soma o total em cada supermercado próximo e separa quem tem todos os itens de quem tem apenas parte da lista.
+          </p>
+          <div class="pill-highlight">
+            ✓ Nunca soma produto sem preço como R$ 0,00 para não criar falso menor preço.
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ABA 2: SIMULADORES AO VIVO -->
+    <section id="simuladores" class="section">
+      <h2>Teste na Prática os Algoritmos do Economize+</h2>
+      <p style="color: var(--text-secondary); margin-top: 4px;">
+        Altere os valores abaixo para ver exatamente como o aplicativo calcula o preço por medida e como a Cesta Inteligente evita distorções.
+      </p>
+
+      <div class="grid-2">
+        <!-- Simulador 1: Preço por Medida -->
+        <div class="sim-box">
+          <span class="step-badge">Simulador 1 · Motor formatUnitPrice()</span>
+          <h3>Comparador de Embalagens (R$/kg)</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 14px;">
+            Descubra qual embalagem compensa mais proporcionalmente por quilo:
+          </p>
+
+          <div style="background: var(--bg-surface); padding: 14px; border-radius: 14px; margin-bottom: 12px;">
+            <strong>Opção A (Ex.: Pacote Maior)</strong>
+            <div class="input-row">
+              <div>
+                <label for="priceA">Preço Total (R$)</label>
+                <input id="priceA" type="number" step="0.10" value="27.90" oninput="calcUnitSim()" />
+              </div>
+              <div>
+                <label for="weightA">Peso em Quilos (kg)</label>
+                <input id="weightA" type="number" step="0.1" value="5" oninput="calcUnitSim()" />
+              </div>
+            </div>
+            <div style="margin-top: 8px; font-weight: 700; color: var(--brand-blue);" class="tabular" id="unitOutA">
+              Preço proporcional: R$ 5,58/kg
+            </div>
+          </div>
+
+          <div style="background: var(--bg-surface); padding: 14px; border-radius: 14px;">
+            <strong>Opção B (Ex.: Pacote Menor)</strong>
+            <div class="input-row">
+              <div>
+                <label for="priceB">Preço Total (R$)</label>
+                <input id="priceB" type="number" step="0.10" value="6.49" oninput="calcUnitSim()" />
+              </div>
+              <div>
+                <label for="weightB">Peso em Quilos (kg)</label>
+                <input id="weightB" type="number" step="0.1" value="1" oninput="calcUnitSim()" />
+              </div>
+            </div>
+            <div style="margin-top: 8px; font-weight: 700; color: var(--brand-blue);" class="tabular" id="unitOutB">
+              Preço proporcional: R$ 6,49/kg
+            </div>
+          </div>
+
+          <div class="result-banner tabular" id="unitWinnerBanner">
+            <div>
+              <div style="font-size: 0.8rem; color: #CBD5E1;">Resultado por Medida</div>
+              <div style="font-size: 1.05rem; font-weight: 800;" id="unitWinnerText">
+                A Opção A sai R$ 0,91/kg mais em conta
+              </div>
+            </div>
+            <span class="badge-economy" id="unitSavingBadge">Economia de 14% por kg</span>
+          </div>
+        </div>
+
+        <!-- Simulador 2: Cesta Inteligente -->
+        <div class="sim-box">
+          <span class="step-badge">Simulador 2 · Regra de Cesta Inteligente</span>
+          <h3>Por que nunca somamos item em falta como R$ 0,00?</h3>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 12px;">
+            Simule o que acontece quando o <strong>Mercado B</strong> não tem 1 dos itens da sua lista cadastrado:
+          </p>
+
+          <button class="toggle-btn" onclick="toggleMissingItem()" id="btnToggleStock">
+            🔄 Alternar: Simular que o Azeite está SEM PREÇO no Mercado B
+          </button>
+
+          <table class="table-clean tabular">
+            <thead>
+              <tr>
+                <th>Produto da Lista</th>
+                <th>Mercado A</th>
+                <th>Mercado B</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1x Arroz Tipo 1 (5 kg)</td>
+                <td>R$ 27,90</td>
+                <td>R$ 28,50</td>
+              </tr>
+              <tr>
+                <td>2x Leite Integral (1 L)</td>
+                <td>R$ 10,80</td>
+                <td>R$ 11,20</td>
+              </tr>
+              <tr>
+                <td>1x Azeite Extra Virgem (500 ml)</td>
+                <td>R$ 36,90</td>
+                <td id="olivePriceCell" style="font-weight: 700; color: var(--brand-navy);">R$ 37,50</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="result-banner tabular" id="basketResultBanner">
+            <div>
+              <div style="font-size: 0.8rem; color: #CBD5E1;" id="basketStatusTitle">Ambos com Cesta Completa (3/3 itens)</div>
+              <div style="font-size: 1rem; font-weight: 800;" id="basketComparisonText">
+                Mercado A: R$ 75,60 · Mercado B: R$ 77,20
+              </div>
+            </div>
+            <span class="badge-economy" id="basketBadge">Comparação 100% Direta</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 3: PORTAL DE MERCADOS PARCEIROS -->
+    <section id="parceiros" class="section">
+      <h2>Como os Preços Chegam ao Economize+ (4 Canais Oficiais)</h2>
+      <p style="color: var(--text-secondary); margin-top: 4px;">
+        Nenhum preço entra no banco sem autenticação validada no servidor e sem identificação de origem (<code>source</code>) e horário (<code>collected_at</code>).
+      </p>
+
+      <div class="grid-2">
+        <article class="card">
+          <span class="step-badge">Canal 1 · /api/ingest/csv</span>
+          <h3>Importação de Planilha CSV / ERP</h3>
+          <p>
+            O supermercado parceiro exporta sua tabela do sistema frente de caixa (PDV/ERP) e envia no painel. O servidor valida automaticamente o dígito verificador <strong>GTIN-8/12/13/14</strong>, preços positivos e validade das promoções.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Canal 2 · /api/ingest/flyer</span>
+          <h3>Leitura de Encartes com IA (Gemini OCR) + Revisão Humana</h3>
+          <p>
+            O parceiro envia a foto ou PDF do encarte de ofertas. A IA extrai nomes, pesos e preços, mas todos os itens entram obrigatoriamente com <code>status = 'pendente'</code> até a conferência e aprovação humana do responsável pelo mercado.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Canal 3 · /painel-parceiro</span>
+          <h3>Painel Manual do Mercado Parceiro</h3>
+          <p>
+            Gerentes vinculados ao mercado (validados via <code>requireMarketMember</code> e Row Level Security no Supabase) atualizam ofertas do dia em tempo real pelo celular ou computador.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Canal 4 · /admin/coleta & /api/price-reports</span>
+          <h3>Coleta em Loja & Botão "Reportar Preço"</h3>
+          <p>
+            A equipe registra preços presenciais identificados como <em>"Coletado pela equipe em DD/MM às HH:mm"</em>, e consumidores podem sinalizar divergências em 1 toque (protegido por Cloudflare Turnstile e Rate Limit).
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ABA 4: ARQUITETURA & TRANSPARÊNCIA -->
+    <section id="arquitetura" class="section">
+      <h2>Compromissos de Transparência, Segurança e Código</h2>
+      <div class="grid-2">
+        <article class="card">
+          <span class="step-badge">Integridade de Dados</span>
+          <h3>Zero Dados Fictícios em Produção</h3>
+          <p>
+            Quando uma região ainda não possui supermercados ou ofertas cadastradas, o aplicativo exibe um <strong>Empty State honesto</strong> convidando o usuário a indicar um mercado local — nunca inventa preços ou estabelecimentos.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Voz da Marca & CDC</span>
+          <h3>Sem Superlativos Não Comprováveis</h3>
+          <p>
+            Não usamos promessas vagas como <em>"garantia do menor preço"</em>. Mostramos o dado objetivo: valor coletado, cálculo proporcional por medida, fonte da informação e horário exato da atualização.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Licença de Dados Abertos</span>
+          <h3>Atribuição Open Food Facts (ODbL / CC BY-SA)</h3>
+          <p>
+            Os dados cadastrais de código de barras e imagens de produtos provenientes do Open Food Facts exibem atribuição clara à licença Open Database License (ODbL) no rodapé e nas páginas de produto.
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="step-badge">Segurança Supabase</span>
+          <h3>Row Level Security (RLS) & TypeScript Estrito</h3>
+          <p>
+            Chaves administrativas nunca vão para o navegador. Todas as tabelas contam com políticas RLS específicas por papel (consumidor, membro de mercado e admin).
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer-note">
+      <div><strong>Economize+</strong> · <em>"Compare. Escolha. Economize."</em></div>
+      <div>Dados de catálogo de produtos: Open Food Facts (ODbL / CC BY-SA)</div>
+    </footer>
+  </main>
+
+  <script>
+    function openTab(tabId, btn) {
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function formatBRL(val) {
+      return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function calcUnitSim() {
+      const pA = parseFloat(document.getElementById('priceA').value) || 0;
+      const wA = parseFloat(document.getElementById('weightA').value) || 1;
+      const pB = parseFloat(document.getElementById('priceB').value) || 0;
+      const wB = parseFloat(document.getElementById('weightB').value) || 1;
+
+      const uA = pA / Math.max(wA, 0.01);
+      const uB = pB / Math.max(wB, 0.01);
+
+      document.getElementById('unitOutA').textContent = `Preço proporcional: ${formatBRL(uA)}/kg`;
+      document.getElementById('unitOutB').textContent = `Preço proporcional: ${formatBRL(uB)}/kg`;
+
+      const diff = Math.abs(uA - uB);
+      const maxU = Math.max(uA, uB, 0.01);
+      const pct = Math.round((diff / maxU) * 100);
+
+      if (Math.abs(uA - uB) < 0.01) {
+        document.getElementById('unitWinnerText').textContent = 'As duas embalagens têm o mesmo custo por quilo';
+        document.getElementById('unitSavingBadge').textContent = 'Empate técnico';
+      } else if (uA < uB) {
+        document.getElementById('unitWinnerText').textContent = `A Opção A sai ${formatBRL(diff)}/kg mais em conta`;
+        document.getElementById('unitSavingBadge').textContent = `Economia de ${pct}% por kg`;
+      } else {
+        document.getElementById('unitWinnerText').textContent = `A Opção B sai ${formatBRL(diff)}/kg mais em conta`;
+        document.getElementById('unitSavingBadge').textContent = `Economia de ${pct}% por kg`;
+      }
+    }
+
+    let isOliveMissing = false;
+    function toggleMissingItem() {
+      isOliveMissing = !isOliveMissing;
+      const cell = document.getElementById('olivePriceCell');
+      const title = document.getElementById('basketStatusTitle');
+      const text = document.getElementById('basketComparisonText');
+      const badge = document.getElementById('basketBadge');
+
+      if (isOliveMissing) {
+        cell.innerHTML = '<span style="color:#D97706;">Sem preço cadastrado</span>';
+        title.textContent = '⚠️ Mercado B movido para CESTA PARCIAL (2/3 itens)';
+        text.textContent = 'Mercado A (Completa): R$ 75,60 · Mercado B (Parcial s/ Azeite): R$ 39,70';
+        badge.className = 'badge-partial';
+        badge.textContent = 'Item excluído listado (Não soma R$ 0,00)';
+      } else {
+        cell.innerHTML = 'R$ 37,50';
+        title.textContent = 'Ambos com Cesta Completa (3/3 itens)';
+        text.textContent = 'Mercado A: R$ 75,60 · Mercado B: R$ 77,20';
+        badge.className = 'badge-economy';
+        badge.textContent = 'Comparação 100% Direta';
+      }
+    }
+  </script>
+</body>
+</html>

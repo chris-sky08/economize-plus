@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatório de Evolução e Entrega do MVP — Economize+</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #063A6B;
+      --navy-deep: #031F3D;
+      --blue: #00AFCF;
+      --green: #52D95D;
+      --yellow: #FFC928;
+      --surface: #F4FAFC;
+      --soft: #E6F7FB;
+      --slate: #475569;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--surface);
+      color: var(--navy);
+      line-height: 1.6;
+      padding: 32px 20px 64px;
+    }
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      border-radius: 24px;
+      border: 1.5px solid #DCEBF2;
+      box-shadow: 0 18px 48px rgba(6, 58, 107, 0.08);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+      color: #FFFFFF;
+      padding: 36px 40px;
+      border-bottom: 4px solid var(--blue);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+    }
+    .header h1 span { color: var(--green); }
+    .header p { color: #CBD5E1; font-size: 0.95rem; margin-top: 4px; }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.86rem;
+      font-weight: 800;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: var(--navy-deep);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.14);
+      color: #FFFFFF;
+      border: 1px solid rgba(255,255,255,0.28);
+    }
+    .content { padding: 36px 40px; }
+    .whatsapp-box {
+      background: var(--soft);
+      border: 2px solid var(--blue);
+      border-radius: 18px;
+      padding: 22px 26px;
+      margin-bottom: 32px;
+    }
+    .whatsapp-box h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.05rem;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .whatsapp-text {
+      white-space: pre-wrap;
+      font-size: 0.92rem;
+      color: #1E293B;
+      background: #FFFFFF;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #CBD5E1;
+    }
+    .section {
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .badge {
+      display: inline-block;
+      background: var(--soft);
+      color: var(--blue);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .section h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      margin-bottom: 10px;
+    }
+    ul { padding-left: 20px; color: var(--slate); font-size: 0.95rem; }
+    li { margin-bottom: 8px; }
+    li strong { color: var(--navy); }
+    code {
+      background: #F1F5F9;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      color: var(--navy);
+    }
+    @media print {
+      body { background: #FFFFFF; padding: 0; }
+      .page { box-shadow: none; border: none; }
+      .actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div>
+        <h1>Relatório de Entrega — Economize<span>+</span></h1>
+        <p>Resumo executivo e técnico das atualizações do site para envio à equipe</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="copyWhatsapp()">📋 Copiar Resumo para WhatsApp</button>
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimir / Salvar em PDF</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="whatsapp-box">
+        <h2>
+          <span>💬 Mensagem Pronta para Enviar no WhatsApp / Slack da Equipe</span>
+          <span id="copyStatus" style="font-size: 0.82rem; color: #16803C;"></span>
+        </h2>
+        <div class="whatsapp-text" id="whatsappMsg">Pessoal, concluímos a evolução completa do MVP do *Economize+*! 🚀
+
+O que entrou no ar:
+1️⃣ *100% Dados Reais e Rastreáveis:* Todo preço exige fonte (Parceiro, CSV, Encarte IA ou Coleta em Loja) e horário exato da coleta, com aviso automático quando passa de 7 dias.
+2️⃣ *Cadastro Real de Consumidores e Recuperação de Senha (/conta):* Cadastro com Nome, E-mail, Telefone/WhatsApp, busca automática de CEP (preenchendo Cidade e Bairro), edição de perfil e redefinição de senha completa via Supabase Auth.
+3️⃣ *Histórico de Atualização de Preços (/api/precos/historico):* Linha do tempo nas páginas de produto, mercado e painel do parceiro mostrando se o preço subiu (↑), baixou (↓) ou se manteve (=), com valor anterior e data/hora.
+4️⃣ *Como os Mercados Cadastram e Atualizam Preços (/seja-parceiro e /painel-parceiro):* Guia em 4 etapas + download do modelo oficial de planilha (modelo-precos-economize.csv), validação GTIN/EAN-13 e leitura de encartes por IA com revisão humana obrigatória antes de publicar.
+5️⃣ *Central de QR Code de Divulgação e Cartaz (/divulgacao):* Gera QR Code em SVG/PNG e Cartaz Oficial (1080×1350px) pronto para imprimir no caixa/balcão ou postar nas redes sociais.
+6️⃣ *Acabamento Mobile/Desktop e Materiais de Lançamento:* Ícone circular oficial da marca, barras de navegação com animação deslizante 60fps no celular e no PC, vídeos de lançamento (16:9 e 9:16 Shorts/Reels) e Manual Digital Interativo.</div>
+      </div>
+
+      <div class="section">
+        <span class="badge">Pilar 1 · Divulgação</span>
+        <h3>1. Central de QR Code de Divulgação e Cartaz Oficial (<code>/divulgacao</code>)</h3>
+        <ul>
+          <li>Detecta automaticamente o endereço ativo do site (ou permite informar qualquer link de demonstração/produção).</li>
+          <li>Gera QR Codes específicos para a Home (<code>/</code>), Busca/Leitor EAN (<code>/buscar</code>), Lista Inteligente (<code>/lista</code>), Cadastro de Parceiros (<code>/seja-parceiro</code>) ou para a página exclusiva de um supermercado (<code>/mercados/[id]</code>).</li>
+          <li>Exporta <strong>QR Code Vetorial (SVG)</strong> e gera um <strong>Cartaz Oficial em Alta Resolução (1080×1350px PNG)</strong> pronto para impressão de balcão/gôndola ou compartilhamento no WhatsApp e Instagram.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <span class="badge">Pilar 2 &amp; 3 · Consumidores e Segurança</span>
+        <h3>2. Cadastro Real de Consumidores, Autenticação e Recuperação de Senha (<code>/conta</code>)</h3>
+        <ul>
+          <li><strong>Cadastro Completo (<code>public.profiles</code>):</strong> Nome Completo, E-mail, Telefone/WhatsApp, CEP (com preenchimento automático de Cidade e Bairro via <code>/api/cep/[cep]</code>) e Consentimento LGPD registrado.</li>
+          <li><strong>Edição de Dados Cadastrais:</strong> Painel autenticado integrado à rota <code>GET / PATCH /api/conta/perfil</code> para atualizar dados e sincronizar a Lista de Compras na nuvem.</li>
+          <li><strong>Recuperação e Alteração de Senha:</strong> Envio de link de redefinição por e-mail (<code>resetPasswordForEmail</code>) e tela dedicada de <strong>Definir Nova Senha</strong> ao abrir o link de recuperação.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <span class="badge">Pilar 4 · Transparência</span>
+        <h3>3. Histórico Real de Atualização de Preços (<code>/api/precos/historico</code>)</h3>
+        <ul>
+          <li>Toda atualização de preço publicada grava automaticamente um registro na tabela <code>public.price_history</code>.</li>
+          <li>Exibição da linha do tempo real nas páginas de <strong>Produto (<code>/produto/[id]</code>)</strong>, <strong>Mercado (<code>/mercados/[id]</code>)</strong> e <strong>Painel do Parceiro (<code>/painel-parceiro</code>)</strong>.</li>
+          <li>Mostra preço anterior, cálculo de variação (<code>↓ Baixou</code>, <code>↑ Subiu</code>, <code>= Preço mantido</code> ou <code>1º registro</code>), fonte da informação e data/hora exata.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <span class="badge">Pilar 5 &amp; 6 · Operação de Supermercados</span>
+        <h3>4. Fluxo Oficial de Cadastro e Atualização de Preços pelos Mercados</h3>
+        <ul>
+          <li><strong>Etapa 1 — Credenciamento Seguro:</strong> Solicitação em <code>/seja-parceiro</code> com busca automática por CEP e vínculo autorizado em <code>public.market_members</code>.</li>
+          <li><strong>Etapa 2 — Edição Manual Rápida:</strong> Atualização em 1 clique no catálogo, confirmação de itens com mais de 7 dias e cadastro com validação do dígito verificador <strong>GTIN/EAN-13</strong>.</li>
+          <li><strong>Etapa 3 — Importação em Lote via Planilha CSV:</strong> Botão para baixar o arquivo oficial <code>modelo-precos-economize.csv</code> (colunas <code>ean,nome,preco,oferta</code>) e importar até 5.000 itens de uma vez.</li>
+          <li><strong>Etapa 4 — Leitura de Encartes por IA com Revisão Humana:</strong> Extração via Gemini Vision onde todos os preços entram obrigatoriamente como <code>pendente</code> até revisão e aprovação do responsável pelo mercado.</li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function copyWhatsapp() {
+      const text = document.getElementById('whatsappMsg').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const st = document.getElementById('copyStatus');
+        st.textContent = '✓ Copiado para a área de transferência!';
+        setTimeout(() => { st.textContent = ''; }, 3500);
+      });
+    }
+  </script>
+</body>
+</html>
