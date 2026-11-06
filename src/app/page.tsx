@@ -27,13 +27,55 @@ import ProductComparisonCard from "@/components/ProductComparisonCard";
 import SkeletonCard from "@/components/SkeletonCard";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  mercearia: <Package className="h-6 w-6" />,
-  hortifruti: <Apple className="h-6 w-6" />,
-  laticinios: <Milk className="h-6 w-6" />,
-  bebidas: <CupSoda className="h-6 w-6" />,
-  limpeza: <Sparkles className="h-6 w-6" />,
-  higiene: <HeartHandshake className="h-6 w-6" />,
-  padaria: <Croissant className="h-6 w-6" />,
+  mercearia: (
+    <img
+      src="/icons/01-mercearia.jpg"
+      alt="Mercearia"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
+  hortifruti: (
+    <img
+      src="/icons/02-hortifruti.jpg"
+      alt="Hortifruti"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
+  laticinios: (
+    <img
+      src="/icons/03-laticinios.jpg"
+      alt="Laticínios"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
+  bebidas: (
+    <img
+      src="/icons/04-bebidas.jpg"
+      alt="Bebidas"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
+  limpeza: (
+    <img
+      src="/icons/05-limpeza.jpg"
+      alt="Limpeza"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
+  higiene: (
+    <img
+      src="/icons/06-higiene.jpg"
+      alt="Higiene"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
+  padaria: (
+    <img
+      src="/icons/07-padaria.jpg"
+      alt="Padaria"
+      className="h-full w-full rounded-full object-cover"
+    />
+  ),
 };
 
 export default function HomePage() {
@@ -443,8 +485,8 @@ export default function HomePage() {
               href={`/buscar?categoria=${cat.id}`}
               className="group flex flex-col items-center rounded-2xl border border-slate-200/80 bg-white p-4 text-center shadow-2xs transition hover:-translate-y-0.5 hover:border-brand-blue hover:shadow-md"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-light text-brand-navy transition group-hover:bg-brand-navy group-hover:text-white">
-                {CATEGORY_ICONS[cat.id] || <Package className="h-6 w-6" />}
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white shadow-xs transition-transform duration-300 group-hover:scale-110 sm:h-20 sm:w-20">
+                {CATEGORY_ICONS[cat.id] || <Package className="h-7 w-7 text-brand-navy" />}
               </div>
               <span className="mt-2.5 font-heading text-xs font-bold text-brand-navy sm:text-sm">
                 {cat.name}

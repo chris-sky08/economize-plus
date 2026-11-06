@@ -183,9 +183,11 @@ export default function Navbar() {
                 href="/conta"
                 className="flex min-h-[44px] items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
-                  <User className="h-4 w-4" />
-                </div>
+                <img
+                  src="/icons/08-sua-conta.jpg"
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full bg-white object-cover shadow-xs"
+                />
                 <div className="hidden text-left sm:block">
                   <span className="block text-[10px] text-brand-light">
                     {user ? `Perfil: ${user.role.toUpperCase()}` : "Sua conta"}
@@ -201,8 +203,12 @@ export default function Navbar() {
                 className="flex min-h-[44px] items-center gap-2.5 rounded-xl bg-brand-yellow px-3.5 py-2 text-brand-navy shadow-xs transition hover:bg-amber-300 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white"
               >
                 <div className="relative">
-                  <ShoppingBasket className="h-5 w-5" />
-                  <span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-navy px-1 text-[10px] font-bold text-white">
+                  <img
+                    src="/icons/09-minha-cesta.jpg"
+                    alt=""
+                    className="h-9 w-9 shrink-0 rounded-full bg-white object-cover shadow-xs"
+                  />
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-navy px-1 text-[10px] font-bold text-white shadow-2xs">
                     {totalItemsInList}
                   </span>
                 </div>

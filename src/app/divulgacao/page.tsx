@@ -59,7 +59,13 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
       "Compare preços entre mercados da região",
       "Escolha onde comprar com transparência",
     ],
-    icon: <QrCode className="h-5 w-5" />,
+    icon: (
+      <img
+        src="/icons/12-qr-geral.jpg"
+        alt="QR Code Geral do Aplicativo"
+        className="h-full w-full rounded-full object-cover"
+      />
+    ),
   },
   {
     id: "buscar",
@@ -76,7 +82,13 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
       "Veja o preço total e o preço por medida (kg/L)",
       "Confira a data e hora da última atualização",
     ],
-    icon: <Search className="h-5 w-5" />,
+    icon: (
+      <img
+        src="/icons/13-qr-busca-ean.jpg"
+        alt="QR Code de Busca & Leitor EAN"
+        className="h-full w-full rounded-full object-cover"
+      />
+    ),
   },
   {
     id: "lista",
@@ -93,7 +105,13 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
       "Compare o subtotal real em cada mercado ativo",
       "Veja alertas claros de itens sem estoque cadastrado",
     ],
-    icon: <ListChecks className="h-5 w-5" />,
+    icon: (
+      <img
+        src="/icons/14-qr-lista-inteligente.jpg"
+        alt="QR Code da Lista Inteligente"
+        className="h-full w-full rounded-full object-cover"
+      />
+    ),
   },
   {
     id: "parceiro",
@@ -110,7 +128,13 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
       "Publique preços via painel, planilha ou encarte",
       "Atraia clientes da sua região com dados verificados",
     ],
-    icon: <Building2 className="h-5 w-5" />,
+    icon: (
+      <img
+        src="/icons/15-qr-mercados-parceiros.jpg"
+        alt="QR Code para Mercados Parceiros"
+        className="h-full w-full rounded-full object-cover"
+      />
+    ),
   },
   {
     id: "mercado",
@@ -127,7 +151,13 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
       "Confira os preços com horário de atualização",
       "Adicione os itens à sua Lista Inteligente",
     ],
-    icon: <Store className="h-5 w-5" />,
+    icon: (
+      <img
+        src="/icons/16-qr-supermercado-ativo.jpg"
+        alt="QR Code Específico de Supermercado Ativo"
+        className="h-full w-full rounded-full object-cover"
+      />
+    ),
   },
   {
     id: "instagram",
@@ -302,10 +332,10 @@ export default function DivulgacaoPage() {
                   <div>
                     <div className="flex items-center justify-between gap-2">
                       <span
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+                        className={`inline-flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-xs ${
                           isSelected
-                            ? "bg-brand-yellow text-brand-navy"
-                            : "bg-brand-light text-brand-blue"
+                            ? "bg-white text-brand-navy ring-2 ring-brand-yellow"
+                            : "bg-white text-brand-blue ring-1 ring-slate-200"
                         }`}
                       >
                         {preset.icon}

@@ -161,9 +161,13 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
         <div className="flex items-center gap-1.5 border-l border-white/20 pl-3">
           <Link
             href="/seja-parceiro"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 font-bold text-brand-navy shadow-xs transition hover:opacity-90 active:scale-95"
+            className="flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-green px-3 py-1.5 font-bold text-brand-navy shadow-xs transition hover:opacity-90 active:scale-95"
           >
-            <Building2 className="h-3.5 w-3.5" />
+            <img
+              src="/icons/10-seja-parceiro.jpg"
+              alt=""
+              className="h-6 w-6 shrink-0 rounded-full bg-white object-cover shadow-2xs"
+            />
             Seja Parceiro
           </Link>
           {(user?.role === "mercado" || user?.role === "admin") && (
@@ -177,9 +181,13 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
           )}
           <Link
             href="/entregas"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-white transition hover:bg-white/20 active:scale-95"
+            className="flex min-h-[44px] items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-white transition hover:bg-white/20 active:scale-95"
           >
-            <Truck className="h-3.5 w-3.5" />
+            <img
+              src="/icons/11-entregas.jpg"
+              alt=""
+              className="h-6 w-6 shrink-0 rounded-full bg-white object-cover shadow-2xs"
+            />
             Entregas
           </Link>
           {user?.role === "admin" && (
