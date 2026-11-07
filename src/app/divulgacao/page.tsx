@@ -4,18 +4,12 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  Building2,
   CheckCircle2,
   ExternalLink,
-  Instagram,
-  ListChecks,
   Megaphone,
-  Printer,
   QrCode,
   Search,
-  Share2,
   Sparkles,
-  Store,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import QrCodePromoCard, {
@@ -175,7 +169,13 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
       "Siga para acompanhar novidades e parceiros",
       "Acesse economize-nine.vercel.app e economize",
     ],
-    icon: <Instagram className="h-5 w-5" />,
+    icon: (
+      <img
+        src="/icons/26-instagram-oficial.jpg"
+        alt="QR Code do Instagram Oficial"
+        className="h-full w-full rounded-full object-cover"
+      />
+    ),
   },
 ];
 
@@ -255,9 +255,14 @@ export default function DivulgacaoPage() {
         >
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-navy text-brand-yellow shadow-xs">
-                <Instagram className="h-6 w-6" />
-              </div>
+              <img
+                src="/icons/26-instagram-oficial.jpg"
+                alt="Instagram oficial do Economize+"
+                width={56}
+                height={56}
+                loading="lazy"
+                className="h-14 w-14 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-xs"
+              />
               <div>
                 <span className="inline-block rounded-md bg-brand-light px-2.5 py-0.5 text-[11px] font-extrabold text-brand-navy">
                   Canal Oficial Verificado
@@ -289,9 +294,16 @@ export default function DivulgacaoPage() {
                 href={OFFICIAL_INSTAGRAM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy py-1.5 pr-4 pl-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95"
               >
-                <Instagram className="h-4 w-4 text-brand-yellow" />
+                <img
+                  src="/icons/26-instagram-oficial.jpg"
+                  alt=""
+                  width={32}
+                  height={32}
+                  loading="lazy"
+                  className="h-8 w-8 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover"
+                />
                 <span>Abrir {OFFICIAL_INSTAGRAM_HANDLE}</span>
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -397,7 +409,14 @@ export default function DivulgacaoPage() {
                 </div>
               ) : activeMarkets.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-[#F4FAFC] p-6 text-center">
-                  <Store className="mx-auto h-8 w-8 text-brand-blue" />
+                  <img
+                    src="/icons/10-seja-parceiro.jpg"
+                    alt=""
+                    width={72}
+                    height={72}
+                    loading="lazy"
+                    className="mx-auto h-18 w-18 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-sm"
+                  />
                   <p className="mt-2 font-heading text-sm font-bold text-brand-navy">
                     Nenhum mercado parceiro ativo cadastrado no momento
                   </p>
@@ -498,9 +517,14 @@ export default function DivulgacaoPage() {
 
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-100 bg-[#F4FAFC] p-5">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-navy text-brand-yellow">
-                <Printer className="h-5 w-5" />
-              </div>
+              <img
+                src="/icons/12-qr-geral.jpg"
+                alt=""
+                width={48}
+                height={48}
+                loading="lazy"
+                className="h-12 w-12 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-2xs"
+              />
               <h3 className="mt-3 font-heading text-base font-bold text-brand-navy">
                 1. Display de Caixa e Balcão (A4 / A5)
               </h3>
@@ -513,9 +537,14 @@ export default function DivulgacaoPage() {
             </div>
 
             <div className="rounded-2xl border border-slate-100 bg-[#F4FAFC] p-5">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue text-white">
-                <Store className="h-5 w-5" />
-              </div>
+              <img
+                src="/icons/10-seja-parceiro.jpg"
+                alt=""
+                width={48}
+                height={48}
+                loading="lazy"
+                className="h-12 w-12 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-2xs"
+              />
               <h3 className="mt-3 font-heading text-base font-bold text-brand-navy">
                 2. Etiquetas de Gôndola e Encartes
               </h3>
@@ -527,9 +556,14 @@ export default function DivulgacaoPage() {
             </div>
 
             <div className="rounded-2xl border border-slate-100 bg-[#F4FAFC] p-5">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-green text-brand-navy">
-                <Share2 className="h-5 w-5" />
-              </div>
+              <img
+                src="/icons/26-instagram-oficial.jpg"
+                alt=""
+                width={48}
+                height={48}
+                loading="lazy"
+                className="h-12 w-12 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-2xs"
+              />
               <h3 className="mt-3 font-heading text-base font-bold text-brand-navy">
                 3. Post para Instagram, Status e WhatsApp
               </h3>

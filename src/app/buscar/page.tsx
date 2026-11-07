@@ -3,13 +3,13 @@
 import React, { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  AlertCircle,
   Filter,
   RotateCcw,
   Search,
   SlidersHorizontal,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { ECONOMIZE_ICONS, getCategoryIconSrc } from "@/lib/icons";
 import {
   TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
@@ -315,12 +315,20 @@ function BuscarContent() {
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex min-h-[44px] w-full items-center rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
+                    className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${
                       selectedCategory === cat.id
                         ? "bg-brand-navy font-bold text-white"
                         : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
+                    <img
+                      src={getCategoryIconSrc(cat.id)}
+                      alt=""
+                      width={28}
+                      height={28}
+                      loading="lazy"
+                      className="h-7 w-7 shrink-0 rounded-full border border-brand-yellow bg-white object-cover"
+                    />
                     {cat.name}
                   </button>
                 ))}
@@ -466,7 +474,14 @@ function BuscarContent() {
             </div>
           ) : filteredResults.length === 0 ? (
             <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-2xs">
-              <AlertCircle className="mx-auto h-10 w-10 text-brand-blue" />
+              <img
+                src={ECONOMIZE_ICONS["passo-busca-ean"].src}
+                alt=""
+                width={80}
+                height={80}
+                loading="lazy"
+                className="mx-auto h-20 w-20 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-sm"
+              />
               <h3 className="mt-3 font-heading text-lg font-bold text-brand-navy">
                 Nenhum produto com preço publicado encontrado
               </h3>

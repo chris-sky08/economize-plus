@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
+import { ECONOMIZE_ICONS } from "@/lib/icons";
 
 export default function MercadosPage() {
   const { markets, prices, location, catalogLoading, setIsLocationModalOpen } =
@@ -88,7 +89,14 @@ export default function MercadosPage() {
         </div>
       ) : visibleMarkets.length === 0 ? (
         <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-2xs">
-          <Store className="mx-auto h-10 w-10 text-brand-blue" />
+          <img
+            src={ECONOMIZE_ICONS["seja-parceiro"].src}
+            alt=""
+            width={80}
+            height={80}
+            loading="lazy"
+            className="mx-auto h-20 w-20 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-sm"
+          />
           <h2 className="mt-3 font-heading text-lg font-bold text-brand-navy">
             Nenhum mercado parceiro por aqui ainda — indique um mercado
           </h2>
@@ -136,7 +144,14 @@ export default function MercadosPage() {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <Store className="h-12 w-12 text-brand-blue/50" />
+                      <img
+                        src={ECONOMIZE_ICONS["seja-parceiro"].src}
+                        alt=""
+                        width={88}
+                        height={88}
+                        loading="lazy"
+                        className="h-22 w-22 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-md"
+                      />
                     )}
                     <div className="absolute top-3 left-3 flex flex-wrap gap-2">
                       {market.verifiedAt && (

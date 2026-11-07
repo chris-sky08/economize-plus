@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { Cookie, Database, ExternalLink, Facebook, Instagram, Mail, MapPin, QrCode, Star } from "lucide-react";
+import { Cookie, Database, ExternalLink, QrCode, Star } from "lucide-react";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
+import { ECONOMIZE_ICONS } from "@/lib/icons";
 import { triggerFeedbackModal } from "@/components/FeedbackWidget";
 import { triggerCookiePreferencesModal } from "@/components/CookieConsentBanner";
 
@@ -44,9 +45,14 @@ export default function Footer() {
               aria-label="Instagram oficial do Economize+ (@economizemais_oficial)"
               className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-brand-blue/40 bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition hover:border-brand-green hover:bg-brand-blue/25 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-blue text-white">
-                <Instagram className="h-4 w-4" />
-              </span>
+              <img
+                src={ECONOMIZE_ICONS["instagram-oficial"].src}
+                alt=""
+                width={36}
+                height={36}
+                loading="lazy"
+                className="h-9 w-9 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-2xs"
+              />
               <span className="text-left leading-tight">
                 <span className="block text-[10px] font-semibold uppercase tracking-wider text-brand-green">
                   Instagram Oficial
@@ -65,9 +71,14 @@ export default function Footer() {
               aria-label="Página oficial no Facebook: Economize mais"
               className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-brand-blue/40 bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition hover:border-brand-green hover:bg-brand-blue/25 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1877F2] text-white">
-                <Facebook className="h-4 w-4" />
-              </span>
+              <img
+                src={ECONOMIZE_ICONS["facebook-oficial"].src}
+                alt=""
+                width={36}
+                height={36}
+                loading="lazy"
+                className="h-9 w-9 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-2xs"
+              />
               <span className="text-left leading-tight">
                 <span className="block text-[10px] font-semibold uppercase tracking-wider text-brand-yellow">
                   Facebook Oficial
@@ -82,16 +93,35 @@ export default function Footer() {
             <a
               href="mailto:empresaeconomizemais@gmail.com"
               aria-label="E-mail oficial de contato: empresaeconomizemais@gmail.com"
-              className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs text-slate-200 transition hover:border-brand-yellow hover:text-white"
+              className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs text-slate-200 transition hover:border-brand-yellow hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
             >
-              <Mail className="h-4 w-4 shrink-0 text-brand-yellow" />
-              <span className="truncate font-mono text-[11px]">
-                empresaeconomizemais@gmail.com
+              <img
+                src={ECONOMIZE_ICONS["email-oficial"].src}
+                alt=""
+                width={36}
+                height={36}
+                loading="lazy"
+                className="h-9 w-9 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-2xs"
+              />
+              <span className="min-w-0 text-left leading-tight">
+                <span className="block text-[10px] font-semibold uppercase tracking-wider text-brand-light">
+                  E-mail Oficial
+                </span>
+                <span className="block truncate font-mono text-[11px] text-white">
+                  empresaeconomizemais@gmail.com
+                </span>
               </span>
             </a>
 
-            <div className="inline-flex items-center gap-2 px-1 pt-0.5 text-[11px] text-slate-300">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-green" />
+            <div className="inline-flex items-center gap-2.5 px-1 pt-0.5 text-[11px] text-slate-300">
+              <img
+                src={ECONOMIZE_ICONS["passo-cep-gps"].src}
+                alt=""
+                width={28}
+                height={28}
+                loading="lazy"
+                className="h-7 w-7 shrink-0 rounded-full border border-brand-green bg-white object-cover"
+              />
               <span>Bertioga, SP — Brasil</span>
             </div>
           </div>

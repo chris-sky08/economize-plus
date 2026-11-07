@@ -24,6 +24,10 @@ export type EconomizeIconId =
   | "passo-economia"
   | "ciberseguranca"
   | "avaliacao-feedback"
+  | "instagram-oficial"
+  | "facebook-oficial"
+  | "email-oficial"
+  | "canais-oficiais"
   | "hero-magalu";
 
 export interface EconomizeIconMeta {
@@ -157,6 +161,26 @@ export const ECONOMIZE_ICONS: Record<EconomizeIconId, EconomizeIconMeta> = {
     id: "avaliacao-feedback",
     src: "/icons/25-avaliacao-feedback.jpg",
     alt: "Ícone realista de Avaliação, Sugestões e Relato de Bugs",
+  },
+  "instagram-oficial": {
+    id: "instagram-oficial",
+    src: "/icons/26-instagram-oficial.jpg",
+    alt: "Ícone do Instagram oficial do Economize+",
+  },
+  "facebook-oficial": {
+    id: "facebook-oficial",
+    src: "/icons/27-facebook-oficial.jpg",
+    alt: "Ícone do Facebook oficial do Economize+",
+  },
+  "email-oficial": {
+    id: "email-oficial",
+    src: "/icons/28-email-gmail.jpg",
+    alt: "Ícone do e-mail oficial do Economize+",
+  },
+  "canais-oficiais": {
+    id: "canais-oficiais",
+    src: "/icons/29-canais-oficiais.jpg",
+    alt: "Ícone dos canais oficiais do Economize+",
   },
   "hero-magalu": {
     id: "hero-magalu",

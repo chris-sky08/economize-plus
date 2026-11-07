@@ -19,6 +19,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { ECONOMIZE_ICONS } from "@/lib/icons";
 import { Product } from "@/types/domain";
 import {
   TRANSPARENCY_DISCLAIMER,
@@ -403,8 +404,15 @@ export default function ListaInteligentePage() {
 
             {validShoppingList.length === 0 ? (
               <div className="py-10 text-center">
-                <ShoppingBasket className="mx-auto h-10 w-10 text-slate-300" />
-                <p className="mt-2 font-heading text-sm font-bold text-brand-navy">
+                <img
+                  src={ECONOMIZE_ICONS["minha-cesta"].src}
+                  alt=""
+                  width={80}
+                  height={80}
+                  loading="lazy"
+                  className="mx-auto h-20 w-20 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-sm"
+                />
+                <p className="mt-3 font-heading text-sm font-bold text-brand-navy">
                   Sua lista está vazia
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
@@ -559,7 +567,14 @@ export default function ListaInteligentePage() {
 
           {marketComparisons.length === 0 ? (
             <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-2xs">
-              <Store className="mx-auto h-10 w-10 text-brand-blue" />
+              <img
+                src={ECONOMIZE_ICONS["seja-parceiro"].src}
+                alt=""
+                width={80}
+                height={80}
+                loading="lazy"
+                className="mx-auto h-20 w-20 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-sm"
+              />
               <h3 className="mt-3 font-heading text-base font-bold text-brand-navy">
                 Nenhum mercado ativo no raio selecionado
               </h3>

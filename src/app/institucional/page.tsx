@@ -7,16 +7,13 @@ import {
   Cookie,
   Database,
   ExternalLink,
-  Facebook,
   FileText,
   HelpCircle,
-  Instagram,
-  Mail,
-  MapPin,
   ShieldCheck,
 } from "lucide-react";
 import { triggerCookiePreferencesModal } from "@/components/CookieConsentBanner";
 import { triggerFeedbackModal } from "@/components/FeedbackWidget";
+import { ECONOMIZE_ICONS } from "@/lib/icons";
 
 function InstitucionalContent() {
   const searchParams = useSearchParams();
@@ -434,11 +431,16 @@ function InstitucionalContent() {
         {/* CANAIS OFICIAIS DE COMUNICAÇÃO E NOVIDADES DA COMUNIDADE */}
         <div className="mt-8 rounded-2xl border border-brand-blue/30 bg-brand-light/60 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-navy text-white shadow-xs">
-                <Instagram className="h-5 w-5 text-brand-yellow" />
-              </div>
-              <div>
+            <div className="flex min-w-0 flex-1 items-start gap-3.5">
+              <img
+                src={ECONOMIZE_ICONS["canais-oficiais"].src}
+                alt={ECONOMIZE_ICONS["canais-oficiais"].alt}
+                width={56}
+                height={56}
+                loading="lazy"
+                className="h-14 w-14 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-xs"
+              />
+              <div className="min-w-0 flex-1">
                 <span className="inline-block rounded-md bg-brand-green/25 px-2 py-0.5 text-[11px] font-extrabold text-brand-navy">
                   Canais Oficiais Verificados — Bertioga, SP
                 </span>
@@ -456,20 +458,34 @@ function InstitucionalContent() {
                   pelo e-mail institucional{" "}
                   <a
                     href="mailto:empresaeconomizemais@gmail.com"
-                    className="font-mono font-bold text-brand-navy underline"
+                    className="font-mono font-bold text-brand-navy underline break-all"
                   >
                     empresaeconomizemais@gmail.com
                   </a>
                   .
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                  <span className="inline-flex items-center gap-1 font-semibold text-brand-navy">
-                    <MapPin className="h-3.5 w-3.5 text-brand-blue" />
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-brand-navy">
+                    <img
+                      src={ECONOMIZE_ICONS["passo-cep-gps"].src}
+                      alt=""
+                      width={24}
+                      height={24}
+                      loading="lazy"
+                      className="h-6 w-6 shrink-0 rounded-full border border-brand-blue/40 bg-white object-cover"
+                    />
                     Bertioga, SP, Brasil
                   </span>
-                  <span className="inline-flex items-center gap-1 font-mono text-slate-700">
-                    <Mail className="h-3.5 w-3.5 text-brand-blue" />
-                    empresaeconomizemais@gmail.com
+                  <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-slate-700">
+                    <img
+                      src={ECONOMIZE_ICONS["email-oficial"].src}
+                      alt=""
+                      width={24}
+                      height={24}
+                      loading="lazy"
+                      className="h-6 w-6 shrink-0 rounded-full border border-brand-blue/40 bg-white object-cover"
+                    />
+                    <span className="truncate">empresaeconomizemais@gmail.com</span>
                   </span>
                 </div>
               </div>
@@ -480,9 +496,16 @@ function InstitucionalContent() {
                 href="https://www.instagram.com/economizemais_oficial"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy py-1.5 pr-4 pl-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
               >
-                <Instagram className="h-4 w-4 text-brand-yellow" />
+                <img
+                  src={ECONOMIZE_ICONS["instagram-oficial"].src}
+                  alt=""
+                  width={32}
+                  height={32}
+                  loading="lazy"
+                  className="h-8 w-8 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover"
+                />
                 <span>@economizemais_oficial</span>
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -491,9 +514,16 @@ function InstitucionalContent() {
                 href="https://www.facebook.com/search/top?q=Economize%20mais"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#1877F2] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#166FE5] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#1877F2] py-1.5 pr-4 pl-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#166FE5] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
               >
-                <Facebook className="h-4 w-4 text-white" />
+                <img
+                  src={ECONOMIZE_ICONS["facebook-oficial"].src}
+                  alt=""
+                  width={32}
+                  height={32}
+                  loading="lazy"
+                  className="h-8 w-8 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover"
+                />
                 <span>Facebook: Economize mais</span>
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
