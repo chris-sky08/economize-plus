@@ -1,17 +1,22 @@
 "use client";
 
-import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Building2,
   ClipboardCheck,
   LayoutDashboard,
   ShieldAlert,
-  Store,
-  Truck,
 } from "lucide-react";
 import type { Category, UserProfile } from "@/types/domain";
+import { ECONOMIZE_ICONS, getCategoryIconSrc } from "@/lib/icons";
 
 interface AnimatedSubnavProps {
   categories: Category[];
@@ -28,23 +33,28 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
 
   const tabs = useMemo(() => {
     const list = [
-      { id: "comparar", label: "Comparar Preços", href: "/buscar" },
-      ...categories.slice(0, 5).map((cat) => ({
+      {
+        id: "comparar",
+        label: "Departamentos",
+        href: "/buscar",
+        iconSrc: ECONOMIZE_ICONS["scanner-ean"].src,
+      },
+      ...categories.slice(0, 7).map((cat) => ({
         id: `cat-${cat.id}`,
         label: cat.name,
         href: `/buscar?categoria=${encodeURIComponent(cat.id)}`,
+        iconSrc: getCategoryIconSrc(cat.id),
       })),
       {
         id: "mercados",
-        label: "Mercados Próximos",
+        label: "Mercados",
         href: "/mercados",
-        icon: <Store className="h-3.5 w-3.5" />,
+        iconSrc: ECONOMIZE_ICONS["qr-supermercado-ativo"].src,
       },
     ];
     return list;
   }, [categories]);
 
-  // Determina aba ativa baseado na rota e query param
   const activeId = useMemo(() => {
     if (pathname === "/buscar") {
       if (currentCategory) {
@@ -59,7 +69,11 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
   }, [pathname, currentCategory]);
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [pill, setPill] = useState<{ left: number; width: number; opacity: number }>({
+  const [pill, setPill] = useState<{
+    left: number;
+    width: number;
+    opacity: number;
+  }>({
     left: 0,
     width: 0,
     opacity: 0,
@@ -87,7 +101,6 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
 
   useIsomorphicLayoutEffect(() => {
     updatePillPosition();
-    // No mobile, centraliza suavemente a aba ativa na rolagem horizontal
     if (activeId && tabRefs.current[activeId]) {
       tabRefs.current[activeId]?.scrollIntoView({
         behavior: "smooth",
@@ -97,7 +110,6 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
     }
   }, [targetId, activeId, categories]);
 
-  // Atualiza posição caso a janela seja redimensionada
   useEffect(() => {
     window.addEventListener("resize", updatePillPosition);
     return () => window.removeEventListener("resize", updatePillPosition);
@@ -105,20 +117,19 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
 
   return (
     <nav
-      aria-label="Menu principal e categorias"
-      className="border-t border-white/15 bg-brand-blue/20 text-white"
+      aria-label="Departamentos e navegação rápida"
+      className="border-t border-white/15 bg-gradient-to-r from-[#05315B] via-[#07427A] to-[#05315B] text-white"
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 overflow-x-auto px-3 py-1.5 text-xs font-medium whitespace-nowrap sm:px-6">
-        {/* Container das abas com o Pill Animado deslizante */}
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 overflow-x-auto px-3 py-1.5 text-xs font-medium whitespace-nowrap sm:px-6">
+        {/* Abas de Departamentos com Ícones Realistas em Miniatura */}
         <div
           ref={containerRef}
           onMouseLeave={() => setHoveredId(null)}
-          className="relative flex items-center gap-1 sm:gap-2"
+          className="relative flex items-center gap-1"
         >
-          {/* Pill deslizante acelerado por hardware a 60fps */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-0 h-[36px] rounded-lg bg-white shadow-md transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            className="pointer-events-none absolute top-1/2 left-0 h-[38px] rounded-xl bg-white shadow-md transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
             style={{
               transform: `translateX(${pill.left}px) translateY(-50%)`,
               width: `${pill.width}px`,
@@ -138,13 +149,17 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
                 }}
                 href={tab.href}
                 onMouseEnter={() => setHoveredId(tab.id)}
-                className={`relative z-10 flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 font-semibold transition-colors duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow ${
+                className={`relative z-10 flex min-h-[44px] items-center gap-2 rounded-xl px-2.5 py-1.5 font-semibold transition-colors duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow ${
                   isHighlight
-                    ? "text-brand-navy font-bold"
+                    ? "font-bold text-brand-navy"
                     : "text-brand-light hover:text-white"
                 }`}
               >
-                {tab.icon}
+                <img
+                  src={tab.iconSrc}
+                  alt=""
+                  className="h-5 w-5 shrink-0 rounded-full bg-white object-cover shadow-2xs"
+                />
                 <span>{tab.label}</span>
                 {isCurrentActive && (
                   <span
@@ -157,14 +172,14 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
           })}
         </div>
 
-        {/* Links secundários da direita */}
+        {/* Atalhos B2B e Logística com Ícones Realistas */}
         <div className="flex items-center gap-1.5 border-l border-white/20 pl-3">
           <Link
             href="/seja-parceiro"
-            className="flex min-h-[44px] items-center gap-2 rounded-lg bg-brand-green px-3 py-1.5 font-bold text-brand-navy shadow-xs transition hover:opacity-90 active:scale-95"
+            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-green px-3 py-1.5 font-bold text-brand-navy shadow-xs transition hover:opacity-95 active:scale-95"
           >
             <img
-              src="/icons/10-seja-parceiro.jpg"
+              src={ECONOMIZE_ICONS["seja-parceiro"].src}
               alt=""
               className="h-6 w-6 shrink-0 rounded-full bg-white object-cover shadow-2xs"
             />
@@ -173,7 +188,7 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
           {(user?.role === "mercado" || user?.role === "admin") && (
             <Link
               href="/painel-parceiro"
-              className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
             >
               <LayoutDashboard className="h-3.5 w-3.5 text-brand-yellow" />
               Painel do Mercado
@@ -181,10 +196,10 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
           )}
           <Link
             href="/entregas"
-            className="flex min-h-[44px] items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-white transition hover:bg-white/20 active:scale-95"
+            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-white/12 px-3 py-1.5 font-semibold text-white transition hover:bg-white/20 active:scale-95"
           >
             <img
-              src="/icons/11-entregas.jpg"
+              src={ECONOMIZE_ICONS.entregas.src}
               alt=""
               className="h-6 w-6 shrink-0 rounded-full bg-white object-cover shadow-2xs"
             />
@@ -194,16 +209,16 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
             <>
               <Link
                 href="/admin/coleta"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
               >
                 <ClipboardCheck className="h-3.5 w-3.5 text-brand-green" />
                 Coleta em Loja
               </Link>
               <Link
                 href="/admin"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-yellow/20 px-3 py-2 font-semibold text-brand-yellow transition hover:bg-brand-yellow/30 active:scale-95"
               >
-                <ShieldAlert className="h-3.5 w-3.5 text-brand-yellow" />
+                <ShieldAlert className="h-3.5 w-3.5" />
                 Admin
               </Link>
             </>
@@ -218,16 +233,7 @@ export default function AnimatedSubnav(props: AnimatedSubnavProps) {
   return (
     <Suspense
       fallback={
-        <nav
-          aria-label="Menu principal e categorias"
-          className="border-t border-white/15 bg-brand-blue/20 text-white"
-        >
-          <div className="mx-auto flex max-w-7xl items-center gap-4 px-3 py-2.5 sm:px-6">
-            <span className="h-8 w-28 rounded-lg bg-white/10 animate-pulse" />
-            <span className="h-8 w-20 rounded-lg bg-white/10 animate-pulse" />
-            <span className="h-8 w-20 rounded-lg bg-white/10 animate-pulse" />
-          </div>
-        </nav>
+        <div className="h-12 border-t border-white/15 bg-brand-navy" />
       }
     >
       <AnimatedSubnavContent {...props} />

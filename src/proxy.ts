@@ -3,9 +3,11 @@ import {
   requireAdmin,
   requireMarketMember,
 } from "@/lib/server/auth";
+import { validateSafeRedirectPath } from "@/lib/server/security";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const safeRedirect = validateSafeRedirectPath(pathname);
 
   if (pathname.startsWith("/admin")) {
     try {
@@ -13,7 +15,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     } catch {
       const loginUrl = new URL("/conta", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
+      loginUrl.searchParams.set("redirect", safeRedirect);
       loginUrl.searchParams.set("motivo", "acesso_admin");
       return NextResponse.redirect(loginUrl);
     }
@@ -25,7 +27,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     } catch {
       const loginUrl = new URL("/conta", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
+      loginUrl.searchParams.set("redirect", safeRedirect);
       loginUrl.searchParams.set("motivo", "acesso_parceiro");
       return NextResponse.redirect(loginUrl);
     }

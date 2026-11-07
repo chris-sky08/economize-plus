@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateGtin } from "@/lib/format";
 import { requireAdmin, ServerAuthError } from "@/lib/server/auth";
+import {
+  sanitizeText,
+  validateFileMagicBytes,
+  validateGtinEan,
+  validateSameOrigin,
+} from "@/lib/server/security";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import {
   inferCategoryId,
@@ -8,28 +13,39 @@ import {
 } from "@/services/productLookup";
 
 export async function POST(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const adminUser = await requireAdmin(request);
 
     const formData = await request.formData();
-    const supermarketId = String(formData.get("supermarket_id") || "").trim();
-    const rawEan = String(formData.get("ean") || "").trim();
-    const productName = String(
-      formData.get("product_name") || formData.get("name") || ""
-    ).trim();
-    const productBrand = String(
-      formData.get("product_brand") || formData.get("brand") || ""
-    ).trim();
-    const productSize = String(
-      formData.get("product_size") || formData.get("size_label") || ""
-    ).trim();
-    const explicitCategory = String(formData.get("category") || "").trim();
-    const explicitUnitType = String(formData.get("unit_type") || "").trim();
-    const explicitUnitValue = String(formData.get("unit_value") || "").trim();
-    const rawPrice = String(formData.get("price") || "").trim();
+    const supermarketId = sanitizeText(formData.get("supermarket_id"), 80);
+    const rawEan = sanitizeText(formData.get("ean"), 30);
+    const productName = sanitizeText(
+      formData.get("product_name") || formData.get("name"),
+      160
+    );
+    const productBrand = sanitizeText(
+      formData.get("product_brand") || formData.get("brand"),
+      100
+    );
+    const productSize = sanitizeText(
+      formData.get("product_size") || formData.get("size_label"),
+      60
+    );
+    const explicitCategory = sanitizeText(formData.get("category"), 60);
+    const explicitUnitType = sanitizeText(formData.get("unit_type"), 20);
+    const explicitUnitValue = sanitizeText(formData.get("unit_value"), 30);
+    const rawPrice = sanitizeText(formData.get("price"), 30);
     const isPromo = formData.get("is_promo") === "true";
-    const promoLabel = String(formData.get("promo_label") || "").trim();
-    const rawValidUntil = String(formData.get("valid_until") || "").trim();
+    const promoLabel = sanitizeText(formData.get("promo_label"), 80);
+    const rawValidUntil = sanitizeText(formData.get("valid_until"), 40);
     const evidenceFile = formData.get("evidence") || formData.get("photo");
 
     if (!supermarketId) {
@@ -39,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const gtin = validateGtin(rawEan);
+    const gtin = validateGtinEan(rawEan);
     if (!gtin.valid) {
       return NextResponse.json(
         { error: gtin.reason || "Código de barras EAN inválido." },
@@ -64,10 +80,26 @@ export async function POST(request: NextRequest) {
     let evidencePath = `${supermarketId}/${cleanEan}-${Date.now()}.jpg`;
 
     if (evidenceFile instanceof File && evidenceFile.size > 0) {
-      const safeName = evidenceFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeName = evidenceFile.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
       evidencePath = `${supermarketId}/${cleanEan}-${Date.now()}-${safeName}`;
       const fileBuffer = Buffer.from(await evidenceFile.arrayBuffer());
-      const contentType = evidenceFile.type || "image/jpeg";
+      const magic = validateFileMagicBytes(fileBuffer, [
+        "png",
+        "jpeg",
+        "webp",
+        "pdf",
+      ]);
+      if (!magic.valid || !magic.detectedMime) {
+        return NextResponse.json(
+          {
+            error:
+              magic.reason ||
+              "Arquivo de evidência inválido. Envie apenas imagem real (PNG, JPEG, WEBP) ou PDF.",
+          },
+          { status: 415 }
+        );
+      }
+      const contentType = magic.detectedMime;
 
       const { error: uploadEvidErr } = await db.storage
         .from("evidencias")

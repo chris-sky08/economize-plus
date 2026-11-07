@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireMarketMember, ServerAuthError } from "@/lib/server/auth";
+import { sanitizeText, validateSameOrigin } from "@/lib/server/security";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 interface RawReviewProduct {
@@ -117,6 +118,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = (await request.json()) as {
       supermarket_id?: string;
@@ -195,7 +204,9 @@ export async function PATCH(request: NextRequest) {
         ? body.updatedPromoLabel
         : body.promo_label;
     if (rawPromoLabel !== undefined) {
-      updates.promo_label = rawPromoLabel ? String(rawPromoLabel).trim() : null;
+      updates.promo_label = rawPromoLabel
+        ? sanitizeText(rawPromoLabel, 80) || null
+        : null;
     }
 
     const rawValidUntil =

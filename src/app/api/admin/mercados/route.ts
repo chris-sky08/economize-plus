@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, ServerAuthError } from "@/lib/server/auth";
+import {
+  sanitizeText,
+  validateCnpj,
+  validateSameOrigin,
+} from "@/lib/server/security";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export async function POST(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const adminUser = await requireAdmin(request);
 
@@ -29,11 +42,11 @@ export async function POST(request: NextRequest) {
       mark_verified?: boolean;
     };
 
-    const name = (body.name || "").trim();
-    const address = (body.address || "").trim();
-    const neighborhood = (body.neighborhood || "").trim();
-    const city = (body.city || "").trim();
-    const state = (body.state || "").trim().toUpperCase();
+    const name = sanitizeText(body.name, 140);
+    const address = sanitizeText(body.address, 200);
+    const neighborhood = sanitizeText(body.neighborhood, 100);
+    const city = sanitizeText(body.city, 100);
+    const state = sanitizeText(body.state, 2).toUpperCase();
 
     if (!name || !address || !neighborhood || !city || !state) {
       return NextResponse.json(
@@ -43,6 +56,18 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    let formattedCnpj: string | null = null;
+    if (body.cnpj && String(body.cnpj).trim()) {
+      const cnpjCheck = validateCnpj(String(body.cnpj));
+      if (!cnpjCheck.valid) {
+        return NextResponse.json(
+          { error: cnpjCheck.reason || "CNPJ inválido." },
+          { status: 400 }
+        );
+      }
+      formattedCnpj = cnpjCheck.formatted;
     }
 
     const slug = name
@@ -56,10 +81,10 @@ export async function POST(request: NextRequest) {
     const nowIso = new Date().toISOString();
 
     const responsibleName =
-      (body.responsibleName ?? body.responsible_name ?? "")?.trim() || null;
-    const zipCode = (body.zipCode ?? body.zip_code ?? "")?.trim() || null;
+      sanitizeText(body.responsibleName ?? body.responsible_name, 120) || null;
+    const zipCode = sanitizeText(body.zipCode ?? body.zip_code, 20) || null;
     const openingHours =
-      (body.openingHours ?? body.opening_hours ?? "")?.trim() || null;
+      sanitizeText(body.openingHours ?? body.opening_hours, 120) || null;
     const isPartner = Boolean(body.isPartner ?? body.is_partner);
     const isVerified = Boolean(body.verified ?? body.mark_verified);
 
@@ -69,10 +94,10 @@ export async function POST(request: NextRequest) {
       .insert({
         id,
         name,
-        cnpj: body.cnpj?.trim() || null,
+        cnpj: formattedCnpj,
         responsible_name: responsibleName,
-        email: body.email?.trim() || null,
-        phone: body.phone?.trim() || null,
+        email: sanitizeText(body.email, 140) || null,
+        phone: sanitizeText(body.phone, 30) || null,
         address,
         neighborhood,
         city,
@@ -111,6 +136,14 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const adminUser = await requireAdmin(request);
 

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateGtin } from "@/lib/format";
 import { requireMarketMember, ServerAuthError } from "@/lib/server/auth";
+import {
+  sanitizeCsvCell,
+  sanitizeText,
+  validateGtinEan,
+  validateSameOrigin,
+} from "@/lib/server/security";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import {
   mapOpenFoodFactsRawToProduct,
@@ -74,6 +79,21 @@ function detectDelimiter(sampleLine: string): "," | ";" {
 }
 
 export async function POST(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: originCheck.reason || "Requisição bloqueada por proteção CSRF.",
+        count: 0,
+        items: [],
+        lineErrors: [],
+        errors: [],
+      },
+      { status: 403 }
+    );
+  }
+
   try {
     let rawCsv = "";
     let requestedMarketId: string | null = null;
@@ -202,22 +222,22 @@ export async function POST(request: NextRequest) {
       }
 
       const [rawEan, rawNome, rawPreco, rawOferta] = parts;
-      const gtin = validateGtin(rawEan || "");
+      const gtin = validateGtinEan(rawEan || "");
       if (!gtin.valid) {
         lineErrors.push({
           line: lineNumber,
-          rawEan,
+          rawEan: sanitizeText(rawEan, 30),
           reason: gtin.reason || "Código EAN inválido.",
         });
         continue;
       }
 
-      const nome = (rawNome || "").trim();
+      const nome = sanitizeText(sanitizeCsvCell(rawNome || ""), 160);
       if (nome.length < 2) {
         lineErrors.push({
           line: lineNumber,
           rawEan: gtin.normalized,
-          reason: "Nome do produto ausente ou muito curto.",
+          reason: "Nome do produto ausente, muito curto ou bloqueado por tentativa de injeção de fórmula CSV.",
         });
         continue;
       }
@@ -232,17 +252,18 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      const safeOferta = sanitizeText(sanitizeCsvCell(rawOferta || ""), 80);
       const isOferta =
-        /^(true|1|sim|s|oferta|promo)$/i.test(rawOferta || "") ||
+        /^(true|1|sim|s|oferta|promo)$/i.test(safeOferta) ||
         Boolean(
-          rawOferta &&
-            rawOferta.length > 2 &&
-            !/^(false|0|nao|não)$/i.test(rawOferta)
+          safeOferta &&
+            safeOferta.length > 2 &&
+            !/^(false|0|nao|não)$/i.test(safeOferta)
         );
 
       const promoLabel =
-        rawOferta && !/^(true|false|1|0|sim|nao|não)$/i.test(rawOferta)
-          ? rawOferta
+        safeOferta && !/^(true|false|1|0|sim|nao|não)$/i.test(safeOferta)
+          ? safeOferta
           : undefined;
 
       validRowsByEan.set(gtin.normalized, {

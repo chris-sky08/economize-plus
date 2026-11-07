@@ -4,8 +4,17 @@ import {
   requireUser,
   ServerAuthError,
 } from "@/lib/server/auth";
+import { validateSameOrigin } from "@/lib/server/security";
 
 export async function POST(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
       accessToken?: string;
@@ -61,7 +70,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   const response = NextResponse.json({ success: true });
   response.cookies.delete(AUTH_COOKIE_NAME);
   return response;

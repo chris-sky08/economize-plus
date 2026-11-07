@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateGtin } from "@/lib/format";
 import { mapDbProductRow } from "@/lib/supabase";
 import {
   extractTokenFromRequest,
   requireUser,
   ServerAuthError,
 } from "@/lib/server/auth";
+import {
+  sanitizeText,
+  validateGtinEan,
+  validateSafeHttpUrl,
+  validateSameOrigin,
+} from "@/lib/server/security";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import {
@@ -38,7 +43,7 @@ export async function GET(
   }
 
   const { ean } = await context.params;
-  const gtin = validateGtin(ean);
+  const gtin = validateGtinEan(ean);
 
   if (!gtin.valid) {
     return NextResponse.json(
@@ -187,10 +192,18 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ ean: string }> }
 ) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const authUser = await requireUser(request);
     const { ean } = await context.params;
-    const gtin = validateGtin(ean);
+    const gtin = validateGtinEan(ean);
 
     if (!gtin.valid) {
       return NextResponse.json(
@@ -212,7 +225,7 @@ export async function POST(
 
     const cleanEan = gtin.normalized;
     const productId = `ean-${cleanEan}`;
-    const name = (body.name || "").trim();
+    const name = sanitizeText(body.name, 160);
 
     if (name.length < 2) {
       return NextResponse.json(
@@ -221,9 +234,10 @@ export async function POST(
       );
     }
 
-    const brand = body.brand?.trim() || null;
-    const parsedMeasure = parseMeasureFromQuantity(body.size_label);
-    const sizeLabel = body.size_label?.trim() || parsedMeasure.sizeLabel;
+    const brand = sanitizeText(body.brand, 100) || null;
+    const cleanSizeInput = sanitizeText(body.size_label, 60) || null;
+    const parsedMeasure = parseMeasureFromQuantity(cleanSizeInput);
+    const sizeLabel = cleanSizeInput || parsedMeasure.sizeLabel;
     const unitType =
       body.unit_type === "kg" ||
       body.unit_type === "L" ||
@@ -238,12 +252,16 @@ export async function POST(
         ? body.unit_value
         : parsedMeasure.unitMultiplier;
     const categoryId =
-      body.category?.trim() || inferCategoryId(null, name);
+      sanitizeText(body.category, 60) || inferCategoryId(null, name);
 
     const dataStatus =
       name && brand && sizeLabel && categoryId
         ? "completo"
         : "pendente_revisao";
+
+    const safeImageUrl = body.image_url
+      ? validateSafeHttpUrl(body.image_url)
+      : null;
 
     const db = createServiceRoleClient(authUser.accessToken);
     const payload = {
@@ -255,9 +273,9 @@ export async function POST(
       size_label: sizeLabel,
       unit_type: unitType,
       unit_value: unitValue,
-      image_url: body.image_url?.trim() || null,
+      image_url: safeImageUrl,
       is_popular: true,
-      description: body.description?.trim() || null,
+      description: sanitizeText(body.description, 400) || null,
       source: "partner",
       data_status: dataStatus,
     };

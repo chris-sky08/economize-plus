@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { validateGtin } from "@/lib/format";
 import { requireMarketMember, ServerAuthError } from "@/lib/server/auth";
+import {
+  sanitizeText,
+  validateFileMagicBytes,
+  validateGtinEan,
+  validateSameOrigin,
+} from "@/lib/server/security";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import { parseMeasureFromQuantity, inferCategoryId } from "@/services/productLookup";
 
@@ -71,7 +76,6 @@ export function getCandidateGeminiKeys(): string[] {
     process.env.GEMINI_API_KEY_1,
     process.env.GEMINI_API_KEY_2,
     process.env.GOOGLE_API_KEY,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY,
   ];
   const unique = new Set<string>();
   for (const raw of rawSources) {
@@ -171,6 +175,18 @@ async function extractFlyerJsonWithMultiKeyFallback(
 }
 
 export async function POST(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: originCheck.reason || "Requisição bloqueada por proteção CSRF.",
+        items: [],
+      },
+      { status: 403 }
+    );
+  }
+
   try {
     const candidateKeys = getCandidateGeminiKeys();
 
@@ -240,10 +256,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const mimeType = file.type || "image/jpeg";
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storagePath = `${supermarketId}/${Date.now()}-${safeFileName}`;
     const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const magicCheck = validateFileMagicBytes(fileBuffer, [
+      "png",
+      "jpeg",
+      "webp",
+      "pdf",
+    ]);
+
+    if (!magicCheck.valid || !magicCheck.detectedMime) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            magicCheck.reason ||
+            "Arquivo inválido: envie apenas encartes reais em PNG, JPEG, WEBP ou PDF.",
+          items: [],
+        },
+        { status: 415 }
+      );
+    }
+
+    const mimeType = magicCheck.detectedMime;
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+    const storagePath = `${supermarketId}/${Date.now()}-${safeFileName}`;
 
     const db = createServiceRoleClient(user.accessToken);
     let base64Data = fileBuffer.toString("base64");
@@ -302,11 +338,11 @@ export async function POST(request: NextRequest) {
       (item) =>
         item &&
         typeof item.name === "string" &&
-        item.name.trim().length >= 2 &&
+        sanitizeText(item.name, 160).length >= 2 &&
         typeof item.price === "number" &&
         item.price > 0 &&
         typeof item.ean === "string" &&
-        validateGtin(item.ean).valid
+        validateGtinEan(item.ean).valid
     );
 
     if (validItems.length === 0) {
@@ -326,16 +362,18 @@ export async function POST(request: NextRequest) {
     const pricePayloads: Array<Record<string, unknown>> = [];
 
     for (const item of validItems) {
-      const cleanEan = validateGtin(item.ean).normalized;
+      const cleanEan = validateGtinEan(item.ean).normalized;
       const productId = `ean-${cleanEan}`;
-      const measure = parseMeasureFromQuantity(item.weight);
-      const catId = inferCategoryId(null, item.name);
-      const cleanBrand = item.brand?.trim() || null;
+      const cleanName = sanitizeText(item.name, 160);
+      const measure = parseMeasureFromQuantity(sanitizeText(item.weight, 60));
+      const catId = inferCategoryId(null, cleanName);
+      const cleanBrand = sanitizeText(item.brand, 100) || null;
+      const cleanPromoLabel = sanitizeText(item.promo_label, 80) || null;
 
       productPayloads.push({
         id: productId,
         ean: cleanEan,
-        name: item.name.trim(),
+        name: cleanName,
         brand: cleanBrand,
         category: catId,
         size_label: measure.sizeLabel,
@@ -365,7 +403,7 @@ export async function POST(request: NextRequest) {
         product_id: productId,
         price: Math.round(item.price * 100) / 100,
         is_promo: true,
-        promo_label: item.promo_label?.trim() || null,
+        promo_label: cleanPromoLabel,
         in_stock: true,
         source: "flyer_ocr",
         status: "pendente", // Obrigatório: só vira 'publicado' após revisão humana do dono do mercado

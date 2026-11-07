@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser, ServerAuthError } from "@/lib/server/auth";
+import { sanitizeText, validateSameOrigin } from "@/lib/server/security";
 import {
   createServerAnonClient,
   createServiceRoleClient,
@@ -45,7 +46,7 @@ interface PatchProfilePayload {
 
 function normalizeNullableText(value: unknown, maxLen = 120): string | null {
   if (typeof value !== "string") return null;
-  const trimmed = value.trim().slice(0, maxLen);
+  const trimmed = sanitizeText(value, maxLen);
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -159,6 +160,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   try {
     const authUser = await requireUser(request);
     const body = (await request.json().catch(() => ({}))) as PatchProfilePayload;

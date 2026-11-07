@@ -1,3 +1,5 @@
+import "server-only";
+
 interface TurnstileVerifyResponse {
   success?: boolean;
   "error-codes"?: string[];

@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractTokenFromRequest } from "@/lib/server/auth";
 import { checkRateLimit, getClientIp } from "@/lib/server/rateLimit";
+import {
+  sanitizeText,
+  validateCnpj,
+  validateSafeHttpUrl,
+  validateSameOrigin,
+} from "@/lib/server/security";
 import { verifyTurnstileToken } from "@/lib/server/turnstile";
 import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 type PublicSubmissionType = "partner" | "courier" | "price_report";
 
 export async function POST(request: NextRequest) {
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Requisição bloqueada por proteção CSRF." },
+      { status: 403 }
+    );
+  }
+
   const rate = checkRateLimit(request, "public_form_submission", 6, 60_000);
   if (!rate.allowed) {
     return NextResponse.json(
@@ -40,17 +54,27 @@ export async function POST(request: NextRequest) {
     const db = createServiceRoleClient(token || undefined);
 
     if (body.type === "partner") {
-      const marketName = String(payload.marketName || "").trim();
-      const responsibleName = String(payload.responsibleName || "").trim();
-      const email = String(payload.email || "").trim();
-      const phone = String(payload.phone || "").trim();
-      const address = String(payload.address || "").trim();
-      const neighborhood = String(payload.neighborhood || "").trim();
-      const city = String(payload.city || "").trim();
-      const zipCode = String(payload.zipCode || "").trim();
-      const state = String(payload.state || "SP").trim().toUpperCase() || "SP";
+      const marketName = sanitizeText(payload.marketName, 140);
+      const responsibleName = sanitizeText(payload.responsibleName, 120);
+      const email = sanitizeText(payload.email, 140).toLowerCase();
+      const phone = sanitizeText(payload.phone, 30);
+      const address = sanitizeText(payload.address, 200);
+      const neighborhood = sanitizeText(payload.neighborhood, 100);
+      const city = sanitizeText(payload.city, 100);
+      const zipCode = sanitizeText(payload.zipCode, 20);
+      const state = sanitizeText(payload.state || "SP", 2).toUpperCase() || "SP";
       const desiredPlan =
         payload.desiredPlan === "premium" ? "premium" : "basico";
+
+      if (payload.cnpj && String(payload.cnpj).trim()) {
+        const cnpjCheck = validateCnpj(String(payload.cnpj));
+        if (!cnpjCheck.valid) {
+          return NextResponse.json(
+            { error: cnpjCheck.reason || "CNPJ inválido." },
+            { status: 400 }
+          );
+        }
+      }
 
       if (
         !marketName ||
@@ -100,10 +124,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.type === "courier") {
-      const fullName = String(payload.fullName || "").trim();
-      const email = String(payload.email || "").trim();
-      const phone = String(payload.phone || "").trim();
-      const rawVehicle = String(payload.vehicleType || "moto").trim();
+      const fullName = sanitizeText(payload.fullName, 120);
+      const email = sanitizeText(payload.email, 140).toLowerCase();
+      const phone = sanitizeText(payload.phone, 30);
+      const rawVehicle = sanitizeText(payload.vehicleType || "moto", 20);
       const vehicleType =
         rawVehicle === "bicicleta" ||
         rawVehicle === "moto" ||
@@ -113,8 +137,9 @@ export async function POST(request: NextRequest) {
           : "moto";
       const serviceNeighborhoods = Array.isArray(payload.serviceNeighborhoods)
         ? payload.serviceNeighborhoods
-            .map((s) => String(s).trim())
+            .map((s) => sanitizeText(s, 80))
             .filter(Boolean)
+            .slice(0, 25)
         : [];
 
       if (!fullName || !email || !phone || serviceNeighborhoods.length === 0) {
@@ -146,10 +171,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.type === "price_report") {
-      const marketId = String(payload.marketId || "").trim();
-      const productId = String(payload.productId || "").trim();
-      const reason = String(payload.reason || "").trim();
-      const details = String(payload.details || "").trim();
+      const marketId = sanitizeText(payload.marketId, 80);
+      const productId = sanitizeText(payload.productId, 80);
+      const reason = sanitizeText(payload.reason, 160);
+      const details = sanitizeText(payload.details, 600);
+
+      if (payload.proofUrl && String(payload.proofUrl).trim()) {
+        const safeProof = validateSafeHttpUrl(payload.proofUrl);
+        if (!safeProof) {
+          return NextResponse.json(
+            {
+              error:
+                "URL de comprovante inválida ou bloqueada por proteção SSRF.",
+            },
+            { status: 400 }
+          );
+        }
+      }
 
       if (!marketId || !productId || !reason) {
         return NextResponse.json(
