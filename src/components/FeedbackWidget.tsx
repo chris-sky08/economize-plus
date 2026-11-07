@@ -73,10 +73,10 @@ const CATEGORY_OPTIONS: Array<{
   },
   {
     id: "duvida",
-    label: "Dúvida / Elogio",
+    label: "Dúvida / Conversa Conosco",
     emoji: "💬",
     placeholder:
-      "Deixe sua dúvida, avaliação ou comentário para a nossa equipe...",
+      "Envie sua dúvida, comentário ou fale diretamente com a equipe do Economize+...",
     icon: MessageSquareHeart,
   },
 ];

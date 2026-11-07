@@ -114,6 +114,7 @@ export default function HomePage() {
 
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
     useState<string>("todos");
+  const [homeFeedbackRating, setHomeFeedbackRating] = useState<number>(5);
 
   const activeMarkets = useMemo(
     () =>
@@ -1377,31 +1378,65 @@ export default function HomePage() {
                   .
                 </p>
 
-                {/* Botões Rápidos por Estrela / Categoria */}
+                {/* Botões Rápidos por Estrela (1 a 5) + Os 4 Canais de Atendimento */}
                 <div className="mt-3.5 flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold text-slate-300">
-                    Toque para avaliar:
+                    Escolha de 1 a 5 estrelas:
                   </span>
-                  {[1, 2, 3, 4, 5].map((starNum) => (
-                    <button
-                      key={starNum}
-                      type="button"
-                      onClick={() =>
-                        triggerFeedbackModal({
-                          rating: starNum,
-                          category: "sugestao",
-                        })
-                      }
-                      aria-label={`Avaliar com ${starNum} estrelas`}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-brand-yellow/60 bg-white/10 transition hover:scale-105 hover:bg-brand-yellow/20 active:scale-95"
-                    >
-                      <Star className="h-4 w-4 fill-brand-yellow text-brand-yellow" />
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map((starNum) => {
+                    const isFilled = starNum <= homeFeedbackRating;
+                    return (
+                      <button
+                        key={starNum}
+                        type="button"
+                        onClick={() => {
+                          setHomeFeedbackRating(starNum);
+                          triggerFeedbackModal({
+                            rating: starNum,
+                          });
+                        }}
+                        aria-label={`Avaliar com ${starNum} de 5 estrelas`}
+                        className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition hover:scale-105 active:scale-95 ${
+                          isFilled
+                            ? "border-brand-yellow bg-brand-yellow/25"
+                            : "border-white/25 bg-white/10 opacity-60"
+                        }`}
+                      >
+                        <Star
+                          className={`h-4 w-4 ${
+                            isFilled
+                              ? "fill-brand-yellow text-brand-yellow"
+                              : "text-white"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                  <span className="rounded-lg bg-white/15 px-2 py-1 text-[11px] font-extrabold text-brand-yellow">
+                    {homeFeedbackRating}/5 selecionada
+                  </span>
+                </div>
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() =>
-                      triggerFeedbackModal({ rating: 5, category: "bug" })
+                      triggerFeedbackModal({
+                        rating: homeFeedbackRating,
+                        category: "sugestao",
+                      })
+                    }
+                    className="min-h-[36px] rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+                  >
+                    💡 Sugestão de Melhoria
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      triggerFeedbackModal({
+                        rating: homeFeedbackRating,
+                        category: "bug",
+                      })
                     }
                     className="min-h-[36px] rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
                   >
@@ -1411,13 +1446,25 @@ export default function HomePage() {
                     type="button"
                     onClick={() =>
                       triggerFeedbackModal({
-                        rating: 5,
+                        rating: homeFeedbackRating,
                         category: "indicar_mercado",
                       })
                     }
                     className="min-h-[36px] rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
                   >
                     🏪 Indicar Mercado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      triggerFeedbackModal({
+                        rating: homeFeedbackRating,
+                        category: "duvida",
+                      })
+                    }
+                    className="min-h-[36px] rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+                  >
+                    💬 Dúvida / Conversa Conosco
                   </button>
                 </div>
               </div>
@@ -1426,7 +1473,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() =>
-                triggerFeedbackModal({ rating: 5, category: "sugestao" })
+                triggerFeedbackModal({ rating: homeFeedbackRating })
               }
               className="inline-flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-2xl bg-brand-green px-6 py-3 text-sm font-black text-brand-navy shadow-lg transition hover:brightness-95 active:scale-95"
             >

@@ -16,7 +16,7 @@ const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
   sugestao: "💡 Sugestão de Melhoria",
   bug: "🐛 Relatar um Bug",
   indicar_mercado: "🏪 Indicar Mercado",
-  duvida: "💬 Dúvida / Elogio",
+  duvida: "💬 Dúvida / Conversa Conosco",
 };
 
 function isValidCategory(val: unknown): val is FeedbackCategory {

@@ -2,9 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { Database, ExternalLink, Facebook, Instagram, Mail, MapPin, QrCode, Star } from "lucide-react";
+import { Cookie, Database, ExternalLink, Facebook, Instagram, Mail, MapPin, QrCode, Star } from "lucide-react";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
 import { triggerFeedbackModal } from "@/components/FeedbackWidget";
+import { triggerCookiePreferencesModal } from "@/components/CookieConsentBanner";
 
 export default function Footer() {
   return (
@@ -219,6 +220,16 @@ export default function Footer() {
               >
                 Termos de Uso da Plataforma
               </Link>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => triggerCookiePreferencesModal()}
+                className="inline-flex items-center gap-1.5 font-semibold text-brand-light hover:text-brand-yellow hover:underline"
+              >
+                <Cookie className="h-3.5 w-3.5 text-brand-yellow" />
+                Preferências de Cookies e LGPD
+              </button>
             </li>
           </ul>
 

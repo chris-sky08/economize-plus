@@ -4,6 +4,7 @@ import React, { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  Cookie,
   Database,
   ExternalLink,
   Facebook,
@@ -14,6 +15,8 @@ import {
   MapPin,
   ShieldCheck,
 } from "lucide-react";
+import { triggerCookiePreferencesModal } from "@/components/CookieConsentBanner";
+import { triggerFeedbackModal } from "@/components/FeedbackWidget";
 
 function InstitucionalContent() {
   const searchParams = useSearchParams();
@@ -175,67 +178,213 @@ function InstitucionalContent() {
           </div>
         )}
 
-        {/* ABA PRIVACIDADE */}
+        {/* ABA PRIVACIDADE E COOKIES (LGPD + GUIA ANPD) */}
         {activeTab === "privacidade" && (
-          <div className="mt-6 space-y-4 text-xs leading-relaxed text-slate-700 sm:text-sm">
+          <div className="mt-6 space-y-5 text-xs leading-relaxed text-slate-700 sm:text-sm">
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              <strong>Nota:</strong> Este documento descreve de forma fiel os
-              dados técnicos tratados pela aplicação e encontra-se{" "}
-              <strong>pendente de revisão jurídica formal</strong> antes do
-              lançamento comercial amplo.
+              <strong>Nota Técnica e Regulatória:</strong> Este documento
+              descreve de forma integral, transparente e auditável os dados
+              técnicos, cookies e chaves de armazenamento local tratados pela
+              aplicação em observância à{" "}
+              <strong>Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 — LGPD)</strong>,
+              ao <strong>Marco Civil da Internet (Lei nº 12.965/2014)</strong> e
+              ao{" "}
+              <strong>
+                Guia Orientativo “Cookies e Proteção de Dados Pessoais” da ANPD
+              </strong>
+              , encontrando-se <strong>pendente de revisão jurídica formal</strong>{" "}
+              antes da expansão comercial ampla.
             </div>
 
-            <h2 className="font-heading text-lg font-bold text-brand-navy">
-              Política de Privacidade e Tratamento de Dados
-            </h2>
-            <p>
-              Esta política detalha quais informações são coletadas e como são
-              utilizadas pelo <strong>Economize+</strong>:
-            </p>
-            <ul className="list-inside list-disc space-y-2">
-              <li>
-                <strong>Dados de Conta (Opcionais):</strong> A pesquisa de
-                preços é aberta sem necessidade de cadastro. Caso o usuário opte
-                por criar conta para salvar listas na nuvem, coletamos nome e
-                e-mail via Supabase Auth.
-              </li>
-              <li>
-                <strong>Localização e CEP:</strong> O cálculo de distância em
-                linha reta até os mercados pode ser feito informando um CEP
-                manualmente (consultado via ViaCEP/BrasilAPI) ou autorizando o
-                GPS do navegador. As coordenadas selecionadas ficam salvas no{" "}
-                <code>localStorage</code> do dispositivo do próprio usuário.
-              </li>
-              <li>
-                <strong>Formulários Públicos e Proteção Anti-Abuso:</strong>{" "}
-                Solicitações de parceria de mercados, pré-cadastros de
-                entregadores e relatos de divergência de preço coletam os dados
-                informados no respectivo formulário e utilizam verificação
-                anti-bot (Cloudflare Turnstile) e limitação de taxa por IP para
-                segurança operacional.
-              </li>
-              <li>
-                <strong>Armazenamento e Segurança:</strong> Os dados são
-                armazenados no Supabase com políticas Row Level Security (RLS)
-                ativas no banco de dados.
-              </li>
-              <li>
-                <strong>Cookies e Armazenamento Local (LGPD):</strong>{" "}
-                Utilizamos apenas cookies estritamente necessários e chaves de{" "}
-                <code>localStorage</code> no navegador do próprio dispositivo
-                para manter a Lista de Compras Inteligente, o CEP/raio de
-                pesquisa e a confirmação de leitura do aviso de cookies. O
-                usuário pode limpar esses dados a qualquer momento pelo
-                navegador ou entrar em contato pelo e-mail{" "}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-blue/30 bg-brand-light/40 p-4">
+              <div>
+                <h2 className="font-heading text-lg font-extrabold text-brand-navy">
+                  1. Política de Privacidade, Cookies e Tratamento de Dados (LGPD)
+                </h2>
+                <p className="text-xs text-slate-600">
+                  Você pode revisar ou alterar suas preferências de cookies a
+                  qualquer momento clicando no botão ao lado.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => triggerCookiePreferencesModal()}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2 text-xs font-extrabold text-white shadow-2xs transition hover:bg-brand-blue active:scale-95"
+              >
+                <Cookie className="h-4 w-4 text-brand-yellow" />
+                <span>Abrir Gerenciador de Cookies (ANPD)</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 rounded-2xl bg-slate-50 p-4">
+              <h3 className="font-heading text-base font-bold text-brand-navy">
+                2. Quais Dados Coletamos e Bases Legais (Art. 7º da LGPD)
+              </h3>
+              <ul className="list-inside list-disc space-y-2 text-xs sm:text-sm">
+                <li>
+                  <strong>Consulta Aberta sem Cadastro (Minimização — Art. 6º, III):</strong>{" "}
+                  A pesquisa de preços, comparação por quilo/litro, leitura de
+                  código de barras EAN e montagem da Lista de Compras
+                  funcionam sem exigir nome, CPF, telefone ou criação de conta.
+                </li>
+                <li>
+                  <strong>Dados de Conta Opcional (Execução a pedido do titular — Art. 7º, V):</strong>{" "}
+                  Caso o consumidor opte voluntariamente por criar uma conta em{" "}
+                  <code>/conta</code>, tratamos nome e endereço de e-mail via
+                  Supabase Auth exclusivamente para autenticação e recuperação
+                  de senha.
+                </li>
+                <li>
+                  <strong>Localização e CEP (Consentimento / Execução — Art. 7º, I e V):</strong>{" "}
+                  O cálculo de distância em linha reta até os mercados pode ser
+                  feito informando um CEP manualmente (consultado via
+                  ViaCEP/BrasilAPI) ou autorizando o GPS do navegador. As
+                  coordenadas escolhidas ficam salvas apenas no{" "}
+                  <code>localStorage</code> do dispositivo do próprio usuário.
+                </li>
+                <li>
+                  <strong>Central de Avaliação, Sugestões, Bugs e Parcerias (Art. 7º, V):</strong>{" "}
+                  Ao enviar uma avaliação, relato de bug, indicação de mercado
+                  ou solicitação de parceria comercial/entregador, coletamos a
+                  nota (1 a 5 estrelas), categoria, mensagem e, opcionalmente, o
+                  nome e meio de contato informados pelo próprio usuário para
+                  resposta da equipe pelo e-mail{" "}
+                  <code>empresaeconomizemais@gmail.com</code>.
+                </li>
+                <li>
+                  <strong>Prevenção à Fraude e Segurança (Legítimo Interesse — Art. 7º, IX):</strong>{" "}
+                  Rotas de escrita utilizam verificação anti-bot (Cloudflare
+                  Turnstile), validação de origem (Anti-CSRF) e limitação
+                  temporária de taxa por IP para impedir ataques automatizados.
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="font-heading text-base font-bold text-brand-navy">
+                3. Inventário Completo de Cookies e Armazenamento Local (Padrão ANPD)
+              </h3>
+              <p className="text-xs text-slate-600">
+                Classificação detalhada nos 4 eixos do Guia Orientativo da ANPD
+                (Necessidade, Finalidade, Gestão e Retenção):
+              </p>
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-brand-navy text-white">
+                    <tr>
+                      <th className="p-2.5 font-bold">Chave / Cookie</th>
+                      <th className="p-2.5 font-bold">Gestão</th>
+                      <th className="p-2.5 font-bold">Categoria ANPD</th>
+                      <th className="p-2.5 font-bold">Retenção</th>
+                      <th className="p-2.5 font-bold">Finalidade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    <tr>
+                      <td className="p-2.5 font-mono font-bold text-brand-navy">
+                        economize_location_v2
+                      </td>
+                      <td className="p-2.5">1ª Parte (Próprio)</td>
+                      <td className="p-2.5">Estritamente Necessário</td>
+                      <td className="p-2.5">Persistente no aparelho</td>
+                      <td className="p-2.5">
+                        Guarda CEP, bairro, cidade e raio (km) configurados pelo
+                        usuário.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-mono font-bold text-brand-navy">
+                        economize_shopping_list_v2
+                      </td>
+                      <td className="p-2.5">1ª Parte (Próprio)</td>
+                      <td className="p-2.5">Estritamente Necessário</td>
+                      <td className="p-2.5">Persistente no aparelho</td>
+                      <td className="p-2.5">
+                        Guarda os itens e quantidades da Lista Inteligente de
+                        compras.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-mono font-bold text-brand-navy">
+                        economize_cookie_consent_v1
+                      </td>
+                      <td className="p-2.5">1ª Parte (Próprio)</td>
+                      <td className="p-2.5">Estritamente Necessário</td>
+                      <td className="p-2.5">12 meses</td>
+                      <td className="p-2.5">
+                        Armazena o registro de consentimento ou rejeição de
+                        cookies opcionais.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-mono font-bold text-brand-navy">
+                        sb-*-auth-token
+                      </td>
+                      <td className="p-2.5">1ª Parte / Supabase</td>
+                      <td className="p-2.5">Necessário (autenticação)</td>
+                      <td className="p-2.5">Durante a sessão logada</td>
+                      <td className="p-2.5">
+                        Mantém o login ativo quando o usuário acessa sua conta ou
+                        painel.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-mono font-bold text-brand-navy">
+                        cf_clearance / Turnstile
+                      </td>
+                      <td className="p-2.5">3ª Parte (Cloudflare)</td>
+                      <td className="p-2.5">Necessário (segurança)</td>
+                      <td className="p-2.5">Sessão (30 min)</td>
+                      <td className="p-2.5">
+                        Proteção anti-bot em envios de formulários públicos.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-mono font-bold text-brand-navy">
+                        economize_ui_prefs_v1
+                      </td>
+                      <td className="p-2.5">1ª Parte (Próprio)</td>
+                      <td className="p-2.5">Funcional (Opt-in opcional)</td>
+                      <td className="p-2.5">180 dias</td>
+                      <td className="p-2.5">
+                        Desativado por padrão; lembra preferências visuais se
+                        aceito pelo usuário.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-2xl bg-slate-50 p-4">
+              <h3 className="font-heading text-base font-bold text-brand-navy">
+                4. Direitos do Titular (Art. 18 da LGPD) e Canal de Atendimento
+              </h3>
+              <p className="text-xs text-slate-600 sm:text-sm">
+                O titular dos dados tem direito a solicitar confirmação de
+                tratamento, acesso, correção, anonimização, eliminação de dados
+                tratados mediante consentimento e revogação a qualquer momento.
+                Para exercer seus direitos ou tirar dúvidas, entre em contato
+                pelo e-mail oficial{" "}
                 <a
                   href="mailto:empresaeconomizemais@gmail.com"
                   className="font-mono font-bold text-brand-navy underline"
                 >
                   empresaeconomizemais@gmail.com
-                </a>
+                </a>{" "}
+                ou abra o{" "}
+                <button
+                  type="button"
+                  onClick={() =>
+                    triggerFeedbackModal({ rating: 5, category: "duvida" })
+                  }
+                  className="font-bold text-brand-blue underline hover:text-brand-navy"
+                >
+                  Formulário de Dúvidas e Contato
+                </button>
                 .
-              </li>
-            </ul>
+              </p>
+            </div>
           </div>
         )}
 
