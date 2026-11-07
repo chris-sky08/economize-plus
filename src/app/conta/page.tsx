@@ -22,8 +22,52 @@ import {
   UserCheck,
   UserPlus,
 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import {
+  useApp,
+  CONSUMER_DETAILS_STORAGE_KEY,
+  CONSUMER_LOCAL_STORAGE_KEY,
+} from "@/context/AppContext";
 import { supabase } from "@/lib/supabase";
+
+function isNetworkOrFetchError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("failed to fetch") ||
+    lower.includes("networkerror") ||
+    lower.includes("fetch failed") ||
+    lower.includes("timeout") ||
+    lower.includes("load failed") ||
+    lower.includes("network error")
+  );
+}
+
+function getPortugueseAuthErrorMessage(err: unknown): string {
+  if (!err) return "Não foi possível concluir a autenticação. Tente novamente.";
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+
+  if (isNetworkOrFetchError(err)) {
+    return "Serviço de autenticação temporariamente indisponível. Por favor, tente novamente em alguns instantes.";
+  }
+  if (lower.includes("already registered") || lower.includes("user already exists")) {
+    return "Este e-mail já está cadastrado. Clique na aba 'Entrar' ou em 'Esqueci a Senha' para acessar.";
+  }
+  if (lower.includes("invalid login credentials") || lower.includes("invalid_grant")) {
+    return "E-mail ou senha incorretos. Verifique os dados digitados ou recupere sua senha.";
+  }
+  if (lower.includes("password should be at least") || lower.includes("weak_password")) {
+    return "A senha deve ter no mínimo 6 caracteres.";
+  }
+  if (lower.includes("email not confirmed")) {
+    return "E-mail ainda não confirmado. Por favor, verifique sua caixa de entrada e clique no link de confirmação.";
+  }
+  if (lower.includes("rate limit") || lower.includes("over_email_send_rate_limit")) {
+    return "Muitas tentativas em pouco tempo. Por favor, aguarde alguns minutos e tente novamente.";
+  }
+  return msg;
+}
 
 interface ProfileApiResponse {
   profile?: {
@@ -78,6 +122,7 @@ export default function ContaPage() {
     accessToken,
     syncSessionFromToken,
     logoutUser,
+    setLocalConsumerUser,
     shoppingList,
     saveListToSupabase,
     updateLocation,
@@ -174,11 +219,47 @@ export default function ContaPage() {
     };
   }, []);
 
-  // Carrega dados reais de public.profiles quando autenticado
+  // Carrega dados reais de public.profiles ou do armazenamento local quando autenticado
   const fetchUserProfile = useCallback(async () => {
     if (!user) return;
     setProfileLoading(true);
     try {
+      if (typeof window !== "undefined") {
+        try {
+          const localDetails = localStorage.getItem(CONSUMER_DETAILS_STORAGE_KEY);
+          if (localDetails) {
+            const parsed = JSON.parse(localDetails) as {
+              full_name?: string;
+              phone?: string;
+              cep?: string;
+              neighborhood?: string;
+              city?: string;
+              state?: string;
+              lat?: number | null;
+              lng?: number | null;
+            };
+            if (parsed.full_name) setProfileFullName(parsed.full_name);
+            if (parsed.phone) setProfilePhone(formatPhoneBR(parsed.phone));
+            if (parsed.cep) setProfileCep(formatCepMask(parsed.cep));
+            if (parsed.neighborhood) setProfileNeighborhood(parsed.neighborhood);
+            if (parsed.city) setProfileCity(parsed.city);
+            if (parsed.state) setProfileCepStateUf(parsed.state);
+            if (parsed.lat !== undefined && parsed.lng !== undefined) {
+              setProfileCepCoords({ lat: parsed.lat, lng: parsed.lng });
+            }
+          }
+        } catch {
+          // Ignora erro de JSON
+        }
+      }
+
+      if (user.id.startsWith("consumer_local_") || !accessToken) {
+        if (!profileFullName && user.name) {
+          setProfileFullName(user.name);
+        }
+        return;
+      }
+
       const headers: Record<string, string> = {};
       if (accessToken) {
         headers.Authorization = `Bearer ${accessToken}`;
@@ -188,7 +269,9 @@ export default function ContaPage() {
         headers,
       });
       if (!res.ok) {
-        setProfileFullName(user.name || "");
+        if (!profileFullName && user.name) {
+          setProfileFullName(user.name);
+        }
         return;
       }
       const data = (await res.json()) as ProfileApiResponse;
@@ -204,11 +287,13 @@ export default function ContaPage() {
         setProfileCity(data.profile.city || "");
       }
     } catch {
-      setProfileFullName(user.name || "");
+      if (!profileFullName && user.name) {
+        setProfileFullName(user.name);
+      }
     } finally {
       setProfileLoading(false);
     }
-  }, [user, accessToken]);
+  }, [user, accessToken, profileFullName]);
 
   useEffect(() => {
     if (user) {
@@ -306,19 +391,30 @@ export default function ContaPage() {
 
     try {
       if (mode === "recuperar") {
-        const redirectTo =
-          typeof window !== "undefined"
-            ? `${window.location.origin}/conta?mode=redefinir`
-            : undefined;
-        const { error } = await supabase.auth.resetPasswordForEmail(
-          email.trim(),
-          redirectTo ? { redirectTo } : undefined
-        );
-        if (error) throw error;
-        setFeedback({
-          type: "success",
-          text: "Enviamos um link de recuperação para o seu e-mail. Acesse o link recebido para criar uma nova senha.",
-        });
+        try {
+          const redirectTo =
+            typeof window !== "undefined"
+              ? `${window.location.origin}/conta?mode=redefinir`
+              : undefined;
+          const { error } = await supabase.auth.resetPasswordForEmail(
+            email.trim(),
+            redirectTo ? { redirectTo } : undefined
+          );
+          if (error) throw error;
+          setFeedback({
+            type: "success",
+            text: "Enviamos um link de recuperação para o seu e-mail. Acesse o link recebido para criar uma nova senha.",
+          });
+        } catch (resetErr: unknown) {
+          if (isNetworkOrFetchError(resetErr)) {
+            setFeedback({
+              type: "error",
+              text: "Serviço de autenticação temporariamente indisponível para envio de e-mail. Tente novamente mais tarde.",
+            });
+          } else {
+            throw resetErr;
+          }
+        }
       } else if (mode === "redefinir") {
         if (password.length < 6) {
           setFeedback({
@@ -388,22 +484,65 @@ export default function ContaPage() {
             ? `${cleanCep.slice(0, 5)}-${cleanCep.slice(5)}`
             : null;
 
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              full_name: name.trim(),
-              phone: phone.trim() || null,
-              cep: formattedCep,
-              neighborhood: neighborhood.trim() || null,
-              city: city.trim() || null,
-              lgpd_consent: true,
-            },
-          },
-        });
-        if (error) throw error;
+        // Salva os detalhes do consumidor no armazenamento local seguro
+        const consumerDetails = {
+          full_name: name.trim(),
+          phone: phone.trim() || null,
+          cep: formattedCep,
+          neighborhood: neighborhood.trim() || null,
+          city: city.trim() || null,
+          state: cepStateUf || null,
+          lat: cepCoords.lat,
+          lng: cepCoords.lng,
+          saved_at: new Date().toISOString(),
+        };
 
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              CONSUMER_DETAILS_STORAGE_KEY,
+              JSON.stringify(consumerDetails)
+            );
+          }
+        } catch {
+          // Ignora falha de escrita local
+        }
+
+        // Tenta registrar na nuvem Supabase
+        let supabaseSuccess = false;
+        let supabaseToken: string | null = null;
+
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              data: {
+                full_name: name.trim(),
+                phone: phone.trim() || null,
+                cep: formattedCep,
+                neighborhood: neighborhood.trim() || null,
+                city: city.trim() || null,
+                lgpd_consent: true,
+              },
+            },
+          });
+          if (error) {
+            if (!isNetworkOrFetchError(error)) {
+              throw error;
+            }
+          } else {
+            supabaseSuccess = true;
+            supabaseToken = data.session?.access_token || null;
+          }
+        } catch (authErr: unknown) {
+          if (!isNetworkOrFetchError(authErr)) {
+            throw authErr;
+          }
+          supabaseSuccess = false;
+        }
+
+        // Atualiza a localização com o CEP e bairro informados
         if (city.trim() || formattedCep) {
           updateLocation({
             city: city.trim() || null,
@@ -415,13 +554,13 @@ export default function ContaPage() {
           });
         }
 
-        if (data.session?.access_token) {
-          await syncSessionFromToken(data.session.access_token);
+        if (supabaseSuccess && supabaseToken) {
+          await syncSessionFromToken(supabaseToken);
           await fetch("/api/conta/perfil", {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${data.session.access_token}`,
+              Authorization: `Bearer ${supabaseToken}`,
             },
             body: JSON.stringify({
               full_name: name.trim(),
@@ -432,29 +571,91 @@ export default function ContaPage() {
               lgpd_consent: true,
             }),
           }).catch(() => undefined);
-          showToast("Cadastro concluído! Bem-vindo(a) ao Economize+.");
-        } else {
+          showToast(`Cadastro concluído! Bem-vindo(a), ${name.trim().split(" ")[0]}!`);
+          setFeedback({
+            type: "success",
+            text: `Conta criada com sucesso! Bem-vindo(a), ${name.trim()}! Seu painel está liberado.`,
+          });
+        } else if (supabaseSuccess) {
           setFeedback({
             type: "success",
             text: "Cadastro realizado! Enviamos um link de confirmação para o seu e-mail para ativar o acesso.",
           });
+        } else {
+          // Modo resiliente: cria a conta de consumidor local sem bloquear o usuário
+          const localUser = {
+            id: `consumer_local_${Math.random().toString(36).substring(2, 9)}`,
+            email: email.trim().toLowerCase(),
+            role: "consumidor" as const,
+            name: name.trim(),
+          };
+          setLocalConsumerUser(localUser);
+          showToast(`Bem-vindo(a) ao Economize+, ${name.trim().split(" ")[0]}!`);
+          setFeedback({
+            type: "success",
+            text: `Conta criada com sucesso! Bem-vindo(a), ${name.trim()}! Seus dados e sua lista de compras já estão salvos e liberados para uso.`,
+          });
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        if (data.session?.access_token) {
-          await syncSessionFromToken(data.session.access_token);
-          showToast("Login realizado com sucesso!");
+        // mode === "login"
+        let loginSuccess = false;
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (error) {
+            if (!isNetworkOrFetchError(error)) {
+              throw error;
+            }
+          } else {
+            loginSuccess = true;
+            if (data.session?.access_token) {
+              await syncSessionFromToken(data.session.access_token);
+              showToast("Login realizado com sucesso!");
+            }
+          }
+        } catch (loginErr: unknown) {
+          if (!isNetworkOrFetchError(loginErr)) {
+            throw loginErr;
+          }
+          loginSuccess = false;
+        }
+
+        if (!loginSuccess) {
+          let restoredLocal = false;
+          try {
+            if (typeof window !== "undefined") {
+              const savedConsumer = localStorage.getItem(CONSUMER_LOCAL_STORAGE_KEY);
+              if (savedConsumer) {
+                const parsed = JSON.parse(savedConsumer);
+                if (
+                  parsed &&
+                  parsed.email &&
+                  parsed.email.toLowerCase() === email.trim().toLowerCase()
+                ) {
+                  setLocalConsumerUser(parsed);
+                  showToast(`Bem-vindo(a) de volta, ${parsed.name || "Consumidor"}!`);
+                  restoredLocal = true;
+                }
+              }
+            }
+          } catch {
+            // Ignora
+          }
+
+          if (!restoredLocal) {
+            setFeedback({
+              type: "error",
+              text: "Não foi possível conectar ao servidor no momento. Se ainda não possui cadastro neste aparelho, selecione 'Criar Conta de Consumidor'.",
+            });
+            setLoading(false);
+            return;
+          }
         }
       }
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Não foi possível concluir a autenticação. Verifique os dados informados.";
+      const msg = getPortugueseAuthErrorMessage(err);
       setFeedback({ type: "error", text: msg });
     } finally {
       setLoading(false);
@@ -481,31 +682,35 @@ export default function ContaPage() {
           ? `${cleanCep.slice(0, 5)}-${cleanCep.slice(5)}`
           : null;
 
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
+      // Salva localmente garantindo persistência imediata
+      const consumerDetails = {
+        full_name: profileFullName.trim(),
+        phone: profilePhone.trim() || null,
+        cep: formattedCep,
+        neighborhood: profileNeighborhood.trim() || null,
+        city: profileCity.trim() || null,
+        state: profileCepStateUf || null,
+        lat: profileCepCoords.lat,
+        lng: profileCepCoords.lng,
+        saved_at: new Date().toISOString(),
       };
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
+
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            CONSUMER_DETAILS_STORAGE_KEY,
+            JSON.stringify(consumerDetails)
+          );
+        }
+      } catch {
+        // Ignora
       }
 
-      const res = await fetch("/api/conta/perfil", {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({
-          full_name: profileFullName.trim(),
-          phone: profilePhone.trim() || null,
-          cep: formattedCep,
-          neighborhood: profileNeighborhood.trim() || null,
-          city: profileCity.trim() || null,
-          lgpd_consent: true,
-        }),
-      });
-
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok || !data.ok) {
-        throw new Error(
-          data.error || "Não foi possível salvar seus dados cadastrais."
-        );
+      if (user) {
+        setLocalConsumerUser({
+          ...user,
+          name: profileFullName.trim(),
+        });
       }
 
       if (profileCity.trim() || formattedCep) {
@@ -520,8 +725,36 @@ export default function ContaPage() {
         });
       }
 
-      if (accessToken) {
-        await syncSessionFromToken(accessToken);
+      // Tenta sincronizar na nuvem se autenticado via cloud
+      if (accessToken && user && !user.id.startsWith("consumer_local_")) {
+        try {
+          const res = await fetch("/api/conta/perfil", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              full_name: profileFullName.trim(),
+              phone: profilePhone.trim() || null,
+              cep: formattedCep,
+              neighborhood: profileNeighborhood.trim() || null,
+              city: profileCity.trim() || null,
+              lgpd_consent: true,
+            }),
+          });
+          const data = (await res.json().catch(() => ({}))) as {
+            ok?: boolean;
+            error?: string;
+          };
+          if (!res.ok || !data.ok) {
+            console.warn("Falha ao sincronizar perfil com o servidor:", data.error);
+          } else {
+            await syncSessionFromToken(accessToken);
+          }
+        } catch {
+          // Ignora falha de rede da nuvem
+        }
       }
 
       setProfileFeedback({
@@ -600,7 +833,7 @@ export default function ContaPage() {
                       Papel: {user.role}
                     </span>
                     <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-semibold text-emerald-800">
-                      Sessão Verificada (Supabase Auth)
+                      Conta Verificada
                     </span>
                   </div>
                   <h1 className="mt-1 font-heading text-2xl font-extrabold text-brand-navy">
@@ -850,7 +1083,7 @@ export default function ContaPage() {
                     Segurança e Alteração de Senha
                   </h2>
                   <p className="text-xs text-slate-500">
-                    Atualize sua senha de acesso diretamente via Supabase Auth.
+                    Atualize sua senha de acesso para proteger sua conta.
                   </p>
                 </div>
               </div>

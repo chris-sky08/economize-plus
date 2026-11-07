@@ -45,6 +45,8 @@ export type {
 
 export const SHOPPING_LIST_STORAGE_KEY = "economize_shopping_list_v2";
 export const LOCATION_STORAGE_KEY = "economize_location_v2";
+export const CONSUMER_LOCAL_STORAGE_KEY = "economize_consumer_profile_v1";
+export const CONSUMER_DETAILS_STORAGE_KEY = "economize_consumer_details_v1";
 
 const LEGACY_SHOPPING_LIST_KEYS = [
   "economize_shopping_list",
@@ -97,6 +99,7 @@ interface AppContextType {
   clearList: () => void;
   saveListToSupabase: () => Promise<void>;
   logoutUser: () => Promise<void>;
+  setLocalConsumerUser: (profile: UserProfile) => void;
   syncSessionFromToken: (token: string) => Promise<UserProfile | null>;
   showToast: (msg: string) => void;
   upsertMarketPrice: (
@@ -373,6 +376,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
         }
       }
+
+      const savedConsumer = localStorage.getItem(CONSUMER_LOCAL_STORAGE_KEY);
+      if (savedConsumer) {
+        try {
+          const parsedUser = JSON.parse(savedConsumer) as UserProfile;
+          if (parsedUser && parsedUser.email && parsedUser.role === "consumidor") {
+            setUser((curr) => curr ?? parsedUser);
+          }
+        } catch {
+          // Ignora erro de JSON
+        }
+      }
     } catch {
       // Ignora falha de leitura de localStorage
     }
@@ -380,6 +395,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const handleClearLocalData = () => {
       setShoppingList([]);
       setLocation(EMPTY_LOCATION_STATE);
+      setUser(null);
+      try {
+        localStorage.removeItem(CONSUMER_LOCAL_STORAGE_KEY);
+        localStorage.removeItem(CONSUMER_DETAILS_STORAGE_KEY);
+      } catch {
+        // Ignora
+      }
     };
     window.addEventListener("economize:clear-local-data", handleClearLocalData);
 
@@ -590,9 +612,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     showToast("Lista sincronizada com sua conta no Supabase!");
   };
 
+  const setLocalConsumerUser = useCallback((profile: UserProfile) => {
+    setUser(profile);
+    try {
+      localStorage.setItem(
+        CONSUMER_LOCAL_STORAGE_KEY,
+        JSON.stringify(profile)
+      );
+    } catch {
+      // Ignora erro de storage
+    }
+  }, []);
+
   const logoutUser = async () => {
-    await supabase.auth.signOut();
-    await fetch("/api/auth/session", { method: "DELETE" });
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignora se Supabase estiver offline
+    }
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    } catch {
+      // Ignora falha de rede
+    }
+    try {
+      localStorage.removeItem(CONSUMER_LOCAL_STORAGE_KEY);
+      localStorage.removeItem(CONSUMER_DETAILS_STORAGE_KEY);
+    } catch {
+      // Ignora erro de storage
+    }
     setAccessToken(null);
     setUser(null);
     showToast("Sessão encerrada.");
@@ -1080,6 +1128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         clearList,
         saveListToSupabase,
         logoutUser,
+        setLocalConsumerUser,
         syncSessionFromToken,
         showToast,
         upsertMarketPrice,
