@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { ShieldCheck } from "lucide-react";
 
 declare global {
   interface Window {
@@ -66,19 +65,7 @@ export default function TurnstileWidget({ onVerify }: TurnstileWidgetProps) {
   }, [siteKey, onVerify]);
 
   if (!siteKey) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-        <p className="flex items-center gap-1.5 font-semibold">
-          <ShieldCheck className="h-4 w-4 text-amber-700" />
-          Proteção anti-spam Cloudflare Turnstile
-        </p>
-        <p className="mt-0.5 text-[11px] text-amber-800">
-          Defina <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> e{" "}
-          <code>TURNSTILE_SECRET_KEY</code> no painel da Vercel para ativar o
-          envio de formulários públicos.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return <div ref={containerRef} className="my-2 min-h-[65px]" />;

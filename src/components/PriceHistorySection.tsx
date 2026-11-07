@@ -155,7 +155,7 @@ export default function PriceHistorySection({
             </h2>
             <p className="mt-0.5 text-xs text-slate-500">
               Registros reais gravados automaticamente a cada publicação ou
-              alteração de preço (`public.price_history`).
+              alteração de preço.
             </p>
           </div>
         </div>

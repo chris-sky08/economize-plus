@@ -25,7 +25,6 @@ export default function MarketOnboardingGuide({
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownloadCsvTemplate = () => {
-    // Cabeçalho oficial limpo (UTF-8 com BOM para abertura direta no Excel/LibreOffice)
     const csvHeaderContent = "\uFEFFean,nome,preco,oferta\n";
     const blob = new Blob([csvHeaderContent], {
       type: "text/csv;charset=utf-8;",
@@ -58,9 +57,9 @@ export default function MarketOnboardingGuide({
             Como os supermercados cadastram e atualizam os preços
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600 sm:text-sm">
-            Todo preço exibido no Economize+ possui origem autenticada, código
-            de barras validado (GTIN/EAN) e registro automático no histórico
-            auditável (`public.price_history`).
+            Todo preço exibido no Economize+ possui origem identificada, código
+            de barras validado (EAN) e registro automático no histórico de
+            preços.
           </p>
         </div>
 
@@ -101,11 +100,11 @@ export default function MarketOnboardingGuide({
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy">
                 <ShieldCheck className="h-4 w-4 text-brand-blue" />
-                RLS + Vínculo Autenticado
+                Cadastro Verificado
               </span>
             </div>
             <h3 className="mt-3 font-heading text-sm font-extrabold text-brand-navy sm:text-base">
-              Credenciamento e Vínculo Seguro
+              Credenciamento do Estabelecimento
             </h3>
             <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
               O responsável pelo supermercado solicita o credenciamento em{" "}
@@ -113,21 +112,17 @@ export default function MarketOnboardingGuide({
                 href="/seja-parceiro"
                 className="font-bold text-brand-blue hover:underline"
               >
-                /seja-parceiro
+                Seja Parceiro
               </Link>
-              . Após validação do CNPJ e endereço real pela administração, a
-              conta do lojista é vinculada ao estabelecimento na tabela{" "}
-              <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-brand-navy">
-                public.market_members
-              </code>
-              , garantindo que apenas membros autorizados (`requireMarketMember`)
-              possam publicar preços daquela loja.
+              . Após conferência do CNPJ e endereço real pela nossa equipe, a
+              conta da loja recebe acesso exclusivo para publicar e atualizar as
+              ofertas daquele estabelecimento.
             </p>
           </div>
           <div className="mt-3 flex items-center gap-1.5 border-t border-slate-200/70 pt-2.5 text-[11px] font-semibold text-slate-500">
             <CheckCircle2 className="h-3.5 w-3.5 text-brand-green" />
-            Selo &ldquo;Verificado&rdquo; exibido somente quando `verified_at`
-            está preenchido.
+            Selo &ldquo;Verificado&rdquo; exibido após conferência cadastral da
+            loja.
           </div>
         </article>
 
@@ -140,31 +135,29 @@ export default function MarketOnboardingGuide({
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy">
                 <Barcode className="h-4 w-4 text-brand-blue" />
-                Origem: `partner_manual`
+                Painel Rápido
               </span>
             </div>
             <h3 className="mt-3 font-heading text-sm font-extrabold text-brand-navy sm:text-base">
               Cadastro e Atualização Manual em 1 Toque
             </h3>
             <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-              No Painel do Mercado Parceiro (
+              No{" "}
               <Link
                 href="/painel-parceiro"
                 className="font-bold text-brand-blue hover:underline"
               >
-                /painel-parceiro
+                Painel do Parceiro
               </Link>
-              ), o lojista altera o preço de qualquer item já cadastrado em um
+              , o lojista altera o preço de qualquer item já cadastrado em um
               toque ou adiciona novos produtos pelo código de barras. O sistema
-              valida o dígito verificador oficial GS1 (GTIN-8/12/13/14),
-              consulta o Open Food Facts Brasil e calcula automaticamente o
-              preço por medida (`R$/kg`, `R$/L`, `R$/un`).
+              confere o código EAN, busca os dados da embalagem e calcula
+              automaticamente o preço por medida (R$/kg, R$/L ou R$/un).
             </p>
           </div>
           <div className="mt-3 flex items-center gap-1.5 border-t border-slate-200/70 pt-2.5 text-[11px] font-semibold text-slate-500">
             <History className="h-3.5 w-3.5 text-brand-blue" />
-            Publicação imediata com disparo automático para o histórico de
-            preços.
+            Publicação imediata com atualização automática do horário da coleta.
           </div>
         </article>
 
@@ -177,27 +170,26 @@ export default function MarketOnboardingGuide({
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy">
                 <FileSpreadsheet className="h-4 w-4 text-brand-blue" />
-                Origem: `partner_csv` (`POST /api/ingest/csv`)
+                Planilha Excel / CSV
               </span>
             </div>
             <h3 className="mt-3 font-heading text-sm font-extrabold text-brand-navy sm:text-base">
-              Importação em Lote via Planilha CSV do ERP
+              Importação em Lote via Planilha CSV
             </h3>
             <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
               Para atualizar centenas de itens de uma só vez, o mercado exporta
-              do seu sistema ERP ou Excel uma planilha `.csv` (até 2 MB / 5.000
-              linhas) com as colunas{" "}
+              do seu sistema ou Excel uma planilha <code>.csv</code> com as
+              colunas{" "}
               <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-brand-navy">
                 ean,nome,preco,oferta
               </code>
-              . O servidor valida cada EAN, enriquece itens inéditos e retorna
-              um relatório detalhado por linha caso algum código esteja
-              incorreto.
+              . O painel valida cada código de barras e mostra na hora um
+              resumo completo da importação.
             </p>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/70 pt-2.5">
             <span className="text-[11px] font-semibold text-slate-500">
-              Aceita separador vírgula (`,`) ou ponto-e-vírgula (`;`).
+              Aceita separador vírgula (,) ou ponto-e-vírgula (;).
             </span>
             <button
               type="button"
@@ -205,7 +197,7 @@ export default function MarketOnboardingGuide({
               className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-[11px] font-extrabold text-brand-navy shadow-2xs transition hover:bg-brand-light"
             >
               <Download className="h-3.5 w-3.5 text-brand-blue" />
-              Baixar `.csv` modelo
+              Baixar modelo .csv
             </button>
           </div>
         </article>
@@ -219,31 +211,23 @@ export default function MarketOnboardingGuide({
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-navy">
                 <Sparkles className="h-4 w-4 text-brand-yellow" />
-                Origem: `flyer_ocr` (`POST /api/ingest/flyer`)
+                Leitura de Encarte
               </span>
             </div>
             <h3 className="mt-3 font-heading text-sm font-extrabold text-brand-navy sm:text-base">
-              Leitura de Encarte por IA com Revisão Humana Obrigatória
+              Leitura de Encarte com Conferência do Lojista
             </h3>
             <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-              O lojista também pode enviar a foto ou PDF do jornal de ofertas
-              da semana. A leitura óptica extrai produtos e preços candidatos,
-              mas por segurança todo item extraído de encarte entra
-              obrigatoriamente com{" "}
-              <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-amber-900">
-                status = &apos;pendente&apos;
-              </code>{" "}
-              até que o responsável humano revise e aprove em{" "}
-              <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-brand-navy">
-                PATCH /api/ingest/review
-              </code>
-              .
+              O lojista também pode enviar a foto ou PDF do jornal de ofertas da
+              semana. O sistema identifica os produtos e preços da imagem e os
+              coloca em fila de conferência para o responsável revisar e aprovar
+              antes de publicar na vitrine.
             </p>
           </div>
           <div className="mt-3 flex items-center gap-1.5 border-t border-slate-200/70 pt-2.5 text-[11px] font-semibold text-amber-900">
             <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
-            Nenhum preço lido por IA vai ao ar sem confirmação humana do
-            mercado.
+            Nenhum preço de encarte vai ao ar sem confirmação do responsável
+            pela loja.
           </div>
         </article>
       </div>

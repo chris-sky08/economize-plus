@@ -526,7 +526,7 @@ export default function ContaPage() {
 
       setProfileFeedback({
         type: "success",
-        text: "Seus dados cadastrais foram atualizados com sucesso em public.profiles.",
+        text: "Seus dados cadastrais foram atualizados com sucesso!",
       });
       showToast("Cadastro atualizado com sucesso!");
     } catch (err: unknown) {
@@ -653,9 +653,8 @@ export default function ContaPage() {
                   Acessos da Sua Conta
                 </h2>
                 <p className="mt-1 text-xs text-slate-600">
-                  O papel da sua conta é validado no servidor via{" "}
-                  <code>public.profiles</code> e{" "}
-                  <code>public.market_members</code>.
+                  Acesse rapidamente as ferramentas disponíveis para o seu
+                  perfil no Economize+.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
@@ -1258,9 +1257,9 @@ export default function ContaPage() {
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   <div>
                     <strong className="text-brand-navy">Consumidor:</strong>{" "}
-                    Criado automaticamente em <code>public.profiles</code> ao se
-                    cadastrar. Permite salvar seu bairro, CEP e sincronizar sua
-                    Lista Inteligente entre dispositivos.
+                    Ativado automaticamente ao se cadastrar. Permite salvar seu
+                    bairro, CEP e sincronizar sua Lista Inteligente entre
+                    dispositivos.
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
@@ -1269,19 +1268,18 @@ export default function ContaPage() {
                     <strong className="text-brand-navy">
                       Mercado Parceiro:
                     </strong>{" "}
-                    Habilitado após verificação cadastral e vínculo do usuário
-                    na tabela <code>public.market_members</code>.
+                    Habilitado após verificação cadastral do estabelecimento
+                    pela nossa equipe.
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-navy" />
                   <div>
                     <strong className="text-brand-navy">
-                      Validação no Servidor:
+                      Acesso Rápido e Prático:
                     </strong>{" "}
-                    Todas as rotas de perfil, listas e ingestão validam o token
-                    JWT e as políticas Row Level Security (RLS) diretamente no
-                    Supabase.
+                    Você também pode pesquisar preços e montar sua lista sem
+                    precisar fazer login.
                   </div>
                 </div>
               </div>

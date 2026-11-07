@@ -96,17 +96,16 @@ function InstitucionalContent() {
               </p>
               <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-slate-600">
                 <li>
-                  <strong>Planilha do parceiro (partner_csv):</strong> enviada
-                  diretamente pelo estabelecimento credenciado.
+                  <strong>Planilha do parceiro:</strong> enviada diretamente
+                  pelo estabelecimento credenciado.
                 </li>
                 <li>
-                  <strong>Encarte revisado (flyer_ocr):</strong> extraído de
-                  encarte promocional e revisado manualmente antes da
-                  publicação.
+                  <strong>Encarte revisado:</strong> extraído de encarte
+                  promocional e conferido manualmente antes da publicação.
                 </li>
                 <li>
-                  <strong>Coleta em loja (team_collected):</strong> registrada
-                  presencialmente com foto da etiqueta de gôndola.
+                  <strong>Coleta em loja:</strong> registrada presencialmente
+                  com foto da etiqueta de gôndola.
                 </li>
               </ul>
             </div>

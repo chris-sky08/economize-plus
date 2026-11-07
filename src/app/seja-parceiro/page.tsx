@@ -290,8 +290,7 @@ export default function SejaParceiroPage() {
             <p className="mt-1 text-xs text-slate-700">
               Os dados do estabelecimento <strong>{marketName}</strong> foram
               enviados para verificação cadastral. Após a aprovação, sua conta
-              receberá o vínculo em <code>public.market_members</code> para
-              acessar o Painel do Parceiro.
+              receberá o acesso liberado para o Painel do Parceiro.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
