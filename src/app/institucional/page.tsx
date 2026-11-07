@@ -6,9 +6,12 @@ import {
   AlertTriangle,
   Database,
   ExternalLink,
+  Facebook,
   FileText,
   HelpCircle,
   Instagram,
+  Mail,
+  MapPin,
   ShieldCheck,
 } from "lucide-react";
 
@@ -264,7 +267,7 @@ function InstitucionalContent() {
           </div>
         )}
 
-        {/* CANAL OFICIAL DE COMUNICAÇÃO E NOVIDADES DA COMUNIDADE */}
+        {/* CANAIS OFICIAIS DE COMUNICAÇÃO E NOVIDADES DA COMUNIDADE */}
         <div className="mt-8 rounded-2xl border border-brand-blue/30 bg-brand-light/60 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
@@ -273,33 +276,64 @@ function InstitucionalContent() {
               </div>
               <div>
                 <span className="inline-block rounded-md bg-brand-green/25 px-2 py-0.5 text-[11px] font-extrabold text-brand-navy">
-                  Canal Oficial Verificado
+                  Canais Oficiais Verificados — Bertioga, SP
                 </span>
                 <h2 className="mt-1 font-heading text-base font-bold text-brand-navy sm:text-lg">
-                  Comunidade e Novidades no Instagram Oficial
+                  Instagram, Facebook e Atendimento Oficial Economize+
                 </h2>
                 <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                   Acompanhe comunicados de novos mercados parceiros, dicas de
-                  economia doméstica e atualizações da plataforma no único perfil
-                  oficial do Economize+ no Instagram:{" "}
+                  economia doméstica e atualizações oficiais no Instagram{" "}
                   <strong className="font-mono text-brand-navy">
                     @economizemais_oficial
                   </strong>
+                  , na página oficial do Facebook{" "}
+                  <strong className="text-brand-navy">Economize mais</strong> e
+                  pelo e-mail institucional{" "}
+                  <a
+                    href="mailto:empresaeconomizemais@gmail.com"
+                    className="font-mono font-bold text-brand-navy underline"
+                  >
+                    empresaeconomizemais@gmail.com
+                  </a>
                   .
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                  <span className="inline-flex items-center gap-1 font-semibold text-brand-navy">
+                    <MapPin className="h-3.5 w-3.5 text-brand-blue" />
+                    Bertioga, SP, Brasil
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-mono text-slate-700">
+                    <Mail className="h-3.5 w-3.5 text-brand-blue" />
+                    empresaeconomizemais@gmail.com
+                  </span>
+                </div>
               </div>
             </div>
 
-            <a
-              href="https://www.instagram.com/economizemais_oficial"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
-            >
-              <Instagram className="h-4 w-4 text-brand-yellow" />
-              <span>Acessar @economizemais_oficial</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="https://www.instagram.com/economizemais_oficial"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+              >
+                <Instagram className="h-4 w-4 text-brand-yellow" />
+                <span>@economizemais_oficial</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+
+              <a
+                href="https://www.facebook.com/search/top?q=Economize%20mais"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#1877F2] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#166FE5] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+              >
+                <Facebook className="h-4 w-4 text-white" />
+                <span>Facebook: Economize mais</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
           </div>
         </div>
       </div>

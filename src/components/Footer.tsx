@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Database, ExternalLink, Instagram, QrCode } from "lucide-react";
+import { Database, ExternalLink, Facebook, Instagram, Mail, MapPin, QrCode } from "lucide-react";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
 
 export default function Footer() {
@@ -34,7 +34,7 @@ export default function Footer() {
             rastreabilidade de origem, horário de coleta, histórico de variação
             e cálculo proporcional por unidade de medida.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-2">
             <a
               href="https://www.instagram.com/economizemais_oficial"
               target="_blank"
@@ -53,8 +53,45 @@ export default function Footer() {
                   @economizemais_oficial
                 </span>
               </span>
-              <ExternalLink className="ml-1 h-3.5 w-3.5 shrink-0 text-brand-light" />
+              <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-brand-light" />
             </a>
+
+            <a
+              href="https://www.facebook.com/search/top?q=Economize%20mais"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Página oficial no Facebook: Economize mais"
+              className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-brand-blue/40 bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition hover:border-brand-green hover:bg-brand-blue/25 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#1877F2] text-white">
+                <Facebook className="h-4 w-4" />
+              </span>
+              <span className="text-left leading-tight">
+                <span className="block text-[10px] font-semibold uppercase tracking-wider text-brand-yellow">
+                  Facebook Oficial
+                </span>
+                <span className="text-xs text-white">
+                  Economize mais
+                </span>
+              </span>
+              <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-brand-light" />
+            </a>
+
+            <a
+              href="mailto:empresaeconomizemais@gmail.com"
+              aria-label="E-mail oficial de contato: empresaeconomizemais@gmail.com"
+              className="inline-flex min-h-[44px] items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs text-slate-200 transition hover:border-brand-yellow hover:text-white"
+            >
+              <Mail className="h-4 w-4 shrink-0 text-brand-yellow" />
+              <span className="truncate font-mono text-[11px]">
+                empresaeconomizemais@gmail.com
+              </span>
+            </a>
+
+            <div className="inline-flex items-center gap-2 px-1 pt-0.5 text-[11px] text-slate-300">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-green" />
+              <span>Bertioga, SP — Brasil</span>
+            </div>
           </div>
         </div>
 
