@@ -6,14 +6,15 @@ import { createServiceRoleClient } from "@/lib/server/supabaseAdmin";
 type ApplicationCollection =
   | "partner_applications"
   | "couriers"
-  | "price_reports";
+  | "price_reports"
+  | "user_feedback";
 
 export async function GET(request: NextRequest) {
   try {
     const adminUser = await requireAdmin(request);
     const db = createServiceRoleClient(adminUser.accessToken);
 
-    const [partnersRes, couriersRes, reportsRes] = await Promise.all([
+    const [partnersRes, couriersRes, reportsRes, feedbackRes] = await Promise.all([
       db
         .from("partner_applications")
         .select("*")
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100),
+      db
+        .from("user_feedback")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
 
     return NextResponse.json({
@@ -36,6 +42,7 @@ export async function GET(request: NextRequest) {
       partnerApplications: partnersRes.data || [],
       couriers: couriersRes.data || [],
       priceReports: reportsRes.data || [],
+      userFeedback: feedbackRes.data || [],
     });
   } catch (err: unknown) {
     if (err instanceof ServerAuthError) {
@@ -75,12 +82,13 @@ export async function PATCH(request: NextRequest) {
       !status ||
       (collection !== "partner_applications" &&
         collection !== "couriers" &&
-        collection !== "price_reports")
+        collection !== "price_reports" &&
+        collection !== "user_feedback")
     ) {
       return NextResponse.json(
         {
           error:
-            "Informe a coleção (partner_applications, couriers ou price_reports), o ID e o novo status.",
+            "Informe a coleção (partner_applications, couriers, price_reports ou user_feedback), o ID e o novo status.",
         },
         { status: 400 }
       );
@@ -93,6 +101,7 @@ export async function PATCH(request: NextRequest) {
       partner_applications: ["em_analise", "aprovado", "recusado"],
       couriers: ["pre_cadastro", "em_analise", "aprovado", "suspenso"],
       price_reports: ["pendente", "revisado", "arquivado"],
+      user_feedback: ["novo", "lido", "resolvido"],
     };
 
     if (!allowedStatusesByCollection[collection].includes(status)) {

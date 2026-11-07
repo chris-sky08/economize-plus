@@ -9,6 +9,7 @@ import {
   MapPin,
   Package,
   Search,
+  Star,
   Store,
   TrendingDown,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/format";
 import ProductComparisonCard from "@/components/ProductComparisonCard";
 import SkeletonCard from "@/components/SkeletonCard";
+import { triggerFeedbackModal } from "@/components/FeedbackWidget";
 import { ECONOMIZE_ICONS, getCategoryIconSrc } from "@/lib/icons";
 
 const SUPER_APP_SHORTCUTS = [
@@ -584,8 +586,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Barra de Super-Atalhos Estilo Super-App Magalu */}
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {/* Barra de Super-Atalhos Estilo Super-App Magalu (com Posição 1: Avaliar & Relatar Bug) */}
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {SUPER_APP_SHORTCUTS.map((item) => (
               <Link
                 key={item.id}
@@ -612,6 +614,32 @@ export default function HomePage() {
                 </div>
               </Link>
             ))}
+
+            {/* Posição 1 Aprovada: Atalho Rápido com o Novo Ícone Realista nº 25 */}
+            <button
+              type="button"
+              onClick={() =>
+                triggerFeedbackModal({ rating: 5, category: "sugestao" })
+              }
+              className="group flex items-center gap-3 rounded-2xl border-2 border-brand-blue/60 bg-gradient-to-br from-white to-brand-light/70 p-3 text-left shadow-2xs transition hover:-translate-y-0.5 hover:border-brand-blue hover:shadow-md active:scale-98"
+            >
+              <img
+                src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
+                alt={ECONOMIZE_ICONS["avaliacao-feedback"].alt}
+                className="h-12 w-12 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-xs transition-transform duration-300 group-hover:scale-108"
+              />
+              <div className="min-w-0 flex-1">
+                <span className="inline-block rounded-full bg-brand-yellow px-2 py-0.2 text-[9px] font-extrabold uppercase text-brand-navy">
+                  Opinião &amp; Bugs
+                </span>
+                <p className="mt-0.5 truncate font-heading text-xs font-extrabold text-brand-navy sm:text-sm">
+                  Avaliar &amp; Sugerir
+                </p>
+                <p className="truncate text-[11px] text-slate-600">
+                  Cai direto no nosso Gmail
+                </p>
+              </div>
+            </button>
           </div>
         </div>
       </section>
@@ -1312,6 +1340,99 @@ export default function HomePage() {
                 Baixar QR Codes
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. POSIÇÃO 2 APROVADA: SEÇÃO INTERATIVA DE AVALIAÇÃO, SUGESTÕES E RELATO DE BUGS (DIRETO NO GMAIL) */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="relative overflow-hidden rounded-3xl border-2 border-brand-blue/50 bg-gradient-to-r from-brand-navy via-[#094D8A] to-brand-navy p-6 text-white shadow-xl sm:p-8">
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow"
+          />
+
+          <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              <img
+                src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
+                alt={ECONOMIZE_ICONS["avaliacao-feedback"].alt}
+                className="h-20 w-20 shrink-0 rounded-full border-4 border-brand-green bg-white object-cover shadow-lg sm:h-24 sm:w-24"
+              />
+              <div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-brand-yellow">
+                  <span>⭐⭐⭐⭐⭐</span>
+                  <span>SUA VOZ CONSTRÓI O ECONOMIZE+</span>
+                </div>
+                <h2 className="mt-2 font-heading text-xl font-extrabold text-white sm:text-2xl">
+                  Encontrou algum bug, quer indicar um mercado ou sugerir uma melhoria?
+                </h2>
+                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-light sm:text-sm">
+                  Deixe sua avaliação aqui mesmo sem sair da página. Sua mensagem
+                  é enviada direto para a equipe do Economize+ em Bertioga/SP no
+                  e-mail oficial{" "}
+                  <strong className="font-mono text-brand-yellow">
+                    empresaeconomizemais@gmail.com
+                  </strong>
+                  .
+                </p>
+
+                {/* Botões Rápidos por Estrela / Categoria */}
+                <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-300">
+                    Toque para avaliar:
+                  </span>
+                  {[1, 2, 3, 4, 5].map((starNum) => (
+                    <button
+                      key={starNum}
+                      type="button"
+                      onClick={() =>
+                        triggerFeedbackModal({
+                          rating: starNum,
+                          category: "sugestao",
+                        })
+                      }
+                      aria-label={`Avaliar com ${starNum} estrelas`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-brand-yellow/60 bg-white/10 transition hover:scale-105 hover:bg-brand-yellow/20 active:scale-95"
+                    >
+                      <Star className="h-4 w-4 fill-brand-yellow text-brand-yellow" />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      triggerFeedbackModal({ rating: 5, category: "bug" })
+                    }
+                    className="min-h-[36px] rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+                  >
+                    🐛 Relatar um Bug
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      triggerFeedbackModal({
+                        rating: 5,
+                        category: "indicar_mercado",
+                      })
+                    }
+                    className="min-h-[36px] rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+                  >
+                    🏪 Indicar Mercado
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                triggerFeedbackModal({ rating: 5, category: "sugestao" })
+              }
+              className="inline-flex min-h-[48px] shrink-0 items-center justify-center gap-2 rounded-2xl bg-brand-green px-6 py-3 text-sm font-black text-brand-navy shadow-lg transition hover:brightness-95 active:scale-95"
+            >
+              <span>Avaliar Agora</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </section>

@@ -23,6 +23,7 @@ export type EconomizeIconId =
   | "passo-busca-ean"
   | "passo-economia"
   | "ciberseguranca"
+  | "avaliacao-feedback"
   | "hero-magalu";
 
 export interface EconomizeIconMeta {
@@ -151,6 +152,11 @@ export const ECONOMIZE_ICONS: Record<EconomizeIconId, EconomizeIconMeta> = {
     id: "ciberseguranca",
     src: "/icons/24-ciberseguranca.jpg",
     alt: "Ícone realista de Cibersegurança e Proteção de Dados",
+  },
+  "avaliacao-feedback": {
+    id: "avaliacao-feedback",
+    src: "/icons/25-avaliacao-feedback.jpg",
+    alt: "Ícone realista de Avaliação, Sugestões e Relato de Bugs",
   },
   "hero-magalu": {
     id: "hero-magalu",

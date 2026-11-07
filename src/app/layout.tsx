@@ -5,6 +5,7 @@ import { AppProvider } from "@/context/AppContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LocationModal from "@/components/LocationModal";
+import FeedbackWidget from "@/components/FeedbackWidget";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -68,6 +69,7 @@ export default function RootLayout({
           <Navbar />
           <LocationModal />
           <main className="flex-1">{children}</main>
+          <FeedbackWidget />
           <Footer />
         </AppProvider>
       </body>

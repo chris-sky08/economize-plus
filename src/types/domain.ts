@@ -149,3 +149,23 @@ export interface CourierApplication {
   status: "pre_cadastro" | "em_analise" | "aprovado" | "suspenso";
   createdAt: string;
 }
+
+
+export type FeedbackCategory =
+  | "sugestao"
+  | "bug"
+  | "indicar_mercado"
+  | "duvida";
+
+export interface UserFeedback {
+  id: string;
+  rating: number;
+  category: FeedbackCategory;
+  message: string;
+  senderName: string | null;
+  senderContact: string | null;
+  pagePath: string | null;
+  emailDispatched: boolean;
+  status: "novo" | "lido" | "resolvido";
+  createdAt: string;
+}

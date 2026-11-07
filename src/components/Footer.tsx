@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { Database, ExternalLink, Facebook, Instagram, Mail, MapPin, QrCode } from "lucide-react";
+import { Database, ExternalLink, Facebook, Instagram, Mail, MapPin, QrCode, Star } from "lucide-react";
 import { TRANSPARENCY_DISCLAIMER } from "@/lib/format";
+import { triggerFeedbackModal } from "@/components/FeedbackWidget";
 
 export default function Footer() {
   return (
@@ -131,6 +132,18 @@ export default function Footer() {
                 <ExternalLink className="h-3 w-3" />
               </a>
             </li>
+            <li>
+              <button
+                type="button"
+                onClick={() =>
+                  triggerFeedbackModal({ rating: 5, category: "sugestao" })
+                }
+                className="inline-flex items-center gap-1.5 font-bold text-brand-yellow hover:underline"
+              >
+                <Star className="h-3.5 w-3.5 fill-brand-yellow text-brand-yellow" />
+                Avaliar App / Relatar Bug
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -162,6 +175,18 @@ export default function Footer() {
                 <QrCode className="h-3.5 w-3.5" />
                 QR Code de Divulgação &amp; Cartaz
               </Link>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() =>
+                  triggerFeedbackModal({ rating: 5, category: "sugestao" })
+                }
+                className="inline-flex items-center gap-1.5 font-bold text-brand-yellow hover:underline"
+              >
+                <Star className="h-3.5 w-3.5 fill-brand-yellow text-brand-yellow" />
+                Avaliar App / Relatar Bug
+              </button>
             </li>
           </ul>
         </div>
