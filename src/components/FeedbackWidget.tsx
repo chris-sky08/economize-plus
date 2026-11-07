@@ -187,8 +187,10 @@ export default function FeedbackWidget() {
 
       let dispatchedInBrowser = Boolean(data.emailDispatched);
 
-      // Se houver chave Web3Forms pública configurada, dispara direto do navegador (evita bloqueio Cloudflare de servidor)
-      const web3Key = process.env.NEXT_PUBLIC_WEB3FORMS_KEY?.trim();
+      // Dispara direto do navegador via Web3Forms para empresaeconomizemais@gmail.com (evita bloqueio Cloudflare de servidor e envia em 1s sem abrir janela)
+      const web3Key =
+        process.env.NEXT_PUBLIC_WEB3FORMS_KEY?.trim() ||
+        "237e2b79-5fde-4822-bc27-756e5a4e8f60";
       if (!dispatchedInBrowser && web3Key) {
         try {
           const stars = "⭐".repeat(rating);
@@ -201,20 +203,25 @@ export default function FeedbackWidget() {
             body: JSON.stringify({
               access_key: web3Key,
               subject: `[Economize+ Feedback] ${activeCategoryMeta.emoji} ${activeCategoryMeta.label} — ${stars} (${rating}/5)`,
-              from_name: senderName.trim() || "Usuário Economize+",
+              from_name: senderName.trim() || "Avaliação Economize+",
               Protocolo: data.protocolId || "ECO-OK",
               Categoria: `${activeCategoryMeta.emoji} ${activeCategoryMeta.label}`,
-              Nota: `${stars} (${rating} de 5 estrelas)`,
+              Avaliacao: `${stars} (${rating} de 5 estrelas)`,
+              Nome: senderName.trim() || "Não informado",
               Contato: senderContact.trim() || "Não informado",
-              Pagina: pathname || "/",
+              Pagina_Origem: `https://economize-nine.vercel.app${pathname || "/"}`,
+              Data_Hora: data.submittedAtBr || new Date().toLocaleString("pt-BR"),
               Mensagem: message.trim(),
             }),
           });
-          if (w3Res.ok) {
+          const w3Json = (await w3Res.json().catch(() => null)) as {
+            success?: boolean;
+          } | null;
+          if (w3Res.ok && w3Json?.success !== false) {
             dispatchedInBrowser = true;
           }
         } catch {
-          // Segue para abertura direta do app de e-mail
+          // Segue para fallback de aplicativo de e-mail caso falhe
         }
       }
 
