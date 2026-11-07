@@ -95,10 +95,21 @@ export default function CookieConsentBanner() {
 
   const handleClearAllLocalData = () => {
     try {
-      window.localStorage.removeItem("economize_location_v2");
-      window.localStorage.removeItem("economize_shopping_list_v2");
-      window.localStorage.removeItem(OPTIONAL_PREFS_STORAGE_KEY);
-      window.localStorage.removeItem(COOKIE_CONSENT_STORAGE_KEY);
+      const keysToRemove = [
+        "economize_location_v2",
+        "economize_location_v1",
+        "economize_location",
+        "economize_shopping_list_v2",
+        "economize_shopping_list_v1",
+        "economize_shopping_list",
+        "economize_feedback_evaluated_v1",
+        OPTIONAL_PREFS_STORAGE_KEY,
+        COOKIE_CONSENT_STORAGE_KEY,
+      ];
+      for (const k of keysToRemove) {
+        window.localStorage.removeItem(k);
+      }
+      window.dispatchEvent(new CustomEvent("economize:clear-local-data"));
       setFunctionalEnabled(false);
       setAnalyticsEnabled(false);
       setClearedFeedback(
@@ -211,7 +222,7 @@ export default function CookieConsentBanner() {
       {/* 2º NÍVEL (GUIA ORIENTATIVO ANPD): MODAL DETALHADO DE COOKIES, INVENTÁRIO TÉCNICO E LGPD */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-xs sm:p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2.5 backdrop-blur-xs sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="cookie-modal-title"
@@ -222,37 +233,35 @@ export default function CookieConsentBanner() {
           <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border-2 border-brand-blue bg-white shadow-2xl">
             <div className="h-2 w-full shrink-0 bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow" />
 
-            {/* Cabeçalho */}
-            <div className="flex shrink-0 items-center justify-between gap-3 bg-brand-navy px-5 py-4 text-white sm:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-brand-yellow">
-                  <Scale className="h-5 w-5" />
-                </div>
-                <div>
-                  <span className="inline-block rounded-full bg-brand-yellow px-2.5 py-0.5 text-[10px] font-black uppercase text-brand-navy">
-                    Lei nº 13.709/2018 (LGPD) &amp; Guia da ANPD
-                  </span>
-                  <h2
-                    id="cookie-modal-title"
-                    className="mt-0.5 font-heading text-base font-extrabold text-white sm:text-lg"
-                  >
-                    Central Detalhada de Cookies, Armazenamento Local e Privacidade
-                  </h2>
-                </div>
+            {/* Cabeçalho com botão X fixo no cantinho superior direito */}
+            <div className="relative flex shrink-0 items-start gap-3 bg-brand-navy px-4 py-4 pr-14 text-white sm:items-center sm:px-6">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-brand-yellow">
+                <Scale className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="inline-block rounded-full bg-brand-yellow px-2.5 py-0.5 text-[10px] font-black uppercase text-brand-navy">
+                  Lei nº 13.709/2018 (LGPD) &amp; Guia da ANPD
+                </span>
+                <h2
+                  id="cookie-modal-title"
+                  className="mt-1 font-heading text-sm font-extrabold leading-snug text-white sm:text-lg"
+                >
+                  Central Detalhada de Cookies, Armazenamento Local e Privacidade
+                </h2>
               </div>
 
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
                 aria-label="Fechar central de privacidade e cookies"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                className="absolute top-3 right-3 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 bg-slate-950/35 text-white transition hover:bg-white/25 active:scale-95 sm:top-3.5 sm:right-3.5 sm:h-10 sm:w-10"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Navegação de Abas */}
-            <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 px-5 py-2.5">
+            <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5 sm:px-5">
               {[
                 {
                   id: "categorias" as const,
@@ -287,7 +296,7 @@ export default function CookieConsentBanner() {
             </div>
 
             {/* Conteúdo Rolável */}
-            <div className="flex-1 overflow-y-auto p-5 text-xs leading-relaxed text-slate-700 sm:p-6 sm:text-sm">
+            <div className="flex-1 overflow-y-auto p-4 text-xs leading-relaxed text-slate-700 sm:p-6 sm:text-sm">
               {/* ABA 1: CATEGORIAS GRANULARES (OPT-IN) */}
               {activeTab === "categorias" && (
                 <div className="space-y-4">
@@ -435,7 +444,7 @@ export default function CookieConsentBanner() {
                           <td className="p-3">Necessário</td>
                           <td className="p-3">Persistente (local)</td>
                           <td className="p-3">
-                            Armazena os produtos e quantidades da Lista de
+                            Armazena os produtos reais e quantidades da Lista de
                             Compras Inteligente sem obrigar a criação de conta.
                           </td>
                         </tr>
@@ -449,6 +458,18 @@ export default function CookieConsentBanner() {
                           <td className="p-3">
                             Registra a escolha do usuário no banner de cookies
                             (data/hora e categorias aceitas ou rejeitadas).
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="p-3 font-mono font-bold text-brand-navy">
+                            economize_feedback_evaluated_v1
+                          </td>
+                          <td className="p-3">Próprio (1ª parte)</td>
+                          <td className="p-3">Necessário (interface)</td>
+                          <td className="p-3">Persistente (local)</td>
+                          <td className="p-3">
+                            Indica que o usuário já enviou sua 1ª avaliação para
+                            reduzir o botão flutuante apenas ao ícone discreto.
                           </td>
                         </tr>
                         <tr>
@@ -638,7 +659,7 @@ export default function CookieConsentBanner() {
             </div>
 
             {/* Rodapé de Ação do Modal */}
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-t border-slate-200 bg-slate-50 px-5 py-3.5 sm:px-6">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-t border-slate-200 bg-slate-50 px-4 py-3.5 sm:px-6">
               <Link
                 href="/institucional?aba=privacidade"
                 onClick={() => setModalOpen(false)}

@@ -26,6 +26,7 @@ export default function Navbar() {
   const router = useRouter();
   const {
     categories,
+    products,
     shoppingList,
     prices,
     markets,
@@ -37,9 +38,18 @@ export default function Navbar() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const totalItemsInList = shoppingList
-    .filter((i) => i.checked)
-    .reduce((acc, item) => acc + item.quantity, 0);
+  // Contabiliza exclusivamente itens cujo produto existe de verdade no catálogo ativo
+  const validCheckedItems = shoppingList.filter(
+    (i) =>
+      i.checked &&
+      i.quantity > 0 &&
+      products.some((p) => p.id === i.productId)
+  );
+
+  const totalItemsInList = validCheckedItems.reduce(
+    (acc, item) => acc + item.quantity,
+    0
+  );
 
   const activeMarkets = markets.filter(
     (m) =>
@@ -48,17 +58,15 @@ export default function Navbar() {
   );
   const marketTotals = activeMarkets.map((m) => {
     let sum = 0;
-    shoppingList
-      .filter((i) => i.checked)
-      .forEach((item) => {
-        const mp = prices.find(
-          (p) =>
-            p.marketId === m.id &&
-            p.productId === item.productId &&
-            p.inStock
-        );
-        if (mp) sum += mp.price * item.quantity;
-      });
+    validCheckedItems.forEach((item) => {
+      const mp = prices.find(
+        (p) =>
+          p.marketId === m.id &&
+          p.productId === item.productId &&
+          p.inStock
+      );
+      if (mp) sum += mp.price * item.quantity;
+    });
     return sum;
   });
   const positiveTotals = marketTotals.filter((t) => t > 0);
@@ -97,7 +105,7 @@ export default function Navbar() {
         className="h-1.5 w-full bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow"
       />
 
-      {/* Barra Superior de Transparência, Segurança e Atalhos Rápidos */}
+      {/* Barra Superior de Transparência e Atalhos Rápidos */}
       <div className="border-b border-white/10 bg-[#042B50] px-3 py-1.5 text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-2">
@@ -193,7 +201,7 @@ export default function Navbar() {
             </button>
 
             {/* Omnibox Varejo Estilo Magalu com Botão de Scanner EAN Integrado */}
-            <div className="order-3 w-full lg:order-0 lg:min-w-0 lg:flex-1 lg:px-2">
+            <div className="order-3 w-full lg:order-none lg:min-w-0 lg:flex-1 lg:px-2">
               <form
                 onSubmit={handleSearch}
                 role="search"
@@ -286,9 +294,11 @@ export default function Navbar() {
                     alt=""
                     className="h-9 w-9 shrink-0 rounded-full border border-brand-navy/20 bg-white object-cover shadow-xs"
                   />
-                  <span className="tabular-price absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-navy px-1 text-[10px] font-extrabold text-white shadow-2xs">
-                    {totalItemsInList}
-                  </span>
+                  {totalItemsInList > 0 && (
+                    <span className="tabular-price absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-navy px-1 text-[10px] font-extrabold text-white shadow-2xs">
+                      {totalItemsInList}
+                    </span>
+                  )}
                 </div>
                 <div className="text-left">
                   <span className="block text-[10px] font-bold leading-none text-brand-navy/80">

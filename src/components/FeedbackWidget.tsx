@@ -18,6 +18,8 @@ import {
 import { ECONOMIZE_ICONS } from "@/lib/icons";
 import type { FeedbackCategory } from "@/types/domain";
 
+export const FEEDBACK_EVALUATED_STORAGE_KEY = "economize_feedback_evaluated_v1";
+
 export interface OpenFeedbackEventDetail {
   rating?: number;
   category?: FeedbackCategory;
@@ -93,6 +95,7 @@ interface SubmitResult {
 export default function FeedbackWidget() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [category, setCategory] = useState<FeedbackCategory>("sugestao");
@@ -104,6 +107,16 @@ export default function FeedbackWidget() {
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
 
   useEffect(() => {
+    try {
+      if (
+        window.localStorage.getItem(FEEDBACK_EVALUATED_STORAGE_KEY) === "true"
+      ) {
+        setHasEvaluated(true);
+      }
+    } catch {
+      // Ignora bloqueio de leitura do localStorage
+    }
+
     const handleOpen = (event: Event) => {
       const custom = event as CustomEvent<OpenFeedbackEventDetail | undefined>;
       if (
@@ -121,9 +134,26 @@ export default function FeedbackWidget() {
       setIsOpen(true);
     };
 
+    const handleClearLocalData = () => {
+      setHasEvaluated(false);
+    };
+
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === FEEDBACK_EVALUATED_STORAGE_KEY) {
+        setHasEvaluated(e.newValue === "true");
+      }
+    };
+
     window.addEventListener("economize:open-feedback", handleOpen);
+    window.addEventListener("economize:clear-local-data", handleClearLocalData);
+    window.addEventListener("storage", handleStorageSync);
     return () => {
       window.removeEventListener("economize:open-feedback", handleOpen);
+      window.removeEventListener(
+        "economize:clear-local-data",
+        handleClearLocalData
+      );
+      window.removeEventListener("storage", handleStorageSync);
     };
   }, []);
 
@@ -187,7 +217,7 @@ export default function FeedbackWidget() {
 
       let dispatchedInBrowser = Boolean(data.emailDispatched);
 
-      // Dispara direto do navegador via Web3Forms para empresaeconomizemais@gmail.com (evita bloqueio Cloudflare de servidor e envia em 1s sem abrir janela)
+      // Dispara direto do navegador via Web3Forms para empresaeconomizemais@gmail.com
       const web3Key =
         process.env.NEXT_PUBLIC_WEB3FORMS_KEY?.trim() ||
         "237e2b79-5fde-4822-bc27-756e5a4e8f60";
@@ -231,11 +261,17 @@ export default function FeedbackWidget() {
         data.gmailComposeUrl ||
         "https://mail.google.com/mail/?view=cm&fs=1&to=empresaeconomizemais@gmail.com";
 
-      // Caso o servidor gratuito FormSubmit esteja fora do ar (Erro 522) e ainda não haja chave Web3Forms/Resend,
-      // abre automaticamente o e-mail já preenchido no celular/PC para garantir que chegue 100% no empresaeconomizemais@gmail.com!
       if (!dispatchedInBrowser && typeof window !== "undefined") {
         window.location.href = finalMailto;
       }
+
+      // Assim que a 1ª avaliação é concluída, persiste o estado para encolher o botão flutuante para só o ícone
+      try {
+        window.localStorage.setItem(FEEDBACK_EVALUATED_STORAGE_KEY, "true");
+      } catch {
+        // Ignora bloqueio em modo anônimo restrito
+      }
+      setHasEvaluated(true);
 
       setSubmitResult({
         protocolId: data.protocolId || "ECO-OK",
@@ -257,39 +293,67 @@ export default function FeedbackWidget() {
 
   return (
     <>
-      {/* POSIÇÃO 3: Pílula Flutuante Discreta no Canto Inferior Direito */}
+      {/* POSIÇÃO 3: Botão Flutuante no Canto Inferior Direito
+          - Antes da 1ª avaliação: pílula completa ([Ícone] ⭐ Avaliar / Relatar Bug)
+          - Depois da 1ª avaliação: diminui para apenas o ícone redondo personalizado (clicável a qualquer momento) */}
       <div
         className="fixed right-3 bottom-20 z-40 md:right-5 md:bottom-5"
         style={{
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <button
-          type="button"
-          onClick={() => {
-            setErrorMsg(null);
-            setSubmitResult(null);
-            setIsOpen(true);
-          }}
-          aria-label="Avaliar o aplicativo, enviar sugestão ou relatar bug"
-          className="group inline-flex min-h-[46px] items-center gap-2.5 rounded-full border-2 border-brand-yellow bg-brand-navy px-3.5 py-1.5 text-xs font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow sm:px-4 sm:py-2 sm:text-sm"
-        >
-          <img
-            src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
-            alt=""
-            className="h-7 w-7 shrink-0 rounded-full border border-white bg-white object-cover shadow-2xs sm:h-8 sm:w-8"
-          />
-          <span className="flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-brand-yellow text-brand-yellow" />
-            <span>Avaliar / Relatar Bug</span>
-          </span>
-        </button>
+        {hasEvaluated ? (
+          <button
+            type="button"
+            onClick={() => {
+              setErrorMsg(null);
+              setSubmitResult(null);
+              setIsOpen(true);
+            }}
+            title="Avaliar o aplicativo, enviar sugestão ou relatar bug"
+            aria-label="Avaliar o aplicativo, enviar sugestão ou relatar bug"
+            className="group flex h-12 w-12 items-center justify-center rounded-full border-2 border-brand-yellow bg-brand-navy p-1 text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:scale-105 hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow sm:h-13 sm:w-13"
+          >
+            <img
+              src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
+              alt="Avaliar ou relatar bug"
+              width={40}
+              height={40}
+              style={{ width: "100%", height: "100%" }}
+              className="h-full w-full shrink-0 rounded-full bg-white object-cover"
+            />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setErrorMsg(null);
+              setSubmitResult(null);
+              setIsOpen(true);
+            }}
+            aria-label="Avaliar o aplicativo, enviar sugestão ou relatar bug"
+            className="group inline-flex min-h-[46px] items-center gap-2.5 rounded-full border-2 border-brand-yellow bg-brand-navy px-3.5 py-1.5 text-xs font-extrabold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-blue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow sm:px-4 sm:py-2 sm:text-sm"
+          >
+            <img
+              src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
+              alt=""
+              width={28}
+              height={28}
+              style={{ width: 28, height: 28 }}
+              className="h-7 w-7 shrink-0 rounded-full border border-white bg-white object-cover shadow-2xs sm:h-8 sm:w-8"
+            />
+            <span className="flex items-center gap-1">
+              <Star className="h-3.5 w-3.5 fill-brand-yellow text-brand-yellow" />
+              <span>Avaliar / Relatar Bug</span>
+            </span>
+          </button>
+        )}
       </div>
 
       {/* MODAL DE AVALIAÇÃO, SUGESTÕES E BUGS */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-xs sm:p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2.5 backdrop-blur-xs sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="feedback-modal-title"
@@ -297,46 +361,47 @@ export default function FeedbackWidget() {
             if (e.target === e.currentTarget) setIsOpen(false);
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border-2 border-brand-blue bg-white shadow-2xl">
+          <div className="relative max-h-[92vh] w-full max-w-xl overflow-x-hidden overflow-y-auto rounded-3xl border-2 border-brand-blue bg-white shadow-2xl">
             {/* Faixa Tricolor Superior */}
             <div className="h-2 w-full bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow" />
 
-            {/* Cabeçalho do Modal */}
-            <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-brand-navy to-[#094D8A] px-5 py-4 text-white sm:px-6">
-              <div className="flex items-center gap-3.5">
-                <img
-                  src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
-                  alt={ECONOMIZE_ICONS["avaliacao-feedback"].alt}
-                  className="h-13 w-13 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-md sm:h-14 sm:w-14"
-                />
-                <div>
-                  <span className="inline-block rounded-full bg-brand-green px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-navy">
-                    Fale com a Equipe
-                  </span>
-                  <h2
-                    id="feedback-modal-title"
-                    className="mt-0.5 font-heading text-base font-extrabold leading-tight text-white sm:text-lg"
-                  >
-                    Avalie o App, Dê Sugestões ou Relate Bugs
-                  </h2>
-                  <p className="text-xs text-brand-light">
-                    Sua opinião ajuda a melhorar o Economize+ na sua região
-                  </p>
-                </div>
+            {/* Cabeçalho do Modal — Botão X fixo no cantinho superior direito na bordinha e separado do texto */}
+            <div className="relative flex items-start gap-3 bg-gradient-to-r from-brand-navy to-[#094D8A] px-4 py-4 pr-14 text-white sm:items-center sm:px-6">
+              <img
+                src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
+                alt={ECONOMIZE_ICONS["avaliacao-feedback"].alt}
+                width={48}
+                height={48}
+                style={{ width: 48, height: 48 }}
+                className="h-12 w-12 shrink-0 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-md sm:h-14 sm:w-14"
+              />
+              <div className="min-w-0 flex-1">
+                <span className="inline-block rounded-full bg-brand-green px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-navy">
+                  Fale com a Equipe
+                </span>
+                <h2
+                  id="feedback-modal-title"
+                  className="mt-1 font-heading text-sm font-extrabold leading-snug text-white sm:text-lg"
+                >
+                  Avalie o App, Dê Sugestões ou Relate Bugs
+                </h2>
+                <p className="mt-0.5 text-[11px] leading-snug text-brand-light sm:text-xs">
+                  Sua opinião ajuda a melhorar o Economize+ na sua região
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="Fechar janela de avaliação"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 active:scale-95"
+                className="absolute top-3 right-3 z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 bg-slate-950/35 text-white transition hover:bg-white/25 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow sm:top-3.5 sm:right-3.5 sm:h-10 sm:w-10"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Corpo do Modal */}
-            <div className="p-5 sm:p-6">
+            <div className="px-4 py-4 sm:px-6 sm:py-5">
               {submitResult ? (
                 <div className="space-y-4 text-center">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
@@ -419,8 +484,8 @@ export default function FeedbackWidget() {
                     <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
                       1. Qual sua nota para o Economize+ hoje?
                     </label>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-blue/25 bg-brand-surface px-3.5 py-2.5">
-                      <div className="flex items-center gap-1.5">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-blue/25 bg-brand-surface px-3 py-2.5 sm:px-3.5">
+                      <div className="flex items-center gap-1 sm:gap-1.5">
                         {[1, 2, 3, 4, 5].map((starValue) => {
                           const active = starValue <= displayedRating;
                           return (
@@ -431,14 +496,14 @@ export default function FeedbackWidget() {
                               onMouseEnter={() => setHoverRating(starValue)}
                               onMouseLeave={() => setHoverRating(null)}
                               aria-label={`Avaliar com ${starValue} de 5 estrelas`}
-                              className={`flex h-11 w-11 items-center justify-center rounded-xl border-2 transition active:scale-95 ${
+                              className={`flex h-10 w-10 items-center justify-center rounded-xl border-2 transition active:scale-95 sm:h-11 sm:w-11 ${
                                 active
                                   ? "border-brand-yellow bg-white shadow-xs"
                                   : "border-slate-200 bg-white/60 opacity-55 hover:opacity-90"
                               }`}
                             >
                               <Star
-                                className={`h-6 w-6 ${
+                                className={`h-5 w-5 sm:h-6 sm:w-6 ${
                                   active
                                     ? "fill-brand-yellow text-brand-yellow"
                                     : "text-slate-400"
@@ -448,7 +513,7 @@ export default function FeedbackWidget() {
                           );
                         })}
                       </div>
-                      <span className="ml-1 text-xs font-extrabold text-brand-navy sm:text-sm">
+                      <span className="text-xs font-extrabold text-brand-navy sm:ml-1 sm:text-sm">
                         {RATING_LABELS[displayedRating]}
                       </span>
                     </div>
@@ -485,14 +550,14 @@ export default function FeedbackWidget() {
 
                   {/* 3. Mensagem */}
                   <div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <label
                         htmlFor="feedback-message-input"
                         className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600"
                       >
                         3. Conte para nós (detalhes da ideia, mercado ou erro)
                       </label>
-                      <span className="font-mono text-[11px] text-slate-400">
+                      <span className="shrink-0 font-mono text-[11px] text-slate-400">
                         {message.length}/1500
                       </span>
                     </div>
@@ -543,7 +608,7 @@ export default function FeedbackWidget() {
                   <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2 text-[11px] leading-snug text-slate-500">
                       <Mail className="h-4 w-4 shrink-0 text-brand-blue" />
-                      <span>
+                      <span className="break-all sm:break-normal">
                         Atendimento oficial:{" "}
                         <strong className="font-mono text-brand-navy">
                           empresaeconomizemais@gmail.com

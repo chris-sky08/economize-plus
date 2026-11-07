@@ -43,6 +43,33 @@ export type {
   LocationConfig,
 };
 
+export const SHOPPING_LIST_STORAGE_KEY = "economize_shopping_list_v2";
+export const LOCATION_STORAGE_KEY = "economize_location_v2";
+
+const LEGACY_SHOPPING_LIST_KEYS = [
+  "economize_shopping_list",
+  "economize_shopping_list_v1",
+];
+
+const LEGACY_LOCATION_KEYS = [
+  "economize_location",
+  "economize_location_v1",
+];
+
+function isValidShoppingListItem(item: unknown): item is ShoppingListItem {
+  if (!item || typeof item !== "object") return false;
+  const candidate = item as Record<string, unknown>;
+  const productId =
+    typeof candidate.productId === "string" ? candidate.productId.trim() : "";
+  const quantity =
+    typeof candidate.quantity === "number" ? candidate.quantity : 0;
+  if (!productId || quantity <= 0 || !Number.isFinite(quantity)) return false;
+  if (/^(prod-|mock-|item-|demo-|fake-|sample-|test-)/i.test(productId)) {
+    return false;
+  }
+  return true;
+}
+
 interface AppContextType {
   categories: Category[];
   markets: Market[];
@@ -301,17 +328,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const savedList = localStorage.getItem("economize_shopping_list");
+      // Remove imediatamente chaves antigas legadas para eliminar itens fantasmas (como os 5 itens / 10 unidades antigos)
+      for (const legacyKey of LEGACY_SHOPPING_LIST_KEYS) {
+        localStorage.removeItem(legacyKey);
+      }
+      for (const legacyLocKey of LEGACY_LOCATION_KEYS) {
+        localStorage.removeItem(legacyLocKey);
+      }
+
+      const savedList = localStorage.getItem(SHOPPING_LIST_STORAGE_KEY);
       if (savedList) {
-        const parsedList = JSON.parse(savedList) as ShoppingListItem[];
+        const parsedList = JSON.parse(savedList) as unknown;
         if (Array.isArray(parsedList)) {
-          setShoppingList(parsedList);
+          const validItems = parsedList
+            .filter(isValidShoppingListItem)
+            .map((item) => ({
+              productId: item.productId.trim(),
+              quantity: Math.max(1, Math.round(item.quantity)),
+              checked: item.checked !== false,
+            }));
+          setShoppingList(validItems);
         }
       }
-      const savedLoc = localStorage.getItem("economize_location");
+
+      const savedLoc = localStorage.getItem(LOCATION_STORAGE_KEY);
       if (savedLoc) {
         const parsed = JSON.parse(savedLoc) as Partial<LocationConfig>;
-        if (parsed && (parsed.city || parsed.zipCode || parsed.lat !== null)) {
+        if (
+          parsed &&
+          parsed.configured !== false &&
+          (parsed.city || parsed.zipCode || parsed.lat !== null)
+        ) {
           setLocation({
             city: parsed.city ?? null,
             neighborhood: parsed.neighborhood ?? null,
@@ -329,6 +376,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignora falha de leitura de localStorage
     }
+
+    const handleClearLocalData = () => {
+      setShoppingList([]);
+      setLocation(EMPTY_LOCATION_STATE);
+    };
+    window.addEventListener("economize:clear-local-data", handleClearLocalData);
 
     void refreshCatalog();
 
@@ -351,15 +404,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
 
       return () => {
+        window.removeEventListener(
+          "economize:clear-local-data",
+          handleClearLocalData
+        );
         listener.subscription.unsubscribe();
       };
     }
+
+    return () => {
+      window.removeEventListener(
+        "economize:clear-local-data",
+        handleClearLocalData
+      );
+    };
   }, [refreshCatalog, syncSessionFromToken]);
+
+  // Assim que o catálogo real do Supabase terminar de carregar, mantém na lista apenas produtos que realmente existem
+  useEffect(() => {
+    if (catalogLoading) return;
+    const validProductIds = new Set(products.map((p) => p.id));
+    setShoppingList((prev) => {
+      const reconciled = prev.filter(
+        (item) =>
+          isValidShoppingListItem(item) && validProductIds.has(item.productId)
+      );
+      return reconciled.length === prev.length ? prev : reconciled;
+    });
+  }, [catalogLoading, products]);
 
   useEffect(() => {
     try {
       localStorage.setItem(
-        "economize_shopping_list",
+        SHOPPING_LIST_STORAGE_KEY,
         JSON.stringify(shoppingList)
       );
     } catch {
@@ -382,13 +459,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateLocation = (loc: Partial<LocationConfig>) => {
     setLocation((prev) => {
+      const isConfigured =
+        loc.configured !== undefined ? loc.configured : true;
       const updated: LocationConfig = {
         ...prev,
         ...loc,
-        configured: true,
+        configured: isConfigured,
       };
       try {
-        localStorage.setItem("economize_location", JSON.stringify(updated));
+        if (isConfigured) {
+          localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(updated));
+        } else {
+          localStorage.removeItem(LOCATION_STORAGE_KEY);
+        }
       } catch {
         // Ignora
       }
@@ -452,6 +535,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearList = () => {
     setShoppingList([]);
+    try {
+      localStorage.removeItem(SHOPPING_LIST_STORAGE_KEY);
+      for (const legacyKey of LEGACY_SHOPPING_LIST_KEYS) {
+        localStorage.removeItem(legacyKey);
+      }
+    } catch {
+      // Ignora
+    }
     showToast("Lista de compras esvaziada.");
   };
 

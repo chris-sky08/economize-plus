@@ -113,7 +113,7 @@ export default function ListaInteligentePage() {
   ].slice(0, 8);
 
   const handleSelectSuggestion = async (product: Product) => {
-    await registerExternalProduct(product);
+    registerExternalProduct(product);
     addToList(product.id, 1);
     setSearchTerm("");
     setDbResults([]);
@@ -130,7 +130,7 @@ export default function ListaInteligentePage() {
     showToast(`Consultando código EAN ${ean}...`);
     const remoteProd = await lookupProductByEan(ean);
     if (remoteProd) {
-      await registerExternalProduct(remoteProd);
+      registerExternalProduct(remoteProd);
       addToList(remoteProd.id, 1);
     } else {
       showToast(
@@ -139,7 +139,12 @@ export default function ListaInteligentePage() {
     }
   };
 
-  const activeItems = shoppingList.filter((i) => i.checked);
+  // Filtra apenas itens reais que existem no catálogo de produtos carregado
+  const validShoppingList = shoppingList.filter(
+    (item) =>
+      item.quantity > 0 && products.some((p) => p.id === item.productId)
+  );
+  const activeItems = validShoppingList.filter((i) => i.checked);
   const activeMarkets = markets.filter(
     (m) =>
       m.status === "ativo" &&
@@ -165,17 +170,7 @@ export default function ListaInteligentePage() {
 
       activeItems.forEach((item) => {
         const product = products.find((p) => p.id === item.productId);
-        if (!product) {
-          missingItems.push({
-            product: {
-              id: item.productId,
-              name: `Item (${item.productId})`,
-              categoryId: "mercearia",
-            },
-            reason: "sem_preco",
-          });
-          return;
-        }
+        if (!product) return;
 
         const priceEntry = prices.find(
           (p) => p.marketId === market.id && p.productId === product.id
@@ -266,7 +261,7 @@ export default function ListaInteligentePage() {
             <CloudUpload className="h-4 w-4" />
             Salvar Lista na Conta
           </button>
-          {shoppingList.length > 0 && (
+          {validShoppingList.length > 0 && (
             <button
               type="button"
               onClick={clearList}
@@ -373,7 +368,7 @@ export default function ListaInteligentePage() {
                                   </>
                                 )}
                                 {isFromOff && (
-                                  <span className="rounded bg-brand-light px-1.5 py-0.2 font-bold text-brand-navy">
+                                  <span className="rounded bg-brand-light px-1.5 py-0.5 font-bold text-brand-navy">
                                     Open Food Facts
                                   </span>
                                 )}
@@ -398,7 +393,7 @@ export default function ListaInteligentePage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="font-heading text-base font-bold text-brand-navy">
-                Itens na sua lista ({shoppingList.length})
+                Itens na sua lista ({validShoppingList.length})
               </h2>
               <span className="tabular-price text-xs text-slate-500">
                 {activeItems.reduce((a, b) => a + b.quantity, 0)} unidades
@@ -406,7 +401,7 @@ export default function ListaInteligentePage() {
               </span>
             </div>
 
-            {shoppingList.length === 0 ? (
+            {validShoppingList.length === 0 ? (
               <div className="py-10 text-center">
                 <ShoppingBasket className="mx-auto h-10 w-10 text-slate-300" />
                 <p className="mt-2 font-heading text-sm font-bold text-brand-navy">
@@ -427,7 +422,7 @@ export default function ListaInteligentePage() {
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {shoppingList.map((item) => {
+                {validShoppingList.map((item) => {
                   const product = products.find((p) => p.id === item.productId);
                   if (!product) return null;
 
@@ -688,7 +683,7 @@ export default function ListaInteligentePage() {
                                   <span>({fi.unitFormatted})</span>
                                 )}
                                 {fi.isPromo && (
-                                  <span className="rounded-sm bg-brand-yellow px-1.5 py-0.2 text-[10px] font-bold text-brand-navy">
+                                  <span className="rounded-sm bg-brand-yellow px-1.5 py-0.5 text-[10px] font-bold text-brand-navy">
                                     {fi.promoLabel || "Oferta"}
                                   </span>
                                 )}

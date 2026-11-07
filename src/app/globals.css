@@ -58,6 +58,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Pulso do contador da lista na barra inferior móvel (apenas transform/opacity) */
 @keyframes nav-badge-pop {
   0% { transform: scale(0.4); opacity: 0; }
