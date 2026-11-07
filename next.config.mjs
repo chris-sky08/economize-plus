@@ -5,7 +5,7 @@ const cspHeader = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' blob: data: https://*.openfoodfacts.org https://*.supabase.co",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.openfoodfacts.org https://challenges.cloudflare.com https://viacep.com.br https://brasilapi.com.br https://nominatim.openstreetmap.org",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.openfoodfacts.org https://challenges.cloudflare.com https://viacep.com.br https://brasilapi.com.br https://nominatim.openstreetmap.org https://api.web3forms.com https://formsubmit.co",
   "frame-src 'self' https://challenges.cloudflare.com",
   "media-src 'self' blob:",
   "worker-src 'self' blob:",

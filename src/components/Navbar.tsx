@@ -124,14 +124,12 @@ export default function Navbar() {
               <span>Kit QR Code Lojas</span>
             </Link>
 
-            <span className="hidden items-center gap-1.5 rounded-full border border-brand-green/35 bg-brand-green/15 px-2.5 py-0.5 text-[10px] font-bold text-brand-green sm:inline-flex">
-              <img
-                src={ECONOMIZE_ICONS.ciberseguranca.src}
-                alt=""
-                className="h-3.5 w-3.5 rounded-full bg-white object-cover"
-              />
-              Proteção CSP • RLS Ativa
-            </span>
+            <Link
+              href="/institucional?aba=privacidade"
+              className="hidden items-center gap-1 text-[11px] text-slate-300 transition hover:text-brand-yellow sm:inline-flex"
+            >
+              <span>Privacidade e Cookies</span>
+            </Link>
 
             {user && (
               <div className="flex items-center gap-1.5 text-[11px] text-brand-light">

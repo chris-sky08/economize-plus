@@ -219,6 +219,22 @@ function InstitucionalContent() {
                 armazenados no Supabase com políticas Row Level Security (RLS)
                 ativas no banco de dados.
               </li>
+              <li>
+                <strong>Cookies e Armazenamento Local (LGPD):</strong>{" "}
+                Utilizamos apenas cookies estritamente necessários e chaves de{" "}
+                <code>localStorage</code> no navegador do próprio dispositivo
+                para manter a Lista de Compras Inteligente, o CEP/raio de
+                pesquisa e a confirmação de leitura do aviso de cookies. O
+                usuário pode limpar esses dados a qualquer momento pelo
+                navegador ou entrar em contato pelo e-mail{" "}
+                <a
+                  href="mailto:empresaeconomizemais@gmail.com"
+                  className="font-mono font-bold text-brand-navy underline"
+                >
+                  empresaeconomizemais@gmail.com
+                </a>
+                .
+              </li>
             </ul>
           </div>
         )}

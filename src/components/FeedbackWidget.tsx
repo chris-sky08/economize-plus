@@ -11,7 +11,6 @@ import {
   Mail,
   MessageSquareHeart,
   Send,
-  ShieldCheck,
   Star,
   Store,
   X,
@@ -107,7 +106,11 @@ export default function FeedbackWidget() {
   useEffect(() => {
     const handleOpen = (event: Event) => {
       const custom = event as CustomEvent<OpenFeedbackEventDetail | undefined>;
-      if (custom.detail?.rating && custom.detail.rating >= 1 && custom.detail.rating <= 5) {
+      if (
+        custom.detail?.rating &&
+        custom.detail.rating >= 1 &&
+        custom.detail.rating <= 5
+      ) {
         setRating(custom.detail.rating);
       }
       if (custom.detail?.category) {
@@ -182,15 +185,58 @@ export default function FeedbackWidget() {
         return;
       }
 
+      let dispatchedInBrowser = Boolean(data.emailDispatched);
+
+      // Se houver chave Web3Forms pública configurada, dispara direto do navegador (evita bloqueio Cloudflare de servidor)
+      const web3Key = process.env.NEXT_PUBLIC_WEB3FORMS_KEY?.trim();
+      if (!dispatchedInBrowser && web3Key) {
+        try {
+          const stars = "⭐".repeat(rating);
+          const w3Res = await fetch("https://api.web3forms.com/submit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              access_key: web3Key,
+              subject: `[Economize+ Feedback] ${activeCategoryMeta.emoji} ${activeCategoryMeta.label} — ${stars} (${rating}/5)`,
+              from_name: senderName.trim() || "Usuário Economize+",
+              Protocolo: data.protocolId || "ECO-OK",
+              Categoria: `${activeCategoryMeta.emoji} ${activeCategoryMeta.label}`,
+              Nota: `${stars} (${rating} de 5 estrelas)`,
+              Contato: senderContact.trim() || "Não informado",
+              Pagina: pathname || "/",
+              Mensagem: message.trim(),
+            }),
+          });
+          if (w3Res.ok) {
+            dispatchedInBrowser = true;
+          }
+        } catch {
+          // Segue para abertura direta do app de e-mail
+        }
+      }
+
+      const finalMailto =
+        data.mailtoUrl || "mailto:empresaeconomizemais@gmail.com";
+      const finalGmailUrl =
+        data.gmailComposeUrl ||
+        "https://mail.google.com/mail/?view=cm&fs=1&to=empresaeconomizemais@gmail.com";
+
+      // Caso o servidor gratuito FormSubmit esteja fora do ar (Erro 522) e ainda não haja chave Web3Forms/Resend,
+      // abre automaticamente o e-mail já preenchido no celular/PC para garantir que chegue 100% no empresaeconomizemais@gmail.com!
+      if (!dispatchedInBrowser && typeof window !== "undefined") {
+        window.location.href = finalMailto;
+      }
+
       setSubmitResult({
         protocolId: data.protocolId || "ECO-OK",
-        emailDispatched: Boolean(data.emailDispatched),
+        emailDispatched: dispatchedInBrowser,
         targetEmail: data.targetEmail || "empresaeconomizemais@gmail.com",
         submittedAtBr: data.submittedAtBr || "agora",
-        mailtoUrl: data.mailtoUrl || "mailto:empresaeconomizemais@gmail.com",
-        gmailComposeUrl:
-          data.gmailComposeUrl ||
-          "https://mail.google.com/mail/?view=cm&fs=1&to=empresaeconomizemais@gmail.com",
+        mailtoUrl: finalMailto,
+        gmailComposeUrl: finalGmailUrl,
       });
       setMessage("");
     } catch {
@@ -258,7 +304,7 @@ export default function FeedbackWidget() {
                 />
                 <div>
                   <span className="inline-block rounded-full bg-brand-green px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand-navy">
-                    Canal Direto Economize+
+                    Fale com a Equipe
                   </span>
                   <h2
                     id="feedback-modal-title"
@@ -267,7 +313,7 @@ export default function FeedbackWidget() {
                     Avalie o App, Dê Sugestões ou Relate Bugs
                   </h2>
                   <p className="text-xs text-brand-light">
-                    Enviado direto para o nosso Gmail oficial
+                    Sua opinião ajuda a melhorar o Economize+ na sua região
                   </p>
                 </div>
               </div>
@@ -295,44 +341,56 @@ export default function FeedbackWidget() {
                       Protocolo {submitResult.protocolId}
                     </span>
                     <h3 className="mt-2 font-heading text-xl font-extrabold text-brand-navy">
-                      Muito obrigado pela sua avaliação!
+                      Avaliação registrada!
                     </h3>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
-                      Sua mensagem foi registrada em{" "}
-                      <strong>{submitResult.submittedAtBr}</strong> e encaminhada
-                      para a caixa de entrada oficial{" "}
-                      <strong className="font-mono text-brand-navy">
-                        {submitResult.targetEmail}
-                      </strong>
-                      .
+                      {submitResult.emailDispatched ? (
+                        <>
+                          Sua mensagem foi enviada automaticamente em{" "}
+                          <strong>{submitResult.submittedAtBr}</strong> para{" "}
+                          <strong className="font-mono text-brand-navy">
+                            {submitResult.targetEmail}
+                          </strong>
+                          .
+                        </>
+                      ) : (
+                        <>
+                          Abrimos seu aplicativo de e-mail com a avaliação já
+                          preenchida para{" "}
+                          <strong className="font-mono text-brand-navy">
+                            {submitResult.targetEmail}
+                          </strong>
+                          . Basta tocar no botão de enviar no seu Gmail!
+                        </>
+                      )}
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-xs text-slate-600">
                     <p className="font-bold text-brand-navy">
-                      Quer enviar um print de tela junto com o seu relato?
+                      Enviar ou anexar print pelo Gmail:
                     </p>
                     <p className="mt-1">
-                      Se desejar anexar uma imagem do seu celular ou computador,
-                      você também pode abrir o rascunho já preenchido direto no seu
-                      Gmail ou aplicativo de e-mail:
+                      Se a janela do seu e-mail não abriu sozinha ou se você
+                      quiser anexar um print da tela, clique em uma das opções
+                      abaixo:
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
+                      <a
+                        href={submitResult.mailtoUrl}
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white transition hover:bg-brand-blue active:scale-95"
+                      >
+                        <Mail className="h-4 w-4 text-brand-yellow" />
+                        <span>Abrir no App do Gmail / E-mail</span>
+                      </a>
                       <a
                         href={submitResult.gmailComposeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-3.5 py-2 text-xs font-bold text-white transition hover:bg-brand-blue active:scale-95"
-                      >
-                        <Mail className="h-4 w-4 text-brand-yellow" />
-                        <span>Abrir no Gmail (Anexar Print)</span>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                      <a
-                        href={submitResult.mailtoUrl}
                         className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-brand-navy transition hover:bg-slate-100 active:scale-95"
                       >
-                        <span>Abrir no App de E-mail</span>
+                        <span>Abrir Gmail no Navegador</span>
+                        <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </div>
                   </div>
@@ -474,19 +532,15 @@ export default function FeedbackWidget() {
                     </div>
                   )}
 
-                  {/* Rodapé de Segurança + Botão Enviar */}
+                  {/* Rodapé Limpo para o Consumidor + Botão Enviar */}
                   <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-start gap-2 text-[11px] leading-snug text-slate-500">
-                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
+                    <div className="flex items-center gap-2 text-[11px] leading-snug text-slate-500">
+                      <Mail className="h-4 w-4 shrink-0 text-brand-blue" />
                       <span>
-                        <strong className="text-brand-navy">
-                          Protegido por Cibersegurança Economize+
-                        </strong>
-                        <br />
-                        Enviado para{" "}
-                        <code className="font-mono text-brand-navy">
+                        Atendimento oficial:{" "}
+                        <strong className="font-mono text-brand-navy">
                           empresaeconomizemais@gmail.com
-                        </code>
+                        </strong>
                       </span>
                     </div>
 

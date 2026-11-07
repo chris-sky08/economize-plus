@@ -92,10 +92,10 @@ const RETAIL_PILLARS = [
     desc: "Itens sem estoque ou sem preço nunca entram como R$ 0,00: separamos cestas completas de parciais.",
   },
   {
-    id: "pilar-seguranca",
-    iconSrc: ECONOMIZE_ICONS.ciberseguranca.src,
-    title: "Origem & Cibersegurança",
-    desc: "Preços com fonte e horário completos, protegidos por autenticação no servidor, RLS e políticas anti-CSRF.",
+    id: "pilar-fonte",
+    iconSrc: ECONOMIZE_ICONS["fonte-rastreavel"].src,
+    title: "Fonte e Horário da Coleta",
+    desc: "Saiba sempre de onde veio o preço (planilha do parceiro, encarte revisado ou coleta em loja) e o horário exato.",
   },
 ];
 

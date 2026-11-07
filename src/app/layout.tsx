@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LocationModal from "@/components/LocationModal";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -70,6 +71,7 @@ export default function RootLayout({
           <LocationModal />
           <main className="flex-1">{children}</main>
           <FeedbackWidget />
+          <CookieConsentBanner />
           <Footer />
         </AppProvider>
       </body>
