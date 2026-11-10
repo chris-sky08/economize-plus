@@ -281,25 +281,25 @@ export default function Navbar() {
 
               <Link
                 href="/lista"
-                className="flex min-h-[46px] items-center gap-2.5 rounded-2xl bg-brand-yellow px-3.5 py-1.5 text-brand-navy shadow-sm transition hover:bg-amber-300 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white"
+                className="flex min-h-[46px] items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#B45309] via-[#D97706] to-[#FBBF24] px-3.5 py-1.5 text-white shadow-sm transition hover:brightness-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white"
               >
                 <div className="relative">
                   <img
                     src={ECONOMIZE_ICONS["minha-cesta"].src}
                     alt=""
-                    className="h-9 w-9 shrink-0 rounded-full border border-brand-navy/20 bg-white object-cover shadow-xs"
+                    className="h-9 w-9 shrink-0 rounded-full border border-white/30 bg-white object-cover shadow-xs"
                   />
                   {totalItemsInList > 0 && (
-                    <span className="tabular-price absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-navy px-1 text-[10px] font-extrabold text-white shadow-2xs">
+                    <span className="tabular-price absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0B0F17] border border-slate-700 px-1 text-[10px] font-extrabold text-white shadow-2xs">
                       {totalItemsInList}
                     </span>
                   )}
                 </div>
                 <div className="text-left">
-                  <span className="block text-[10px] font-bold leading-none text-brand-navy/80">
+                  <span className="block text-[10px] font-bold leading-none text-white/90">
                     Minha Lista
                   </span>
-                  <span className="tabular-price text-xs font-extrabold text-brand-navy">
+                  <span className="tabular-price text-xs font-black text-white">
                     {bestEstimatedTotal > 0 && isFinite(bestEstimatedTotal)
                       ? formatBRL(bestEstimatedTotal)
                       : "Ver cesta"}

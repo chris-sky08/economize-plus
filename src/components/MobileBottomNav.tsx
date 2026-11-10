@@ -118,7 +118,7 @@ export default function MobileBottomNav({
                 {showBadge && (
                   <span
                     key={totalItemsInList}
-                    className="nav-badge-pop absolute -top-1 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-yellow px-1 text-[10px] font-extrabold tabular-nums text-brand-navy shadow-2xs"
+                    className="nav-badge-pop absolute -top-1 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-[#B45309] to-[#FBBF24] px-1 text-[10px] font-extrabold tabular-nums text-white shadow-2xs"
                   >
                     {totalItemsInList > 99 ? "99+" : totalItemsInList}
                   </span>

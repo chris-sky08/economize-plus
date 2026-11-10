@@ -265,7 +265,7 @@ export default function HomePage() {
 
               <div className="relative z-10 grid grid-cols-1 items-center gap-6 md:grid-cols-12">
                 <div className="md:col-span-7">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-brand-yellow px-3.5 py-1 text-xs font-extrabold text-brand-navy shadow-sm">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#B45309] via-[#D97706] to-[#FBBF24] px-3.5 py-1 text-xs font-extrabold text-white shadow-sm">
                     <img
                       src={ECONOMIZE_ICONS["scanner-ean"].src}
                       alt=""
@@ -276,7 +276,7 @@ export default function HomePage() {
 
                   <h1 className="mt-4 font-heading text-2xl font-extrabold tracking-tight text-white sm:text-4xl lg:leading-[1.12]">
                     Compare preços nos mercados da sua região e{" "}
-                    <span className="text-brand-yellow">
+                    <span className="bg-gradient-to-r from-[#FBBF24] to-[#FDE047] bg-clip-text text-transparent">
                       economize na cesta inteira.
                     </span>
                   </h1>
@@ -291,7 +291,7 @@ export default function HomePage() {
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <Link
                       href="/buscar"
-                      className="inline-flex min-h-[46px] items-center gap-2.5 rounded-2xl bg-brand-yellow px-5 py-3 text-sm font-extrabold text-brand-navy shadow-md transition hover:bg-amber-300 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white"
+                      className="inline-flex min-h-[46px] items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#14532D] via-[#16A34A] to-[#22C55E] px-5 py-3 text-sm font-extrabold text-white shadow-md transition hover:brightness-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white"
                     >
                       <img
                         src={ECONOMIZE_ICONS["scanner-ean"].src}
@@ -503,7 +503,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => addToList(selectedFeaturedProduct.id, 1)}
-                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-3 py-2 text-xs font-bold text-white transition hover:bg-brand-blue active:scale-95"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-750 bg-gradient-to-r from-[#0B0F17] via-[#111827] to-[#1E293B] px-3 py-2 text-xs font-bold text-white shadow-xs transition hover:border-slate-600 hover:shadow-md active:scale-95"
                       >
                         <img
                           src={ECONOMIZE_ICONS["minha-cesta"].src}

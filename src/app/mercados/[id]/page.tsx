@@ -393,9 +393,9 @@ export default function MercadoPerfilPage({
                     type="button"
                     onClick={() => addToList(product.id, 1)}
                     disabled={!priceEntry.inStock}
-                    className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-brand-navy py-2.5 text-xs font-bold text-white transition hover:bg-brand-blue disabled:cursor-not-allowed disabled:bg-slate-300"
+                    className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-slate-750 bg-gradient-to-r from-[#0B0F17] via-[#111827] to-[#1E293B] py-2.5 text-xs font-bold text-white shadow-xs transition hover:border-slate-600 hover:shadow-md disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4 text-emerald-400" />
                     {priceEntry.inStock
                       ? "Adicionar à Lista"
                       : "Produto Indisponível"}

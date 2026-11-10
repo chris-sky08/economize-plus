@@ -299,9 +299,9 @@ export default function ProdutoDetalhePage({
             <button
               type="button"
               onClick={() => addToList(product.id, qty)}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-brand-navy px-6 py-3 text-sm font-bold text-white shadow-xs transition hover:bg-brand-blue sm:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-slate-750 bg-gradient-to-r from-[#0B0F17] via-[#111827] to-[#1E293B] px-6 py-3 text-sm font-bold text-white shadow-xs transition hover:border-slate-600 hover:shadow-md sm:flex-none"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 text-emerald-400" />
               Adicionar {qty} {qty > 1 ? "unidades" : "unidade"} à Lista
             </button>
           </div>

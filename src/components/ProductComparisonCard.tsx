@@ -262,15 +262,15 @@ export default function ProductComparisonCard({
         <button
           type="button"
           onClick={() => addToList(product.id, 1)}
-          className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-navy px-3 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-brand-blue active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-750 bg-gradient-to-r from-[#0B0F17] via-[#111827] to-[#1E293B] px-3 py-2.5 text-xs font-extrabold text-white shadow-xs transition hover:border-slate-600 hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-blue"
         >
           <img
             src={ECONOMIZE_ICONS["minha-cesta"].src}
             alt=""
             className="h-5 w-5 rounded-full bg-white object-cover"
           />
-          <Plus className="h-3.5 w-3.5" />
-          Adicionar à Cesta
+          <Plus className="h-3.5 w-3.5 text-emerald-400" />
+          <span>+ Adicionar à Cesta</span>
         </button>
         <Link
           href={`/produto/${product.id}`}
