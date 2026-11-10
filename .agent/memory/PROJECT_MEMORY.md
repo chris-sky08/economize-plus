@@ -8,7 +8,7 @@
 - **Domínio Oficial em Produção (Vercel):** `https://economize-nine.vercel.app`
 - **E-mail Oficial Institucional:** `empresaeconomizemais@gmail.com`
 - **Instagram Oficial:** `https://www.instagram.com/economizemais_oficial` (`@economizemais_oficial`)
-- **Facebook Oficial:** Perfil direto `https://www.facebook.com/economizemaisoficial` (Página `Economize mais` — Bertioga, SP, Brazil)
+- **Facebook Oficial:** Perfil direto `https://www.facebook.com/share/1Doz9GDF72/` (Página `Economize mais` — Bertioga, SP, Brazil)
 - **Repositório Principal (`origin`):** `https://github.com/skyleywinfoster-netizen/economize-plus.git`
 - **Repositório Conectado na Vercel (`chris`):** `https://github.com/chris-sky08/economize-plus.git` (ambos com permissão de push ativa — sempre rodar `git push origin main; git push chris main`)
 

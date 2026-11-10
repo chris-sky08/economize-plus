@@ -508,7 +508,7 @@ function InstitucionalContent() {
               </a>
 
               <a
-                href="https://www.facebook.com/economizemaisoficial"
+                href="https://www.facebook.com/share/1Doz9GDF72/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#1877F2] py-1.5 pr-4 pl-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#166FE5] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow"

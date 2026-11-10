@@ -22,7 +22,7 @@ export const OFFICIAL_INSTAGRAM_URL =
   "https://www.instagram.com/economizemais_oficial";
 export const OFFICIAL_INSTAGRAM_HANDLE = "@economizemais_oficial";
 export const OFFICIAL_FACEBOOK_URL =
-  "https://www.facebook.com/economizemaisoficial";
+  "https://www.facebook.com/share/1Doz9GDF72/";
 export const OFFICIAL_FACEBOOK_HANDLE = "Economize mais";
 
 export interface QrCodePromoCardProps {

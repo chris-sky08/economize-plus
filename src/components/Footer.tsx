@@ -65,7 +65,7 @@ export default function Footer() {
             </a>
 
             <a
-              href="https://www.facebook.com/economizemaisoficial"
+              href="https://www.facebook.com/share/1Doz9GDF72/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Página oficial no Facebook: Economize mais"
