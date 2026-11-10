@@ -21,6 +21,9 @@ export const OFFICIAL_SITE_ORIGIN = "https://economize-nine.vercel.app";
 export const OFFICIAL_INSTAGRAM_URL =
   "https://www.instagram.com/economizemais_oficial";
 export const OFFICIAL_INSTAGRAM_HANDLE = "@economizemais_oficial";
+export const OFFICIAL_FACEBOOK_URL =
+  "https://www.facebook.com/economizemaisoficial";
+export const OFFICIAL_FACEBOOK_HANDLE = "Economize mais";
 
 export interface QrCodePromoCardProps {
   /** Caminho relativo inicial (ex.: "/", "/buscar", "/lista", "/seja-parceiro", "/mercados/123") */
