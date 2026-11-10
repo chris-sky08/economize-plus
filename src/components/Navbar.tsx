@@ -121,22 +121,17 @@ export default function Navbar() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              href="/divulgacao"
-              className="hidden items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand-light transition hover:bg-white/20 md:inline-flex"
+              href="/seja-parceiro"
+              className="hidden items-center gap-1 text-[11px] font-medium text-slate-300 transition hover:text-brand-yellow md:inline-flex"
             >
-              <img
-                src={ECONOMIZE_ICONS["qr-geral"].src}
-                alt=""
-                className="h-3.5 w-3.5 rounded-full bg-white object-cover"
-              />
-              <span>Kit QR Code Lojas</span>
+              <span>Para Supermercados</span>
             </Link>
 
             <Link
               href="/institucional?aba=privacidade"
               className="hidden items-center gap-1 text-[11px] text-slate-300 transition hover:text-brand-yellow sm:inline-flex"
             >
-              <span>Privacidade e Cookies</span>
+              <span>Privacidade &amp; LGPD</span>
             </Link>
 
             {user && (

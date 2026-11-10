@@ -39,7 +39,7 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
         href: "/buscar",
         iconSrc: ECONOMIZE_ICONS["scanner-ean"].src,
       },
-      ...categories.slice(0, 7).map((cat) => ({
+      ...categories.slice(0, 9).map((cat) => ({
         id: `cat-${cat.id}`,
         label: cat.name,
         href: `/buscar?categoria=${encodeURIComponent(cat.id)}`,
@@ -172,58 +172,36 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
           })}
         </div>
 
-        {/* Atalhos B2B e Logística com Ícones Realistas */}
-        <div className="flex items-center gap-1.5 border-l border-white/20 pl-3">
-          <Link
-            href="/seja-parceiro"
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-green px-3 py-1.5 font-bold text-brand-navy shadow-xs transition hover:opacity-95 active:scale-95"
-          >
-            <img
-              src={ECONOMIZE_ICONS["seja-parceiro"].src}
-              alt=""
-              className="h-6 w-6 shrink-0 rounded-full bg-white object-cover shadow-2xs"
-            />
-            Seja Parceiro
-          </Link>
-          {(user?.role === "mercado" || user?.role === "admin") && (
+        {/* Gestão Restrita: visível exclusivamente para parceiros comerciais ou administradores autenticados */}
+        {(user?.role === "mercado" || user?.role === "admin") && (
+          <div className="flex items-center gap-1.5 border-l border-white/20 pl-3">
             <Link
               href="/painel-parceiro"
-              className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
+              className="flex min-h-[40px] items-center gap-1.5 rounded-xl bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/25 active:scale-95"
             >
               <LayoutDashboard className="h-3.5 w-3.5 text-brand-yellow" />
               Painel do Mercado
             </Link>
-          )}
-          <Link
-            href="/entregas"
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-white/12 px-3 py-1.5 font-semibold text-white transition hover:bg-white/20 active:scale-95"
-          >
-            <img
-              src={ECONOMIZE_ICONS.entregas.src}
-              alt=""
-              className="h-6 w-6 shrink-0 rounded-full bg-white object-cover shadow-2xs"
-            />
-            Entregas
-          </Link>
-          {user?.role === "admin" && (
-            <>
-              <Link
-                href="/admin/coleta"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-white transition hover:bg-white/25 active:scale-95"
-              >
-                <ClipboardCheck className="h-3.5 w-3.5 text-brand-green" />
-                Coleta em Loja
-              </Link>
-              <Link
-                href="/admin"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-yellow/20 px-3 py-2 font-semibold text-brand-yellow transition hover:bg-brand-yellow/30 active:scale-95"
-              >
-                <ShieldAlert className="h-3.5 w-3.5" />
-                Admin
-              </Link>
-            </>
-          )}
-        </div>
+            {user?.role === "admin" && (
+              <>
+                <Link
+                  href="/admin/coleta"
+                  className="hidden min-h-[40px] items-center gap-1.5 rounded-xl bg-white/15 px-2.5 py-1.5 text-xs text-white transition hover:bg-white/25 active:scale-95 lg:inline-flex"
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5 text-brand-green" />
+                  Coleta
+                </Link>
+                <Link
+                  href="/admin"
+                  className="flex min-h-[40px] items-center gap-1.5 rounded-xl bg-brand-yellow/20 px-3 py-1.5 text-xs font-bold text-brand-yellow transition hover:bg-brand-yellow/30 active:scale-95"
+                >
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   );
