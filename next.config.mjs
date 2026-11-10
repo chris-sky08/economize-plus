@@ -57,6 +57,20 @@ const commonSecurityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/painel-mercado",
+        destination: "/painel-parceiro",
+        permanent: true,
+      },
+      {
+        source: "/painel-mercado/:path*",
+        destination: "/painel-parceiro/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

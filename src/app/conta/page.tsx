@@ -1521,14 +1521,23 @@ export default function ContaPage() {
                 </p>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-500">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
                 <span>É dono de supermercado?</span>
-                <Link
-                  href="/painel-mercado"
-                  className="font-bold text-brand-blue underline hover:text-brand-navy"
-                >
-                  Portal do Parceiro
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/seja-parceiro"
+                    className="font-semibold text-brand-green hover:underline"
+                  >
+                    Cadastrar Mercado
+                  </Link>
+                  <span className="text-slate-300">•</span>
+                  <Link
+                    href="/painel-parceiro"
+                    className="font-bold text-brand-blue underline hover:text-brand-navy"
+                  >
+                    Portal do Parceiro
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
