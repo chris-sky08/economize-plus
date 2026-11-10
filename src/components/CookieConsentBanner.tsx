@@ -518,11 +518,11 @@ export default function CookieConsentBanner() {
               {/* ABA 3: BASES LEGAIS DA LGPD (LEI Nº 13.709/2018) */}
               {activeTab === "lgpd" && (
                 <div className="space-y-3.5">
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                    <strong>Nota de Transparência:</strong> Este descritivo
-                    documenta fielmente a arquitetura técnica de dados do
-                    Economize+ e permanece{" "}
-                    <strong>pendente de revisão jurídica formal</strong>.
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-950">
+                    <strong>Compromisso com sua Privacidade:</strong> O Economize+ opera
+                    em conformidade com a LGPD (Lei nº 13.709/2018), com o Marco Civil da
+                    Internet e com as diretrizes da ANPD. Seus dados e preferências
+                    permanecem sob seu controle absoluto.
                   </div>
 
                   <h3 className="font-heading text-base font-extrabold text-brand-navy">

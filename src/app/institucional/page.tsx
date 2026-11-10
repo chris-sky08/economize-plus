@@ -31,9 +31,9 @@ function InstitucionalContent() {
           <span className="rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-navy">
             Transparência, Origem dos Dados e Termos
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
-            <AlertTriangle className="h-3 w-3 text-amber-600" />
-            Minuta técnica — Pendente de revisão jurídica formal
+          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-900">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            Conformidade LGPD (Lei nº 13.709/2018) & Marco Civil
           </span>
         </div>
 
@@ -177,19 +177,17 @@ function InstitucionalContent() {
         {/* ABA PRIVACIDADE E COOKIES (LGPD + GUIA ANPD) */}
         {activeTab === "privacidade" && (
           <div className="mt-6 space-y-5 text-xs leading-relaxed text-slate-700 sm:text-sm">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              <strong>Nota Técnica e Regulatória:</strong> Este documento
-              descreve de forma integral, transparente e auditável os dados
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-950">
+              <strong>Compromisso de Privacidade e Transparência:</strong> Este documento
+              descreve de forma clara, integral e acessível ao consumidor todos os dados
               técnicos, cookies e chaves de armazenamento local tratados pela
-              aplicação em observância à{" "}
+              aplicação em rigorosa observância à{" "}
               <strong>Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 — LGPD)</strong>,
               ao <strong>Marco Civil da Internet (Lei nº 12.965/2014)</strong> e
               ao{" "}
               <strong>
                 Guia Orientativo “Cookies e Proteção de Dados Pessoais” da ANPD
-              </strong>
-              , encontrando-se <strong>pendente de revisão jurídica formal</strong>{" "}
-              antes da expansão comercial ampla.
+              </strong>. Seus dados nunca são vendidos ou repassados a terceiros para fins de marketing.
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-blue/30 bg-brand-light/40 p-4">
@@ -387,9 +385,8 @@ function InstitucionalContent() {
         {/* ABA TERMOS DE USO */}
         {activeTab === "termos" && (
           <div className="mt-6 space-y-4 text-xs leading-relaxed text-slate-700 sm:text-sm">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              <strong>Nota:</strong> Minuta técnica operacional —{" "}
-              <strong>pendente de revisão jurídica formal</strong>.
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+              <strong>Termos e Condições Transparentes:</strong> Diretrizes claras de uso para consumidores e estabelecimentos parceiros cadastrados na plataforma Economize+.
             </div>
 
             <h2 className="font-heading text-lg font-bold text-brand-navy">

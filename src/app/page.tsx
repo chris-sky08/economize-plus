@@ -882,7 +882,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. OS 4 PILARES DE TRANSPARÊNCIA E CIBERSEGURANÇA (COM ÍCONES REALISTAS PRÓPRIOS) */}
+      {/* 4. OS 4 PILARES DE TRANSPARÊNCIA E CONFIANÇA NO VAREJO */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {RETAIL_PILLARS.map((pillar) => (

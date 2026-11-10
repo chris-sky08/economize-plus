@@ -1476,45 +1476,59 @@ export default function ContaPage() {
             </form>
           </div>
 
-          {/* Coluna Direita: Explicação de Segurança e Papéis */}
+          {/* Coluna Direita: Vantagens para o Consumidor */}
           <div className="space-y-4 lg:col-span-5">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-2xs">
-              <span className="rounded-md bg-brand-light px-2.5 py-0.5 text-[11px] font-bold text-brand-navy">
-                Segurança & Controle de Acesso
+              <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800">
+                100% Gratuito & Transparente
               </span>
               <h2 className="mt-2 font-heading text-lg font-extrabold text-brand-navy">
-                Como funcionam os perfis no Economize+
+                Vantagens da sua Conta Economize+
               </h2>
-              <div className="mt-4 space-y-3 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-slate-500">
+                Tudo o que você precisa para economizar no supermercado sem complicação:
+              </p>
+              <div className="mt-4 space-y-3.5 text-xs text-slate-600">
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   <div>
-                    <strong className="text-brand-navy">Consumidor:</strong>{" "}
-                    Ativado automaticamente ao se cadastrar. Permite salvar seu
-                    bairro, CEP e sincronizar sua Lista Inteligente entre
-                    dispositivos.
+                    <strong className="text-brand-navy">Sua Cesta Salva:</strong>{" "}
+                    Monte sua lista no celular e continue no computador ou consulte direto no corredor do mercado.
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
                   <div>
-                    <strong className="text-brand-navy">
-                      Mercado Parceiro:
-                    </strong>{" "}
-                    Habilitado após verificação cadastral do estabelecimento
-                    pela nossa equipe.
+                    <strong className="text-brand-navy">Economia no seu Bairro:</strong>{" "}
+                    Calculamos a distância e o preço total da sua compra nos mercados mais próximos de Bertioga.
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-navy" />
                   <div>
-                    <strong className="text-brand-navy">
-                      Acesso Rápido e Prático:
-                    </strong>{" "}
-                    Você também pode pesquisar preços e montar sua lista sem
-                    precisar fazer login.
+                    <strong className="text-brand-navy">Privacidade e LGPD:</strong>{" "}
+                    Seus dados não são vendidos nem compartilhados. Respeitamos a sua privacidade e não enviamos spam.
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-brand-blue/20 bg-brand-light/60 p-3.5 text-xs text-slate-600">
+                <p className="font-semibold text-brand-navy">
+                  💡 Quer apenas pesquisar?
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  O comparador é livre! Você pode pesquisar encartes, produtos e comparar cestas mesmo sem fazer login.
+                </p>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-500">
+                <span>É dono de supermercado?</span>
+                <Link
+                  href="/painel-mercado"
+                  className="font-bold text-brand-blue underline hover:text-brand-navy"
+                >
+                  Portal do Parceiro
+                </Link>
               </div>
             </div>
           </div>
