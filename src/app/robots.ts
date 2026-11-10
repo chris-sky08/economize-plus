@@ -20,7 +20,7 @@ export default function robots(): MetadataRoute.Robots {
           "/entregas",
           "/institucional",
         ],
-        disallow: ["/admin", "/painel-parceiro", "/api/"],
+        disallow: ["/api/"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

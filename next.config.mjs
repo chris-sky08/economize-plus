@@ -57,6 +57,14 @@ const commonSecurityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    return [
+      {
+        source: "/manifest.json",
+        destination: "/manifest.webmanifest",
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
