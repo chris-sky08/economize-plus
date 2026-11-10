@@ -134,7 +134,7 @@ export default function CookieConsentBanner() {
             paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)",
           }}
         >
-          <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border-2 border-brand-blue/50 bg-brand-navy text-white shadow-2xl">
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border-2 border-brand-blue/50 bg-gradient-to-br from-[#1E3A8A] to-brand-navy text-white shadow-2xl">
             <div className="h-1.5 w-full bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow" />
 
             <div className="p-4 sm:p-5">
@@ -199,7 +199,7 @@ export default function CookieConsentBanner() {
                   <button
                     type="button"
                     onClick={() => saveConsent(false, false)}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-2 border-brand-light/50 bg-[#084B8A] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-brand-blue active:scale-95"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-2 border-brand-light/50 bg-[#1E3A8A] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-brand-blue active:scale-95"
                   >
                     <span>Apenas Necessários</span>
                   </button>

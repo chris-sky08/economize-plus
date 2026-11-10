@@ -118,7 +118,7 @@ function AnimatedSubnavContent({ categories, user }: AnimatedSubnavProps) {
   return (
     <nav
       aria-label="Departamentos e navegação rápida"
-      className="border-t border-white/15 bg-gradient-to-r from-[#05315B] via-[#07427A] to-[#05315B] text-white"
+      className="border-t border-white/10 bg-gradient-to-r from-[#1E3A8A] via-[#172554] to-brand-navy text-white"
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 overflow-x-auto px-3 py-1.5 text-xs font-medium whitespace-nowrap sm:px-6">
         {/* Abas de Departamentos com Ícones Realistas em Miniatura */}

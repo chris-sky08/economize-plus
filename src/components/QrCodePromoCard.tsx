@@ -309,7 +309,7 @@ export default function QrCodePromoCard({
           if (fallbackMatrix[r][c]) {
             const x = (c + quietZone) * cellSize;
             const y = (r + quietZone) * cellSize;
-            rects += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="#063A6B"/>`;
+            rects += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="#0F1E36"/>`;
           }
         }
       }
@@ -347,20 +347,20 @@ export default function QrCodePromoCard({
         throw new Error("Contexto 2D indisponível");
       }
 
-      // 1. Fundo principal em Azul-Escuro Institucional (#063A6B) com gradiente suave
+      // 1. Fundo principal em Azul-Escuro Nobre (#0F1E36) com gradiente suave do azul claro ao escuro
       const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-      bgGrad.addColorStop(0, "#063A6B");
-      bgGrad.addColorStop(0.65, "#052E55");
-      bgGrad.addColorStop(1, "#042240");
+      bgGrad.addColorStop(0, "#2563EB");
+      bgGrad.addColorStop(0.35, "#1E3A8A");
+      bgGrad.addColorStop(1, "#0F1E36");
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
 
       // Faixa superior vibrante nas cores da marca
-      ctx.fillStyle = "#00AFCF";
+      ctx.fillStyle = "#2563EB";
       ctx.fillRect(0, 0, width / 3, 16);
-      ctx.fillStyle = "#52D95D";
+      ctx.fillStyle = "#16A34A";
       ctx.fillRect(width / 3, 0, width / 3, 16);
-      ctx.fillStyle = "#FFC928";
+      ctx.fillStyle = "#F59E0B";
       ctx.fillRect((width / 3) * 2, 0, width / 3, 16);
 
       // Círculos decorativos discretos
@@ -378,12 +378,12 @@ export default function QrCodePromoCard({
       // 2. Selo superior
       ctx.save();
       drawRoundedRect(ctx, 190, 52, width - 380, 48, 24);
-      ctx.fillStyle = "rgba(255, 201, 40, 0.16)";
+      ctx.fillStyle = "rgba(245, 158, 11, 0.16)";
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "#FFC928";
+      ctx.strokeStyle = "#F59E0B";
       ctx.stroke();
-      ctx.fillStyle = "#FFC928";
+      ctx.fillStyle = "#F59E0B";
       ctx.font = "bold 20px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -415,7 +415,7 @@ export default function QrCodePromoCard({
         ctx.fillStyle = "#FFFFFF";
         ctx.fill();
         ctx.lineWidth = 5;
-        ctx.strokeStyle = "#FFC928";
+        ctx.strokeStyle = "#F59E0B";
         ctx.stroke();
         ctx.clip();
         ctx.drawImage(logoImg, width / 2 - 256, headerY - 46, 92, 92);
@@ -430,11 +430,11 @@ export default function QrCodePromoCard({
       ctx.fillStyle = "#FFFFFF";
       ctx.fillText("Economize", brandX, headerY - 10);
       const econWidth = ctx.measureText("Economize").width;
-      ctx.fillStyle = "#52D95D";
+      ctx.fillStyle = "#16A34A";
       ctx.fillText("+", brandX + econWidth + 4, headerY - 10);
 
       ctx.font = "600 24px Inter, system-ui, sans-serif";
-      ctx.fillStyle = "#E6F7FB";
+      ctx.fillStyle = "#F0F7FF";
       ctx.fillText("Compare. Escolha. Economize.", brandX, headerY + 34);
       ctx.restore();
 
@@ -446,7 +446,7 @@ export default function QrCodePromoCard({
       const displayTitle = marketName ? `${marketName} no Economize+` : title;
       wrapCanvasText(ctx, displayTitle, width / 2, 268, width - 140, 50, 2);
 
-      ctx.fillStyle = "#E6F7FB";
+      ctx.fillStyle = "#F0F7FF";
       ctx.font = "500 24px Inter, system-ui, sans-serif";
       const subText = marketAddress
         ? `${marketAddress} • Consulte preços atualizados pelo celular`
@@ -465,14 +465,14 @@ export default function QrCodePromoCard({
       ctx.fillStyle = "#FFFFFF";
       ctx.fill();
       ctx.lineWidth = 6;
-      ctx.strokeStyle = "#00AFCF";
+      ctx.strokeStyle = "#2563EB";
       ctx.stroke();
 
       // Faixa superior do card do QR Code
       drawRoundedRect(ctx, cardX + 40, cardY + 24, cardWidth - 80, 50, 25);
-      ctx.fillStyle = "#E6F7FB";
+      ctx.fillStyle = "#F0F7FF";
       ctx.fill();
-      ctx.fillStyle = "#063A6B";
+      ctx.fillStyle = "#0F1E36";
       ctx.font = "bold 21px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -489,7 +489,7 @@ export default function QrCodePromoCard({
         // Fallback: desenha matriz determinística diretamente no canvas
         const mSize = fallbackMatrix.length;
         const cell = qrSize / mSize;
-        ctx.fillStyle = "#063A6B";
+        ctx.fillStyle = "#0F1E36";
         for (let r = 0; r < mSize; r++) {
           for (let c = 0; c < mSize; c++) {
             if (fallbackMatrix[r][c]) {
@@ -524,16 +524,16 @@ export default function QrCodePromoCard({
         ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
         ctx.fill();
         ctx.lineWidth = 1.5;
-        ctx.strokeStyle = "rgba(230, 247, 251, 0.28)";
+        ctx.strokeStyle = "rgba(240, 247, 255, 0.28)";
         ctx.stroke();
 
         // Círculo numerado
         ctx.beginPath();
         ctx.arc(bx + 42, by + boxHeight / 2, 22, 0, Math.PI * 2);
-        ctx.fillStyle = idx === 3 ? "#52D95D" : "#FFC928";
+        ctx.fillStyle = idx === 3 ? "#16A34A" : "#F59E0B";
         ctx.fill();
 
-        ctx.fillStyle = "#063A6B";
+        ctx.fillStyle = "#0F1E36";
         ctx.font = "800 22px Poppins, Inter, system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -555,7 +555,7 @@ export default function QrCodePromoCard({
       ctx.fillStyle = "#FFFFFF";
       ctx.fill();
 
-      ctx.fillStyle = "#063A6B";
+      ctx.fillStyle = "#0F1E36";
       ctx.font = "bold 22px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -567,7 +567,7 @@ export default function QrCodePromoCard({
         footerY + 26
       );
 
-      ctx.fillStyle = "#00AFCF";
+      ctx.fillStyle = "#2563EB";
       ctx.font = "bold 17px Inter, system-ui, sans-serif";
       ctx.fillText(
         `Site oficial: economize-nine.vercel.app  •  Siga ${OFFICIAL_INSTAGRAM_HANDLE}`,
@@ -675,7 +675,7 @@ export default function QrCodePromoCard({
           </div>
 
           {/* Configuração da URL Oficial de Produção */}
-          <div className="space-y-4 rounded-2xl border border-brand-blue/20 bg-[#F4FAFC] p-4 sm:p-5">
+          <div className="space-y-4 rounded-2xl border border-brand-blue/20 bg-brand-surface p-4 sm:p-5">
             <div>
               <label
                 htmlFor="qr-base-origin-input"
@@ -955,7 +955,7 @@ export default function QrCodePromoCard({
                               y={rIdx + 2}
                               width={1}
                               height={1}
-                              fill="#063A6B"
+                              fill="#0F1E36"
                             />
                           ) : null
                         )

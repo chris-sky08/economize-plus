@@ -224,9 +224,9 @@ export default function DivulgacaoPage() {
   }, [selectedMarket, selectedMode]);
 
   return (
-    <div className="min-h-screen bg-[#F4FAFC] pb-20">
+    <div className="min-h-screen bg-brand-surface pb-20">
       {/* Hero Institucional da Central de Divulgação */}
-      <section className="bg-brand-navy py-10 text-white sm:py-14 print:hidden">
+      <section className="bg-gradient-to-r from-[#2563EB] via-brand-navy to-[#0F1E36] py-10 text-white sm:py-14 print:hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-yellow/40 bg-brand-yellow/15 px-3.5 py-1.5 text-xs font-bold text-brand-yellow">
@@ -408,7 +408,7 @@ export default function DivulgacaoPage() {
                   ))}
                 </div>
               ) : activeMarkets.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-[#F4FAFC] p-6 text-center">
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-brand-surface p-6 text-center">
                   <img
                     src="/icons/10-seja-parceiro.jpg"
                     alt=""
@@ -516,7 +516,7 @@ export default function DivulgacaoPage() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-100 bg-[#F4FAFC] p-5">
+            <div className="rounded-2xl border border-slate-100 bg-brand-surface p-5">
               <img
                 src="/icons/12-qr-geral.jpg"
                 alt=""
@@ -536,7 +536,7 @@ export default function DivulgacaoPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-[#F4FAFC] p-5">
+            <div className="rounded-2xl border border-slate-100 bg-brand-surface p-5">
               <img
                 src="/icons/10-seja-parceiro.jpg"
                 alt=""
@@ -555,7 +555,7 @@ export default function DivulgacaoPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-[#F4FAFC] p-5">
+            <div className="rounded-2xl border border-slate-100 bg-brand-surface p-5">
               <img
                 src="/icons/26-instagram-oficial.jpg"
                 alt=""

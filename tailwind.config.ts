@@ -10,12 +10,13 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          navy: "#063A6B",
-          blue: "#00AFCF",
-          green: "#52D95D",
-          yellow: "#FFC928",
-          light: "#E6F7FB",
-          surface: "#F4FAFC",
+          navy: "#0F1E36", // Azul Marinho Nobre Profundo
+          blue: "#2563EB", // Azul Real Vibrante
+          sky: "#38BDF8",  // Azul Claro Luminoso (degradês)
+          green: "#16A34A", // Verde Economia Fresco de Supermercado
+          yellow: "#F59E0B", // Âmbar Dourado Sofisticado
+          light: "#F0F7FF", // Fundo Suave com Frescor Celeste
+          surface: "#F8FAFC", // Superfície Off-White Ultra Limpa
           white: "#FFFFFF",
         },
       },

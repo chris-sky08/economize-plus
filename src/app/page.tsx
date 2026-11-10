@@ -252,11 +252,11 @@ export default function HomePage() {
   return (
     <div className="space-y-12 pb-12">
       {/* 1. SUPER VITRINE HERO VAREJO ESTILO MAGALU + COMPARADOR AO VIVO */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#E6F7FB] via-[#F4FAFC] to-transparent pt-5 pb-6 sm:pt-8">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#F0F7FF] via-[#F8FAFC] to-transparent pt-5 pb-6 sm:pt-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12">
-            {/* Palco Varejo Principal (Esquerda) */}
-            <div className="relative flex min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-brand-navy via-[#084B8A] to-brand-blue p-5 text-white shadow-xl sm:p-8 lg:col-span-7">
+            {/* Palco Varejo Principal (Esquerda) com Degradê Azul Claro ao Escuro */}
+            <div className="relative flex min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-[#2563EB] via-[#1E3A8A] to-brand-navy p-5 text-white shadow-xl sm:p-8 lg:col-span-7">
               {/* Faixa superior tricolor */}
               <div
                 aria-hidden="true"
@@ -1301,7 +1301,7 @@ export default function HomePage() {
           </div>
 
           {/* Card Entregadores & Kit QR Code */}
-          <div className="flex flex-col justify-between rounded-3xl border-2 border-brand-blue/30 bg-gradient-to-br from-white via-[#F4FAFC] to-brand-light p-6 shadow-md sm:p-8 lg:col-span-5">
+          <div className="flex flex-col justify-between rounded-3xl border-2 border-brand-blue/30 bg-gradient-to-br from-white via-[#F8FAFC] to-brand-light p-6 shadow-md sm:p-8 lg:col-span-5">
             <div className="flex items-center gap-4">
               <img
                 src={ECONOMIZE_ICONS.entregas.src}
@@ -1347,7 +1347,7 @@ export default function HomePage() {
 
       {/* 8. POSIÇÃO 2 APROVADA: SEÇÃO INTERATIVA DE AVALIAÇÃO, SUGESTÕES E RELATO DE BUGS (DIRETO NO GMAIL) */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="relative overflow-hidden rounded-3xl border-2 border-brand-blue/50 bg-gradient-to-r from-brand-navy via-[#094D8A] to-brand-navy p-6 text-white shadow-xl sm:p-8">
+        <div className="relative overflow-hidden rounded-3xl border-2 border-brand-blue/50 bg-gradient-to-r from-[#2563EB] via-[#1E3A8A] to-brand-navy p-6 text-white shadow-xl sm:p-8">
           <div
             aria-hidden="true"
             className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow"

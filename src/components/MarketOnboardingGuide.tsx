@@ -92,7 +92,7 @@ export default function MarketOnboardingGuide({
         }`}
       >
         {/* ETAPA 1 */}
-        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-[#F4FAFC] p-4">
+        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-brand-surface p-4">
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-2.5 py-1 text-[11px] font-extrabold text-white">
@@ -127,7 +127,7 @@ export default function MarketOnboardingGuide({
         </article>
 
         {/* ETAPA 2 */}
-        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-[#F4FAFC] p-4">
+        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-brand-surface p-4">
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-2.5 py-1 text-[11px] font-extrabold text-white">
@@ -162,7 +162,7 @@ export default function MarketOnboardingGuide({
         </article>
 
         {/* ETAPA 3 */}
-        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-[#F4FAFC] p-4">
+        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-brand-surface p-4">
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-2.5 py-1 text-[11px] font-extrabold text-white">
@@ -203,7 +203,7 @@ export default function MarketOnboardingGuide({
         </article>
 
         {/* ETAPA 4 */}
-        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-[#F4FAFC] p-4">
+        <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-brand-surface p-4">
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-2.5 py-1 text-[11px] font-extrabold text-white">

@@ -106,7 +106,7 @@ export default function Navbar() {
       />
 
       {/* Barra Superior de Transparência e Atalhos Rápidos */}
-      <div className="border-b border-white/10 bg-[#042B50] px-3 py-1.5 text-white">
+      <div className="border-b border-white/10 bg-[#0A1526] px-3 py-1.5 text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-2">
             <img
@@ -147,8 +147,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Super-Header Varejo Principal */}
-      <header className="sticky top-0 z-40 w-full overflow-x-clip bg-brand-navy shadow-md">
+      {/* Super-Header Varejo Principal com Degradê Azul Claro ao Escuro */}
+      <header className="sticky top-0 z-40 w-full overflow-x-clip bg-gradient-to-r from-[#1D4ED8] via-brand-navy to-[#0A1526] shadow-md">
         <div className="mx-auto max-w-7xl px-3 py-2.5 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
             {/* Logotipo Oficial Intocado */}

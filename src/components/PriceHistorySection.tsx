@@ -220,7 +220,7 @@ export default function PriceHistorySection({
 
       {/* 3. EMPTY STATE HONESTO */}
       {!loading && !errorMessage && entries.length === 0 && (
-        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-[#F4FAFC] p-6 text-center">
+        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-brand-surface p-6 text-center">
           <Clock className="mx-auto h-8 w-8 text-brand-blue" />
           <p className="mt-2 font-heading text-sm font-bold text-brand-navy">
             Nenhuma movimentação de histórico registrada ainda

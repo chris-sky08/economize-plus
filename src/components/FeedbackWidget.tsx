@@ -366,7 +366,7 @@ export default function FeedbackWidget() {
             <div className="h-2 w-full bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow" />
 
             {/* Cabeçalho do Modal — Botão X fixo no cantinho superior direito na bordinha e separado do texto */}
-            <div className="relative flex items-start gap-3 bg-gradient-to-r from-brand-navy to-[#094D8A] px-4 py-4 pr-14 text-white sm:items-center sm:px-6">
+            <div className="relative flex items-start gap-3 bg-gradient-to-r from-[#2563EB] to-brand-navy px-4 py-4 pr-14 text-white sm:items-center sm:px-6">
               <img
                 src={ECONOMIZE_ICONS["avaliacao-feedback"].src}
                 alt={ECONOMIZE_ICONS["avaliacao-feedback"].alt}
