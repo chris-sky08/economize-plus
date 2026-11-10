@@ -30,7 +30,6 @@ export function triggerCookiePreferencesModal() {
 }
 
 export default function CookieConsentBanner() {
-  const [bannerVisible, setBannerVisible] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "categorias" | "inventario" | "lgpd" | "direitos"
@@ -45,14 +44,26 @@ export default function CookieConsentBanner() {
     try {
       const raw = window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
       if (!raw) {
-        setBannerVisible(true);
+        // Inicializa automaticamente o consentimento estritamente necessário (cesta e CEP local)
+        // sem exibir banner intrusivo bloqueando a navegação do consumidor ao entrar no site.
+        const defaultState: CookieConsentState = {
+          essential: true,
+          functional: false,
+          analytics: false,
+          decidedAt: new Date().toISOString(),
+          version: "2026.11-ANPD",
+        };
+        window.localStorage.setItem(
+          COOKIE_CONSENT_STORAGE_KEY,
+          JSON.stringify(defaultState)
+        );
       } else {
         const parsed = JSON.parse(raw) as Partial<CookieConsentState>;
         setFunctionalEnabled(Boolean(parsed.functional));
         setAnalyticsEnabled(Boolean(parsed.analytics));
       }
     } catch {
-      setBannerVisible(true);
+      // Ignora erro de acesso a localStorage em ambientes restritos
     }
 
     const handleOpenPrefs = () => {
@@ -89,7 +100,6 @@ export default function CookieConsentBanner() {
     }
     setFunctionalEnabled(functional);
     setAnalyticsEnabled(analytics);
-    setBannerVisible(false);
     setModalOpen(false);
   };
 
@@ -120,106 +130,11 @@ export default function CookieConsentBanner() {
     }
   };
 
-  if (!bannerVisible && !modalOpen) return null;
+  if (!modalOpen) return null;
 
   return (
     <>
-      {/* 1º NÍVEL (GUIA ORIENTATIVO ANPD): BANNER INICIAL EQUILIBRADO SEM DARK PATTERNS */}
-      {bannerVisible && !modalOpen && (
-        <div
-          role="region"
-          aria-label="Aviso de Cookies e Privacidade (LGPD)"
-          className="fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4"
-          style={{
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)",
-          }}
-        >
-          <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl border-2 border-brand-blue/50 bg-gradient-to-br from-[#1E3A8A] to-brand-navy text-white shadow-2xl">
-            <div className="h-1.5 w-full bg-gradient-to-r from-brand-blue via-brand-green to-brand-yellow" />
-
-            <div className="p-4 sm:p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-start gap-3.5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-yellow/40 bg-white/10 text-brand-yellow">
-                    <Cookie className="h-5 w-5" />
-                  </div>
-                  <div className="text-xs leading-relaxed text-slate-200 sm:text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-heading text-sm font-extrabold text-white sm:text-base">
-                        Transparência em Cookies e Privacidade (LGPD — Lei nº 13.709/2018)
-                      </p>
-                      <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-brand-yellow">
-                        Padrão ANPD
-                      </span>
-                    </div>
-                    <p className="mt-1">
-                      Utilizamos cookies e armazenamento local{" "}
-                      <strong>estritamente necessários</strong> para guardar sua
-                      Lista de Compras Inteligente, seu CEP/raio de distância e
-                      sua sessão no próprio aparelho. Cookies opcionais de
-                      preferências vêm <strong>desativados por padrão</strong>.
-                      Você pode aceitar todos, manter apenas os essenciais ou
-                      consultar cada detalhe na{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab("lgpd");
-                          setModalOpen(true);
-                        }}
-                        className="font-bold text-brand-yellow underline hover:text-white"
-                      >
-                        Central de Privacidade e LGPD
-                      </button>{" "}
-                      e na{" "}
-                      <Link
-                        href="/institucional?aba=privacidade"
-                        className="font-bold text-brand-light underline hover:text-white"
-                      >
-                        Política de Privacidade
-                      </Link>
-                      .
-                    </p>
-                  </div>
-                </div>
-
-                {/* 3 Botões com Destaque Equilibrado conforme Guia da ANPD */}
-                <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("categorias");
-                      setModalOpen(true);
-                    }}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
-                  >
-                    <Settings2 className="h-4 w-4 text-brand-yellow" />
-                    <span>Gerenciar / Ler LGPD</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => saveConsent(false, false)}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-2 border-brand-light/50 bg-[#1E3A8A] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-brand-blue active:scale-95"
-                  >
-                    <span>Apenas Necessários</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => saveConsent(true, true)}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-green px-4 py-2 text-xs font-black text-brand-navy shadow-md transition hover:brightness-95 active:scale-95"
-                  >
-                    <Check className="h-4 w-4" />
-                    <span>Aceitar Todos</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2º NÍVEL (GUIA ORIENTATIVO ANPD): MODAL DETALHADO DE COOKIES, INVENTÁRIO TÉCNICO E LGPD */}
+      {/* MODAL DETALHADO DE COOKIES, INVENTÁRIO TÉCNICO E LGPD (ACESSADO SOB DEMANDA) */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2.5 backdrop-blur-xs sm:p-4"
