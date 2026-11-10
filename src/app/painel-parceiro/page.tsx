@@ -25,9 +25,260 @@ import { useApp } from "@/context/AppContext";
 import { formatBRL, validateGtin } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { CsvLineError } from "@/app/api/ingest/csv/route";
+import type { Market, MarketPrice, Product } from "@/types/domain";
 import MarketOnboardingGuide from "@/components/MarketOnboardingGuide";
 import PriceHistorySection from "@/components/PriceHistorySection";
 import QrCodePromoCard from "@/components/QrCodePromoCard";
+
+const DEFAULT_DEMO_MARKET: Market = {
+  id: "krill-centro-bertioga",
+  name: "Krill Supermercados (Centro - Bertioga)",
+  shortName: "Krill Centro",
+  cnpj: "54.123.456/0001-78",
+  responsibleName: "Gerência Comercial",
+  email: "contato@krill.com.br",
+  phone: "(13) 3317-1000",
+  address: "Av. Anchieta, 2300 - Centro",
+  neighborhood: "Centro",
+  city: "Bertioga",
+  state: "SP",
+  zipCode: "11250-000",
+  lat: -23.8524,
+  lng: -46.1412,
+  distanceKm: 0.9,
+  openingHours: "Seg a Sáb: 07h às 22h • Dom: 07h às 20h",
+  planId: "premium",
+  isPartner: true,
+  deliveryAvailable: true,
+  deliveryInfo: "Entrega expressa em Bertioga em até 2 horas",
+  status: "ativo",
+  verifiedAt: new Date().toISOString(),
+  updatedAtIso: new Date().toISOString(),
+  lastCatalogUpdate: "Hoje às 09:30",
+  coverImage: null,
+};
+
+const DEMO_PRODUCTS: Product[] = [
+  {
+    id: "demo-prod-arroz",
+    ean: "7896006711124",
+    name: "Arroz Branco Tipo 1 5kg",
+    brand: "Camil",
+    categoryId: "mercearia",
+    sizeLabel: "5kg",
+    unitType: "kg",
+    unitMultiplier: 5,
+    imageUrl:
+      "https://images.openfoodfacts.org/images/products/789/600/671/1124/front_pt.4.400.jpg",
+    isPopular: true,
+    description: "Arroz longo fino tipo 1",
+    source: "partner",
+    dataStatus: "completo",
+  },
+  {
+    id: "demo-prod-feijao",
+    ean: "7896006721116",
+    name: "Feijão Carioca Tipo 1 1kg",
+    brand: "Camil",
+    categoryId: "mercearia",
+    sizeLabel: "1kg",
+    unitType: "kg",
+    unitMultiplier: 1,
+    imageUrl:
+      "https://images.openfoodfacts.org/images/products/789/600/672/1116/front_pt.4.400.jpg",
+    isPopular: true,
+    description: "Feijão carioca selecionado",
+    source: "partner",
+    dataStatus: "completo",
+  },
+  {
+    id: "demo-prod-leite",
+    ean: "7898215150016",
+    name: "Leite UHT Integral 1L",
+    brand: "Piracanjuba",
+    categoryId: "laticinios",
+    sizeLabel: "1L",
+    unitType: "L",
+    unitMultiplier: 1,
+    imageUrl:
+      "https://images.openfoodfacts.org/images/products/789/821/515/0016/front_pt.4.400.jpg",
+    isPopular: true,
+    description: "Leite integral pasteurizado",
+    source: "partner",
+    dataStatus: "completo",
+  },
+  {
+    id: "demo-prod-cafe",
+    ean: "7896089010015",
+    name: "Café Torrado e Moído Tradicional 500g",
+    brand: "Pilão",
+    categoryId: "mercearia",
+    sizeLabel: "500g",
+    unitType: "kg",
+    unitMultiplier: 0.5,
+    imageUrl:
+      "https://images.openfoodfacts.org/images/products/789/608/901/0015/front_pt.4.400.jpg",
+    isPopular: true,
+    description: "Café encorpado ponto de torra tradicional",
+    source: "partner",
+    dataStatus: "completo",
+  },
+  {
+    id: "demo-prod-oleo",
+    ean: "7891107011019",
+    name: "Óleo de Soja Refinado 900ml",
+    brand: "Liza",
+    categoryId: "mercearia",
+    sizeLabel: "900ml",
+    unitType: "L",
+    unitMultiplier: 0.9,
+    imageUrl:
+      "https://images.openfoodfacts.org/images/products/789/110/701/1019/front_pt.4.400.jpg",
+    isPopular: true,
+    description: "Óleo vegetal 100% soja",
+    source: "partner",
+    dataStatus: "completo",
+  },
+  {
+    id: "demo-prod-detergente",
+    ean: "7896098900253",
+    name: "Detergente Líquido Lava-Louças Neutro 500ml",
+    brand: "Ypê",
+    categoryId: "limpeza",
+    sizeLabel: "500ml",
+    unitType: "L",
+    unitMultiplier: 0.5,
+    imageUrl:
+      "https://images.openfoodfacts.org/images/products/789/609/890/0253/front_pt.4.400.jpg",
+    isPopular: true,
+    description: "Detergente neutro biodegradável",
+    source: "partner",
+    dataStatus: "completo",
+  },
+];
+
+const DEMO_PRICES: MarketPrice[] = [
+  {
+    id: "demo-pr-1",
+    marketId: "krill-centro-bertioga",
+    productId: "demo-prod-arroz",
+    price: 26.9,
+    regularPrice: 29.9,
+    isPromo: true,
+    promoLabel: "Oferta da Semana",
+    inStock: true,
+    isSponsored: false,
+    source: "partner_manual",
+    status: "publicado",
+    validFrom: new Date().toISOString(),
+    validUntil: null,
+    collectedAtIso: new Date().toISOString(),
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: "Hoje",
+    sourceLabel: "Informado pelo mercado",
+    isStale: false,
+    evidencePath: null,
+  },
+  {
+    id: "demo-pr-2",
+    marketId: "krill-centro-bertioga",
+    productId: "demo-prod-feijao",
+    price: 7.49,
+    regularPrice: 8.99,
+    isPromo: true,
+    promoLabel: "Super Oferta",
+    inStock: true,
+    isSponsored: false,
+    source: "partner_manual",
+    status: "publicado",
+    validFrom: new Date().toISOString(),
+    validUntil: null,
+    collectedAtIso: new Date().toISOString(),
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: "Hoje",
+    sourceLabel: "Informado pelo mercado",
+    isStale: false,
+    evidencePath: null,
+  },
+  {
+    id: "demo-pr-3",
+    marketId: "krill-centro-bertioga",
+    productId: "demo-prod-leite",
+    price: 4.89,
+    inStock: true,
+    isPromo: false,
+    isSponsored: false,
+    source: "partner_manual",
+    status: "publicado",
+    validFrom: new Date().toISOString(),
+    validUntil: null,
+    collectedAtIso: new Date().toISOString(),
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: "Hoje",
+    sourceLabel: "Informado pelo mercado",
+    isStale: false,
+    evidencePath: null,
+  },
+  {
+    id: "demo-pr-4",
+    marketId: "krill-centro-bertioga",
+    productId: "demo-prod-cafe",
+    price: 18.9,
+    regularPrice: 21.9,
+    isPromo: true,
+    promoLabel: "Destaque",
+    inStock: true,
+    isSponsored: false,
+    source: "partner_manual",
+    status: "publicado",
+    validFrom: new Date().toISOString(),
+    validUntil: null,
+    collectedAtIso: new Date().toISOString(),
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: "Hoje",
+    sourceLabel: "Informado pelo mercado",
+    isStale: false,
+    evidencePath: null,
+  },
+  {
+    id: "demo-pr-5",
+    marketId: "krill-centro-bertioga",
+    productId: "demo-prod-oleo",
+    price: 6.89,
+    inStock: true,
+    isPromo: false,
+    isSponsored: false,
+    source: "partner_manual",
+    status: "publicado",
+    validFrom: new Date().toISOString(),
+    validUntil: null,
+    collectedAtIso: new Date().toISOString(),
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: "Hoje",
+    sourceLabel: "Informado pelo mercado",
+    isStale: false,
+    evidencePath: null,
+  },
+  {
+    id: "demo-pr-6",
+    marketId: "krill-centro-bertioga",
+    productId: "demo-prod-detergente",
+    price: 2.39,
+    inStock: true,
+    isPromo: false,
+    isSponsored: false,
+    source: "partner_manual",
+    status: "publicado",
+    validFrom: new Date().toISOString(),
+    validUntil: null,
+    collectedAtIso: new Date().toISOString(),
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: "Hoje",
+    sourceLabel: "Informado pelo mercado",
+    isStale: false,
+    evidencePath: null,
+  },
+];
 
 interface PendingReviewItem {
   id: string;
@@ -70,12 +321,15 @@ export default function PainelParceiroPage() {
   const [selectedAdminMarketId, setSelectedAdminMarketId] =
     useState<string>("");
 
-  const effectiveMarketId =
-    user?.role === "admin"
-      ? selectedAdminMarketId || user?.marketId || markets[0]?.id || null
-      : user?.marketId || null;
+  const defaultMarketCandidate =
+    markets.find((m) => m.id === selectedAdminMarketId) ||
+    (user?.marketId ? markets.find((m) => m.id === user.marketId) : null) ||
+    markets[0] ||
+    DEFAULT_DEMO_MARKET;
 
-  const myMarket = markets.find((m) => m.id === effectiveMarketId) || null;
+  const myMarket = defaultMarketCandidate;
+  const isAutoLiberatedMode =
+    !user || (user.role !== "mercado" && user.role !== "admin");
 
   const [activeTab, setActiveTab] = useState<
     | "catalogo"
@@ -142,7 +396,7 @@ export default function PainelParceiroPage() {
 
   const getAccessToken = async (): Promise<string | null> => {
     const { data } = await supabase.auth.getSession();
-    return data.session?.access_token || null;
+    return data.session?.access_token || "demo_token_liberado";
   };
 
   const fetchPendingReviewItems = useCallback(async () => {
@@ -174,73 +428,21 @@ export default function PainelParceiroPage() {
     }
   }, [activeTab, myMarket, fetchPendingReviewItems]);
 
-  if (!user || (user.role !== "mercado" && user.role !== "admin")) {
-    return (
-      <div className="mx-auto max-w-5xl space-y-8 px-4 py-12">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
-          <ShieldAlert className="mx-auto h-12 w-12 text-brand-navy" />
-          <h1 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
-            Área Restrita ao Mercado Parceiro
-          </h1>
-          <p className="mx-auto mt-2 max-w-lg text-xs text-slate-600 sm:text-sm">
-            Para gerenciar o catálogo, subir planilhas CSV e revisar ofertas
-            extraídas de encartes, faça login com uma conta vinculada a um
-            supermercado em <code>public.market_members</code>.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/conta"
-              className="inline-flex min-h-[44px] items-center rounded-xl bg-brand-navy px-6 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue sm:text-sm"
-            >
-              Fazer Login na Conta
-            </Link>
-            <Link
-              href="/seja-parceiro"
-              className="inline-flex min-h-[44px] items-center rounded-xl border border-slate-200 bg-slate-50 px-6 py-3 text-xs font-bold text-brand-navy transition hover:bg-slate-100 sm:text-sm"
-            >
-              Solicitar Credenciamento de Mercado
-            </Link>
-          </div>
-        </div>
+  const actualPrices = prices.filter((p) => p.marketId === myMarket.id);
+  const activeProductsList = products.length > 0 ? products : DEMO_PRODUCTS;
+  const basePrices =
+    actualPrices.length > 0
+      ? actualPrices
+      : DEMO_PRICES.filter(
+          (p) =>
+            p.marketId === myMarket.id || p.marketId === "krill-centro-bertioga"
+        );
 
-        <MarketOnboardingGuide showPartnerCta={true} />
-      </div>
-    );
-  }
-
-  if (!myMarket) {
-    return (
-      <div className="mx-auto max-w-5xl space-y-8 px-4 py-12">
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-2xs">
-          <Building2 className="mx-auto h-12 w-12 text-brand-blue" />
-          <h1 className="mt-3 font-heading text-2xl font-extrabold text-brand-navy">
-            Nenhum supermercado vinculado à sua conta
-          </h1>
-          <p className="mx-auto mt-2 max-w-lg text-xs text-slate-600 sm:text-sm">
-            Sua conta ainda não possui vínculo ativo em{" "}
-            <code>public.market_members</code> ou ainda não há mercados
-            cadastrados.
-            {user.role === "admin" && " Cadastre um mercado no Painel Admin."}
-          </p>
-          {user.role === "admin" && (
-            <Link
-              href="/admin"
-              className="mt-5 inline-flex min-h-[44px] items-center rounded-xl bg-brand-navy px-5 py-2.5 text-xs font-bold text-white"
-            >
-              Cadastrar Mercado no Painel Admin
-            </Link>
-          )}
-        </div>
-
-        <MarketOnboardingGuide showPartnerCta={true} />
-      </div>
-    );
-  }
-
-  const myPrices = prices
-    .filter((p) => p.marketId === myMarket.id)
+  const myPrices = basePrices
     .map((priceEntry) => {
-      const product = products.find((prod) => prod.id === priceEntry.productId);
+      const product =
+        activeProductsList.find((prod) => prod.id === priceEntry.productId) ||
+        DEMO_PRODUCTS.find((prod) => prod.id === priceEntry.productId);
       return product ? { priceEntry, product } : null;
     })
     .filter(Boolean) as Array<{
@@ -467,6 +669,38 @@ export default function PainelParceiroPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      {isAutoLiberatedMode && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-brand-navy p-4 text-white shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-base font-black">
+              ✓
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-100">
+                  Painel Liberado Automaticamente
+                </span>
+                <span className="text-xs text-emerald-100">
+                  • Acesso Imediato
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs font-bold sm:text-sm">
+                Você pode testar todas as ferramentas do parceiro: Catálogo,
+                preços, CSV, Encartes com IA e QR Code.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/seja-parceiro"
+              className="rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-brand-navy shadow-xs transition hover:bg-slate-100"
+            >
+              Credenciar Mercado Oficial
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-brand-navy p-6 text-white shadow-sm">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -479,7 +713,7 @@ export default function PainelParceiroPage() {
                 CNPJ: {myMarket.cnpj}
               </span>
             )}
-            {user.role === "admin" && markets.length > 1 && (
+            {markets.length > 1 && (
               <select
                 value={myMarket.id}
                 onChange={(e) => setSelectedAdminMarketId(e.target.value)}
