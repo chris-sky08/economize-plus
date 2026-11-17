@@ -57,6 +57,9 @@ const commonSecurityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  experimental: {
+    agentUpgrade: "security",
+  },
   async redirects() {
     return [
       {
