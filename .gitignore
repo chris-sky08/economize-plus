@@ -34,3 +34,6 @@ next-env.d.ts
 
 # arena tournament runs
 .arena/
+
+# git worktrees
+.worktrees/
