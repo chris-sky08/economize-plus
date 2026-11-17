@@ -270,7 +270,7 @@ export default function ProductComparisonCard({
             className="h-5 w-5 rounded-full bg-white object-cover"
           />
           <Plus className="h-3.5 w-3.5 text-emerald-400" />
-          <span>+ Adicionar à Cesta</span>
+          <span>Adicionar à Cesta</span>
         </button>
         <Link
           href={`/produto/${product.id}`}

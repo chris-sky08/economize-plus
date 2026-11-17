@@ -55,7 +55,7 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: (
       <img
-        src="/icons/12-qr-geral.jpg"
+        src="/icons/12-qr-geral.webp"
         alt="QR Code Geral do Aplicativo"
         className="h-full w-full rounded-full object-cover"
       />
@@ -78,7 +78,7 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: (
       <img
-        src="/icons/13-qr-busca-ean.jpg"
+        src="/icons/13-qr-busca-ean.webp"
         alt="QR Code de Busca & Leitor EAN"
         className="h-full w-full rounded-full object-cover"
       />
@@ -101,7 +101,7 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: (
       <img
-        src="/icons/14-qr-lista-inteligente.jpg"
+        src="/icons/14-qr-lista-inteligente.webp"
         alt="QR Code da Lista Inteligente"
         className="h-full w-full rounded-full object-cover"
       />
@@ -124,7 +124,7 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: (
       <img
-        src="/icons/15-qr-mercados-parceiros.jpg"
+        src="/icons/15-qr-mercados-parceiros.webp"
         alt="QR Code para Mercados Parceiros"
         className="h-full w-full rounded-full object-cover"
       />
@@ -147,7 +147,7 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: (
       <img
-        src="/icons/16-qr-supermercado-ativo.jpg"
+        src="/icons/16-qr-supermercado-ativo.webp"
         alt="QR Code Específico de Supermercado Ativo"
         className="h-full w-full rounded-full object-cover"
       />
@@ -171,7 +171,7 @@ const PROMO_PRESETS: readonly PromoPreset[] = [
     ],
     icon: (
       <img
-        src="/icons/26-instagram-oficial.jpg"
+        src="/icons/26-instagram-oficial.webp"
         alt="QR Code do Instagram Oficial"
         className="h-full w-full rounded-full object-cover"
       />
@@ -256,7 +256,7 @@ export default function DivulgacaoPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
               <img
-                src="/icons/26-instagram-oficial.jpg"
+                src="/icons/26-instagram-oficial.webp"
                 alt="Instagram oficial do Economize+"
                 width={56}
                 height={56}
@@ -297,7 +297,7 @@ export default function DivulgacaoPage() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-navy py-1.5 pr-4 pl-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-blue active:scale-95"
               >
                 <img
-                  src="/icons/26-instagram-oficial.jpg"
+                  src="/icons/26-instagram-oficial.webp"
                   alt=""
                   width={32}
                   height={32}
@@ -410,7 +410,7 @@ export default function DivulgacaoPage() {
               ) : activeMarkets.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-brand-surface p-6 text-center">
                   <img
-                    src="/icons/10-seja-parceiro.jpg"
+                    src="/icons/10-seja-parceiro.webp"
                     alt=""
                     width={72}
                     height={72}
@@ -518,7 +518,7 @@ export default function DivulgacaoPage() {
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-100 bg-brand-surface p-5">
               <img
-                src="/icons/12-qr-geral.jpg"
+                src="/icons/12-qr-geral.webp"
                 alt=""
                 width={48}
                 height={48}
@@ -538,7 +538,7 @@ export default function DivulgacaoPage() {
 
             <div className="rounded-2xl border border-slate-100 bg-brand-surface p-5">
               <img
-                src="/icons/10-seja-parceiro.jpg"
+                src="/icons/10-seja-parceiro.webp"
                 alt=""
                 width={48}
                 height={48}
@@ -557,7 +557,7 @@ export default function DivulgacaoPage() {
 
             <div className="rounded-2xl border border-slate-100 bg-brand-surface p-5">
               <img
-                src="/icons/26-instagram-oficial.jpg"
+                src="/icons/26-instagram-oficial.webp"
                 alt=""
                 width={48}
                 height={48}

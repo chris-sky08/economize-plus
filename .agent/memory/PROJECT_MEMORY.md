@@ -12,21 +12,23 @@
 - **Repositório Principal (`origin`):** `https://github.com/skyleywinfoster-netizen/economize-plus.git`
 - **Repositório Conectado na Vercel (`chris`):** `https://github.com/chris-sky08/economize-plus.git` (ambos com permissão de push ativa — sempre rodar `git push origin main; git push chris main`)
 
-## 2. Identidade Visual, Redesign Magalu & 25 Ícones Realistas
-- **Paleta Oficial (Opção B):**
-  - `--bg-surface`: `#F4FAFC`
-  - `--bg-card`: `#FFFFFF`
-  - `--bg-soft` / `brand-light`: `#E6F7FB`
-  - `--text-primary` / `brand-navy`: `#063A6B`
-  - `--accent` / `brand-blue`: `#00AFCF`
-  - `--accent-economy` / `brand-green`: `#52D95D`
-  - `--accent-promo` / `brand-yellow`: `#FFC928`
+## 2. Identidade Visual, Redesign Navy Premium & 30 Ícones Otimizados (.webp)
+- **Paleta Oficial Ativa (`tailwind.config.ts` & `src/app/globals.css`):**
+  - `--bg-surface` / `brand-surface`: `#F8FAFC`
+  - `--bg-card` / `brand-white`: `#FFFFFF`
+  - `--bg-soft` / `brand-light`: `#F0F7FF`
+  - `--text-primary` / `brand-navy`: `#0F1E36`
+  - `--accent` / `brand-blue`: `#2563EB`
+  - `--accent-sky` / `brand-sky`: `#38BDF8`
+  - `--accent-economy` / `brand-green`: `#16A34A`
+  - `--accent-promo` / `brand-yellow`: `#F59E0B`
+- **Framework & Segurança:** Next.js `16.4.6` (Turbopack) com `experimental.agentUpgrade: "security"`.
 - **Logotipo Oficial Preservado Intacto:** `/logo-oficial.jpg` e `public/brand/logo-economize.jpg`.
-- **25 Ícones Realistas de Varejo Estilo Magalu (`public/icons/` & `src/lib/icons.ts`):**
-  - `01-mercearia.jpg` a `07-padaria.jpg` (7 departamentos principais)
-  - `08-sua-conta.jpg`, `09-minha-lista.jpg`, `09-minha-cesta.jpg`, `10-seja-parceiro.jpg`, `11-entregas.jpg` (atalhos da Super-Header, Subnav e MobileBottomNav)
-  - `12-qr-geral.jpg` a `16-qr-supermercado-ativo.jpg` (5 modalidades de QR Code em `/divulgacao`)
-  - `17-scanner-ean.jpg`, `18-preco-medida.jpg`, `19-cesta-completa.jpg`, `20-fonte-rastreavel.jpg`, `21-passo-cep-gps.jpg`, `22-passo-busca-ean.jpg`, `23-passo-economia.jpg`, `24-ciberseguranca.jpg` e `hero-magalu-economize.jpg`.
+- **30 Ícones Realistas de Varejo Estilo Magalu (`public/icons/*.webp` & `src/lib/icons.ts`):**
+  - `01-mercearia.webp` a `07-padaria.webp` (7 departamentos principais)
+  - `08-sua-conta.webp`, `09-minha-cesta.webp`, `10-seja-parceiro.webp`, `11-entregas.webp` (atalhos da Super-Header, Subnav e MobileBottomNav)
+  - `12-qr-geral.webp` a `16-qr-supermercado-ativo.webp` (5 modalidades de QR Code em `/divulgacao`)
+  - `17-scanner-ean.webp`, `18-preco-medida.webp`, `19-cesta-completa.webp`, `20-fonte-rastreavel.webp`, `21-passo-cep-gps.webp`, `22-passo-busca-ean.webp`, `23-passo-economia.webp`, `24-ciberseguranca.webp`, `25-avaliacao-feedback.webp`, `26-instagram-oficial.webp` a `29-canais-oficiais.webp` e `hero-magalu-economize.webp`.
 
 ## 3. Cibersegurança Red-Team & Blue-Team (`22/22` Testes Aprovados)
 - **Módulo Server-Only (`src/lib/server/security.ts`):** Anti-CSRF (`validateSameOrigin`), Anti-XSS (`sanitizeText`), Anti-CSV/DDE Formula Injection (`sanitizeCsvCell`), Anti-Open Redirect (`validateSafeRedirectPath`), Anti-SSRF/Cloud Metadata (`validateSafeHttpUrl`), Checksum GS1 Modulo-10 (`validateGtinEan`), Magic Bytes binários (`validateFileMagicBytes`) e CNPJ Modulo-11 (`validateCnpj`).
