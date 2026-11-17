@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import AnimatedSubnav from "@/components/AnimatedSubnav";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import { useApp } from "@/context/AppContext";
 import { TRANSPARENCY_DISCLAIMER, formatBRL } from "@/lib/format";
 import { ECONOMIZE_ICONS } from "@/lib/icons";
+import { lookupProductByEan } from "@/services/productLookup";
 
 const QUICK_SEARCH_TERMS = [
   "Arroz 5kg",
@@ -34,9 +36,36 @@ export default function Navbar() {
     user,
     toast,
     setIsLocationModalOpen,
+    registerExternalProduct,
+    showToast,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [isNavbarScannerOpen, setIsNavbarScannerOpen] = useState(false);
+
+  const handleNavbarBarcodeDetected = async (ean: string) => {
+    setIsNavbarScannerOpen(false);
+    setSearchQuery(ean);
+
+    const localProd = products.find(
+      (p) => p.ean === ean || (ean.length === 12 && p.ean === `0${ean}`)
+    );
+    if (localProd) {
+      showToast(`Produto encontrado: ${localProd.name}`);
+      router.push(`/buscar?q=${encodeURIComponent(ean)}`);
+      return;
+    }
+
+    showToast(`Consultando código EAN ${ean}...`);
+    const remoteProd = await lookupProductByEan(ean);
+    if (remoteProd) {
+      registerExternalProduct(remoteProd);
+      showToast(`Produto identificado: ${remoteProd.name}`);
+    } else {
+      showToast(`Código EAN ${ean} lido! Exibindo resultados da busca.`);
+    }
+    router.push(`/buscar?q=${encodeURIComponent(ean)}`);
+  };
 
   // Contabiliza exclusivamente itens cujo produto existe de verdade no catálogo ativo
   const validCheckedItems = shoppingList.filter(
@@ -214,19 +243,20 @@ export default function Navbar() {
                   className="min-h-[46px] w-full rounded-2xl border-2 border-brand-yellow bg-white py-2.5 pr-24 pl-4 text-sm font-medium text-slate-800 placeholder-slate-400 shadow-sm focus:border-brand-blue focus:outline-none"
                 />
 
-                {/* Atalho para Leitor de Código de Barras EAN */}
-                <Link
-                  href="/buscar"
-                  title="Comparar por código de barras EAN"
-                  aria-label="Abrir comparador por código de barras EAN"
-                  className="absolute right-12 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-light p-0.5 transition hover:scale-105 active:scale-95"
+                {/* Botão direto para abrir Leitor de Código de Barras EAN em qualquer página */}
+                <button
+                  type="button"
+                  onClick={() => setIsNavbarScannerOpen(true)}
+                  title="Escanear código de barras EAN com a câmera"
+                  aria-label="Escanear código de barras EAN com a câmera"
+                  className="absolute right-12 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-light p-0.5 transition hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 >
                   <img
                     src={ECONOMIZE_ICONS["scanner-ean"].src}
                     alt=""
                     className="h-full w-full rounded-lg object-cover"
                   />
-                </Link>
+                </button>
 
                 <button
                   type="submit"
@@ -314,6 +344,12 @@ export default function Navbar() {
       </header>
 
       <MobileBottomNav totalItemsInList={totalItemsInList} />
+
+      <BarcodeScannerModal
+        isOpen={isNavbarScannerOpen}
+        onClose={() => setIsNavbarScannerOpen(false)}
+        onDetectedEan={handleNavbarBarcodeDetected}
+      />
     </>
   );
 }

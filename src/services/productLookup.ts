@@ -6,6 +6,9 @@ export interface OpenFoodFactsProductRaw {
   code?: string;
   product_name?: string;
   product_name_pt?: string;
+  product_name_en?: string;
+  generic_name?: string;
+  generic_name_pt?: string;
   brands?: string;
   quantity?: string;
   categories?: string;
@@ -187,7 +190,14 @@ export function mapOpenFoodFactsRawToProduct(
   raw: OpenFoodFactsProductRaw,
   fetchedAtIso = new Date().toISOString()
 ): Product | null {
-  const name = (raw.product_name_pt || raw.product_name || "").trim();
+  const name = (
+    raw.product_name_pt ||
+    raw.product_name ||
+    raw.generic_name_pt ||
+    raw.generic_name ||
+    raw.product_name_en ||
+    ""
+  ).trim();
   const cleanEan = (raw.code || "").replace(/\D/g, "");
   if (!name || !cleanEan) return null;
 
@@ -228,9 +238,51 @@ export function mapOpenFoodFactsRawToProduct(
   };
 }
 
+async function fetchOpenFoodFactsClientFallback(
+  ean: string
+): Promise<Product | null> {
+  const candidates = ean.length === 12 ? [ean, `0${ean}`] : [ean];
+  const hosts = [
+    "https://br.openfoodfacts.org",
+    "https://world.openfoodfacts.org",
+  ];
+
+  for (const code of candidates) {
+    for (const host of hosts) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(
+          `${host}/api/v2/product/${encodeURIComponent(code)}.json`,
+          {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timer);
+        if (!res.ok) continue;
+        const json = (await res.json()) as {
+          status?: number;
+          product?: OpenFoodFactsProductRaw;
+        };
+        if (json.product && json.status !== 0) {
+          const mapped = mapOpenFoodFactsRawToProduct({
+            ...json.product,
+            code,
+          });
+          if (mapped) return mapped;
+        }
+      } catch {
+        // Tenta próxima origem
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Consulta um produto pelo código EAN através da rota de servidor `/api/produtos/ean/[ean]`,
- * que gerencia cache de 30 dias no Supabase e atribui User-Agent oficial ao Open Food Facts.
+ * com fallback direto para Open Food Facts caso o servidor/Supabase esteja indisponível.
  */
 export async function lookupProductByEan(ean: string): Promise<Product | null> {
   const check = validateGtin(ean);
@@ -240,12 +292,15 @@ export async function lookupProductByEan(ean: string): Promise<Product | null> {
     const res = await fetch(
       `/api/produtos/ean/${encodeURIComponent(check.normalized)}`
     );
-    if (!res.ok) return null;
-    const data = (await res.json()) as { product?: Product | null };
-    return data.product || null;
+    if (res.ok) {
+      const data = (await res.json()) as { product?: Product | null };
+      if (data.product) return data.product;
+    }
   } catch {
-    return null;
+    // Fallback direto abaixo
   }
+
+  return fetchOpenFoodFactsClientFallback(check.normalized);
 }
 
 /**

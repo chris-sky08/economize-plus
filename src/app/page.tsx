@@ -29,7 +29,7 @@ const SUPER_APP_SHORTCUTS = [
     id: "atalho-ean",
     title: "Leitor Código EAN",
     subtitle: "Compare a mesma embalagem",
-    href: "/buscar",
+    href: "/buscar?scanner=1",
     iconSrc: ECONOMIZE_ICONS["scanner-ean"].src,
     badge: "EAN-13",
     badgeClass: "bg-brand-blue text-white",

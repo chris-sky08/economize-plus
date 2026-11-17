@@ -115,16 +115,18 @@ export default function ListaInteligentePage() {
 
   const handleSelectSuggestion = async (product: Product) => {
     registerExternalProduct(product);
-    addToList(product.id, 1);
+    addToList(product.id, 1, product);
     setSearchTerm("");
     setDbResults([]);
   };
 
   const handleBarcodeDetected = async (ean: string) => {
     setIsScannerOpen(false);
-    const localProd = products.find((p) => p.ean === ean);
+    const localProd = products.find(
+      (p) => p.ean === ean || (ean.length === 12 && p.ean === `0${ean}`)
+    );
     if (localProd) {
-      addToList(localProd.id, 1);
+      addToList(localProd.id, 1, localProd);
       return;
     }
 
@@ -132,7 +134,7 @@ export default function ListaInteligentePage() {
     const remoteProd = await lookupProductByEan(ean);
     if (remoteProd) {
       registerExternalProduct(remoteProd);
-      addToList(remoteProd.id, 1);
+      addToList(remoteProd.id, 1, remoteProd);
     } else {
       showToast(
         `Produto com código EAN ${ean} não encontrado no banco nem no Open Food Facts.`

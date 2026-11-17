@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   BarChart3,
   Building2,
+  Camera,
   CheckCircle2,
   FileSpreadsheet,
   FileUp,
@@ -29,6 +30,8 @@ import type { Market, MarketPrice, Product } from "@/types/domain";
 import MarketOnboardingGuide from "@/components/MarketOnboardingGuide";
 import PriceHistorySection from "@/components/PriceHistorySection";
 import QrCodePromoCard from "@/components/QrCodePromoCard";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import { lookupProductByEan } from "@/services/productLookup";
 
 const DEFAULT_DEMO_MARKET: Market = {
   id: "krill-centro-bertioga",
@@ -359,6 +362,26 @@ export default function PainelParceiroPage() {
   const [newPromo, setNewPromo] = useState(false);
   const [newPromoLabel, setNewPromoLabel] = useState("");
   const [newProdError, setNewProdError] = useState<string | null>(null);
+  const [isPartnerScannerOpen, setIsPartnerScannerOpen] = useState(false);
+
+  const handlePartnerScanEan = async (ean: string) => {
+    setIsPartnerScannerOpen(false);
+    setNewEan(ean);
+    setNewProdError(null);
+    showToast(`Consultando código EAN ${ean}...`);
+    const found = await lookupProductByEan(ean);
+    if (found) {
+      setNewName(found.name);
+      if (found.brand) setNewBrand(found.brand);
+      if (found.categoryId) setNewCat(found.categoryId);
+      if (found.sizeLabel) setNewSizeLabel(found.sizeLabel);
+      if (found.unitType) setNewUnitType(found.unitType);
+      if (found.unitMultiplier) setNewMultiplier(String(found.unitMultiplier));
+      showToast(`Produto preenchido automaticamente via EAN ${ean}!`);
+    } else {
+      showToast("EAN lido! Preencha o nome e preço do produto abaixo.");
+    }
+  };
 
   // Perfil
   const [editHours, setEditHours] = useState(myMarket?.openingHours || "");
@@ -985,14 +1008,25 @@ export default function PainelParceiroPage() {
               <label className="block text-xs font-bold text-slate-700">
                 Código GTIN / EAN-13 *
               </label>
-              <input
-                type="text"
-                required
-                value={newEan}
-                onChange={(e) => setNewEan(e.target.value)}
-                placeholder="13 dígitos verificados"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              />
+              <div className="mt-1 flex gap-1.5">
+                <input
+                  type="text"
+                  required
+                  value={newEan}
+                  onChange={(e) => setNewEan(e.target.value)}
+                  placeholder="13 dígitos verificados"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsPartnerScannerOpen(true)}
+                  title="Escanear código de barras com câmera"
+                  className="inline-flex min-h-[40px] items-center gap-1 rounded-xl bg-brand-navy px-3 text-xs font-bold text-brand-yellow hover:bg-brand-blue hover:text-white"
+                >
+                  <Camera className="h-4 w-4" />
+                  Ler
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700">
@@ -1524,6 +1558,12 @@ export default function PainelParceiroPage() {
           />
         </div>
       )}
+
+      <BarcodeScannerModal
+        isOpen={isPartnerScannerOpen}
+        onClose={() => setIsPartnerScannerOpen(false)}
+        onDetectedEan={handlePartnerScanEan}
+      />
     </div>
   );
 }

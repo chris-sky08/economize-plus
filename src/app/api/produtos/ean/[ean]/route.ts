@@ -55,11 +55,14 @@ export async function GET(
   const cleanEan = gtin.normalized;
   const token = extractTokenFromRequest(request);
 
-  try {
-    const db = createServiceRoleClient(token || undefined);
+  let db: ReturnType<typeof createServiceRoleClient> | null = null;
+  let existingRow: Record<string, unknown> | null = null;
 
-    // 1) Verifica se já existe no banco e foi consultado há menos de 30 dias
-    const { data: existingRow } = await db
+  try {
+    db = createServiceRoleClient(token || undefined);
+
+    // 1) Verifica se já existe no banco e foi consultado há menos de 30 dias (com timeout curto)
+    const selectPromise = db
       .from("products")
       .select(
         "id, ean, name, brand, category, size_label, unit_type, unit_value, image_url, is_popular, description, source, data_status, off_fetched_at"
@@ -67,10 +70,14 @@ export async function GET(
       .eq("ean", cleanEan)
       .maybeSingle();
 
-    if (existingRow) {
-      const existingProduct = mapDbProductRow(
-        existingRow as Record<string, unknown>
-      );
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), 2500)
+    );
+
+    const raceResult = await Promise.race([selectPromise, timeoutPromise]);
+    if (raceResult && "data" in raceResult && raceResult.data) {
+      existingRow = raceResult.data as Record<string, unknown>;
+      const existingProduct = mapDbProductRow(existingRow);
       if (existingProduct.offFetchedAt) {
         const fetchedTime = new Date(existingProduct.offFetchedAt).getTime();
         if (
@@ -89,48 +96,87 @@ export async function GET(
         });
       }
     }
+  } catch {
+    // Se Supabase estiver sem configuração na Vercel ou hibernado, segue para consulta direta Open Food Facts
+    db = null;
+  }
 
-    // 2) Consulta Open Food Facts Brasil com User-Agent identificado
+  try {
+    // 2) Consulta Open Food Facts Brasil (e fallback Global/UPC-A->EAN-13) com User-Agent identificado
     const userAgent =
       (process.env.OFF_USER_AGENT || "").trim() ||
-      "EconomizePlus/1.0 (https://github.com/chris-sky08/economize-plus; skyleywinfoster@gmail.com)";
+      "EconomizePlus/1.0 (https://github.com/chris-sky08/economize-plus; empresaeconomizemais@gmail.com)";
 
-    const offRes = await fetch(
-      `https://br.openfoodfacts.org/api/v2/product/${encodeURIComponent(
-        cleanEan
-      )}.json`,
-      {
-        headers: {
-          "User-Agent": userAgent,
-          Accept: "application/json",
-        },
+    const eanCandidates =
+      cleanEan.length === 12 ? [cleanEan, `0${cleanEan}`] : [cleanEan];
+    const offHosts = [
+      "https://br.openfoodfacts.org",
+      "https://world.openfoodfacts.org",
+    ];
+
+    let rateLimited = false;
+    let mappedProduct: ReturnType<typeof mapOpenFoodFactsRawToProduct> = null;
+    const nowIso = new Date().toISOString();
+
+    for (const candidateCode of eanCandidates) {
+      if (mappedProduct) break;
+      for (const host of offHosts) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 5000);
+          const offRes = await fetch(
+            `${host}/api/v2/product/${encodeURIComponent(candidateCode)}.json`,
+            {
+              headers: {
+                "User-Agent": userAgent,
+                Accept: "application/json",
+              },
+              signal: controller.signal,
+            }
+          );
+          clearTimeout(timer);
+
+          if (offRes.status === 429) {
+            rateLimited = true;
+            continue;
+          }
+          if (!offRes.ok) continue;
+
+          const offData = (await offRes.json()) as OffByEanApiResponse;
+          if (!offData.product || offData.status === 0) continue;
+
+          const candidate = mapOpenFoodFactsRawToProduct(
+            { ...offData.product, code: candidateCode },
+            nowIso
+          );
+          if (candidate) {
+            mappedProduct = candidate;
+            break;
+          }
+        } catch {
+          // Tenta próximo host
+        }
       }
-    );
-
-    if (offRes.status === 429) {
-      return NextResponse.json(
-        {
-          error:
-            "Limite temporário de consultas da base Open Food Facts atingido. Tente novamente em instantes.",
-        },
-        { status: 429 }
-      );
     }
 
-    if (offRes.status === 404 || !offRes.ok) {
-      return NextResponse.json(
-        {
-          error: `Produto com EAN ${cleanEan} não encontrado no Open Food Facts.`,
-          product: existingRow
-            ? mapDbProductRow(existingRow as Record<string, unknown>)
-            : null,
-        },
-        { status: 404 }
-      );
-    }
+    if (!mappedProduct) {
+      if (rateLimited) {
+        return NextResponse.json(
+          {
+            error:
+              "Limite temporário de consultas da base Open Food Facts atingido. Tente novamente em instantes.",
+          },
+          { status: 429 }
+        );
+      }
 
-    const offData = (await offRes.json()) as OffByEanApiResponse;
-    if (!offData.product || offData.status === 0) {
+      if (existingRow) {
+        return NextResponse.json({
+          product: mapDbProductRow(existingRow),
+          cached: true,
+        });
+      }
+
       return NextResponse.json(
         {
           error: `Produto com EAN ${cleanEan} não consta no catálogo Open Food Facts.`,
@@ -139,45 +185,38 @@ export async function GET(
       );
     }
 
-    const nowIso = new Date().toISOString();
-    const mapped = mapOpenFoodFactsRawToProduct(
-      { ...offData.product, code: cleanEan },
-      nowIso
-    );
-
-    if (!mapped) {
-      return NextResponse.json(
-        {
-          error: `Dados incompletos no Open Food Facts para o EAN ${cleanEan}.`,
-        },
-        { status: 422 }
-      );
+    let persisted = false;
+    if (db) {
+      try {
+        const { error: upsertErr } = await db.from("products").upsert(
+          {
+            id: mappedProduct.id,
+            ean: mappedProduct.ean,
+            name: mappedProduct.name,
+            brand: mappedProduct.brand,
+            category: mappedProduct.categoryId,
+            size_label: mappedProduct.sizeLabel,
+            unit_type: mappedProduct.unitType,
+            unit_value: mappedProduct.unitMultiplier,
+            image_url: mappedProduct.imageUrl,
+            is_popular: mappedProduct.isPopular,
+            description: mappedProduct.description,
+            source: "open_food_facts",
+            data_status: mappedProduct.dataStatus,
+            off_fetched_at: nowIso,
+          },
+          { onConflict: "ean" }
+        );
+        persisted = !upsertErr;
+      } catch {
+        persisted = false;
+      }
     }
 
-    const { error: upsertErr } = await db.from("products").upsert(
-      {
-        id: mapped.id,
-        ean: mapped.ean,
-        name: mapped.name,
-        brand: mapped.brand,
-        category: mapped.categoryId,
-        size_label: mapped.sizeLabel,
-        unit_type: mapped.unitType,
-        unit_value: mapped.unitMultiplier,
-        image_url: mapped.imageUrl,
-        is_popular: mapped.isPopular,
-        description: mapped.description,
-        source: "open_food_facts",
-        data_status: mapped.dataStatus,
-        off_fetched_at: nowIso,
-      },
-      { onConflict: "ean" }
-    );
-
     return NextResponse.json({
-      product: mapped,
+      product: mappedProduct,
       cached: false,
-      persisted: !upsertErr,
+      persisted,
     });
   } catch (err: unknown) {
     const message =

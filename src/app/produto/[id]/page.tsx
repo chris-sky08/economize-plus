@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -25,6 +25,7 @@ import {
 } from "@/lib/format";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import PriceHistorySection from "@/components/PriceHistorySection";
+import { lookupProductByEan } from "@/services/productLookup";
 
 export default function ProdutoDetalhePage({
   params,
@@ -38,6 +39,7 @@ export default function ProdutoDetalhePage({
     prices,
     categories,
     catalogLoading,
+    registerExternalProduct,
     addToList,
     submitPriceReport,
   } = useApp();
@@ -50,10 +52,34 @@ export default function ProdutoDetalhePage({
   const [reportDetails, setReportDetails] = useState("");
   const [reportError, setReportError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const [loadingExternal, setLoadingExternal] = useState(false);
 
   const product = products.find((p) => p.id === id);
 
-  if (catalogLoading && !product) {
+  useEffect(() => {
+    if (catalogLoading || product) return;
+    if (!id.startsWith("ean-")) return;
+    const rawEan = id.replace(/^ean-/, "").replace(/\D/g, "");
+    if (!rawEan) return;
+
+    let active = true;
+    setLoadingExternal(true);
+    lookupProductByEan(rawEan)
+      .then((found) => {
+        if (active && found) {
+          registerExternalProduct(found);
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingExternal(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, catalogLoading, product, registerExternalProduct]);
+
+  if ((catalogLoading || loadingExternal) && !product) {
     return (
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
         <div className="h-6 w-48 animate-pulse rounded-lg bg-slate-200" />

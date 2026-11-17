@@ -47,6 +47,24 @@ export const SHOPPING_LIST_STORAGE_KEY = "economize_shopping_list_v2";
 export const LOCATION_STORAGE_KEY = "economize_location_v2";
 export const CONSUMER_LOCAL_STORAGE_KEY = "economize_consumer_profile_v1";
 export const CONSUMER_DETAILS_STORAGE_KEY = "economize_consumer_details_v1";
+export const EXTERNAL_PRODUCTS_STORAGE_KEY = "economize_external_products_v1";
+
+function loadStoredExternalProducts(): Product[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(EXTERNAL_PRODUCTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (p): p is Product =>
+            Boolean(p && typeof p === "object" && "id" in p && "name" in p)
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 const LEGACY_SHOPPING_LIST_KEYS = [
   "economize_shopping_list",
@@ -92,7 +110,11 @@ interface AppContextType {
   updateLocation: (loc: Partial<LocationConfig>) => void;
   refreshCatalog: () => Promise<void>;
   registerExternalProduct: (product: Product) => void;
-  addToList: (productId: string, qty?: number) => void;
+  addToList: (
+    productId: string,
+    qty?: number,
+    productOverride?: Product
+  ) => void;
   removeFromList: (productId: string) => void;
   updateListQuantity: (productId: string, qty: number) => void;
   toggleListItemChecked: (productId: string) => void;
@@ -206,8 +228,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshCatalog = useCallback(async () => {
     setCatalogLoading(true);
     const result = await fetchCatalogFromSupabase({ page: 0, pageSize: 150 });
+    const storedExternal = loadStoredExternalProducts();
+    const mergedProducts = [...result.products];
+    for (const ext of storedExternal) {
+      if (
+        !mergedProducts.some(
+          (p) => p.id === ext.id || (ext.ean && p.ean === ext.ean)
+        )
+      ) {
+        mergedProducts.push(ext);
+      }
+    }
     setRawMarkets(result.supermarkets);
-    setProducts(result.products);
+    setProducts(mergedProducts);
     setPrices(result.prices);
     setCatalogError(result.error);
     setCatalogLoading(false);
@@ -399,6 +432,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.removeItem(CONSUMER_LOCAL_STORAGE_KEY);
         localStorage.removeItem(CONSUMER_DETAILS_STORAGE_KEY);
+        localStorage.removeItem(EXTERNAL_PRODUCTS_STORAGE_KEY);
       } catch {
         // Ignora
       }
@@ -512,10 +546,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return [product, ...prev];
     });
+    try {
+      const stored = loadStoredExternalProducts();
+      const idx = stored.findIndex(
+        (p) => p.id === product.id || (product.ean && p.ean === product.ean)
+      );
+      const next =
+        idx !== -1
+          ? stored.map((p, i) => (i === idx ? product : p))
+          : [product, ...stored].slice(0, 60);
+      localStorage.setItem(EXTERNAL_PRODUCTS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Ignora erro de localStorage
+    }
   };
 
-  const addToList = (productId: string, qty = 1) => {
-    const product = products.find((p) => p.id === productId);
+  const addToList = (
+    productId: string,
+    qty = 1,
+    productOverride?: Product
+  ) => {
+    if (productOverride) {
+      registerExternalProduct(productOverride);
+    }
+    const product =
+      productOverride || products.find((p) => p.id === productId);
     setShoppingList((prev) => {
       const existing = prev.find((i) => i.productId === productId);
       if (existing) {

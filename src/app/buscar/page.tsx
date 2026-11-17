@@ -1,9 +1,11 @@
 "use client";
 
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  Camera,
   Filter,
+  Loader2,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -14,7 +16,10 @@ import {
   TRANSPARENCY_DISCLAIMER,
   calculateUnitPrice,
   formatBRL,
+  validateGtin,
 } from "@/lib/format";
+import { lookupProductByEan } from "@/services/productLookup";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import ProductComparisonCard from "@/components/ProductComparisonCard";
 import SkeletonCard from "@/components/SkeletonCard";
 
@@ -22,6 +27,7 @@ function BuscarContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const initialCategory = searchParams.get("categoria") || "todas";
+  const initialScanner = searchParams.get("scanner") === "1";
 
   const {
     categories,
@@ -31,10 +37,14 @@ function BuscarContent() {
     location,
     catalogLoading,
     setIsLocationModalOpen,
+    registerExternalProduct,
+    showToast,
   } = useApp();
 
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [isScannerOpen, setIsScannerOpen] = useState(initialScanner);
+  const [eanLookupLoading, setEanLookupLoading] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedMarketId, setSelectedMarketId] = useState<string>("todos");
   const [minPrice, setMinPrice] = useState<string>("");
@@ -44,6 +54,83 @@ function BuscarContent() {
   const [sortBy, setSortBy] = useState<
     "menor_total" | "menor_unidade" | "distancia" | "nome"
   >("menor_total");
+
+  useEffect(() => {
+    const paramQ = searchParams.get("q") || "";
+    const paramCat = searchParams.get("categoria");
+    const paramScanner = searchParams.get("scanner") === "1";
+    if (paramQ) setQuery(paramQ);
+    if (paramCat) setSelectedCategory(paramCat);
+    if (paramScanner) setIsScannerOpen(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const clean = query.replace(/\D/g, "");
+    if (!clean || clean !== query.trim()) return;
+    const check = validateGtin(clean);
+    if (!check.valid) return;
+
+    const alreadyInState = products.some(
+      (p) =>
+        p.ean === check.normalized ||
+        (check.normalized.length === 12 && p.ean === `0${check.normalized}`) ||
+        (check.normalized.length === 13 &&
+          check.normalized.startsWith("0") &&
+          p.ean === check.normalized.slice(1))
+    );
+    if (alreadyInState) return;
+
+    let active = true;
+    setEanLookupLoading(true);
+    lookupProductByEan(check.normalized)
+      .then((found) => {
+        if (!active) return;
+        if (found) {
+          registerExternalProduct(found);
+          showToast(`Produto encontrado via EAN: ${found.name}`);
+        }
+      })
+      .finally(() => {
+        if (active) setEanLookupLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [query, products, registerExternalProduct, showToast]);
+
+  const handleBarcodeDetected = async (ean: string) => {
+    setIsScannerOpen(false);
+    setQuery(ean);
+    setSelectedCategory("todas");
+
+    const localProd = products.find(
+      (p) =>
+        p.ean === ean ||
+        (ean.length === 12 && p.ean === `0${ean}`) ||
+        (ean.length === 13 && ean.startsWith("0") && p.ean === ean.slice(1))
+    );
+    if (localProd) {
+      showToast(`Produto encontrado: ${localProd.name}`);
+      return;
+    }
+
+    setEanLookupLoading(true);
+    showToast(`Consultando código EAN ${ean}...`);
+    try {
+      const remoteProd = await lookupProductByEan(ean);
+      if (remoteProd) {
+        registerExternalProduct(remoteProd);
+        showToast(`Produto identificado: ${remoteProd.name}`);
+      } else {
+        showToast(
+          `Código EAN ${ean} lido, mas ainda sem cadastro no catálogo nem no Open Food Facts.`
+        );
+      }
+    } finally {
+      setEanLookupLoading(false);
+    }
+  };
 
   const activeMarkets = useMemo(
     () =>
@@ -112,6 +199,10 @@ function BuscarContent() {
             (product.brand || "").toLowerCase().includes(q) ||
             (product.sizeLabel || "").toLowerCase().includes(q) ||
             (product.ean || "").includes(q) ||
+            (q.length === 12 && product.ean === `0${q}`) ||
+            (q.length === 13 &&
+              q.startsWith("0") &&
+              product.ean === q.slice(1)) ||
             catName.toLowerCase().includes(q);
           if (!match) return false;
         }
@@ -168,9 +259,14 @@ function BuscarContent() {
           minDistance,
         };
       })
-      .filter((item) => item.productPrices.length > 0);
+      .filter((item) => {
+        if (item.productPrices.length > 0) return true;
+        return Boolean(q);
+      });
 
     return items.sort((a, b) => {
+      if (a.productPrices.length > 0 && b.productPrices.length === 0) return -1;
+      if (a.productPrices.length === 0 && b.productPrices.length > 0) return 1;
       if (sortBy === "menor_total") return a.lowestPrice - b.lowestPrice;
       if (sortBy === "menor_unidade")
         return a.lowestUnitPrice - b.lowestUnitPrice;
@@ -193,14 +289,24 @@ function BuscarContent() {
     sortBy,
   ]);
 
+  const finitePrices = filteredResults
+    .map((r) => r.lowestPrice)
+    .filter((p) => Number.isFinite(p));
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onDetectedEan={handleBarcodeDetected}
+      />
+
       {/* Cabeçalho da Página de Busca */}
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="inline-block rounded-md bg-brand-light px-2.5 py-0.5 text-xs font-bold text-brand-navy">
-              Comparador de Preços Local
+              Comparador de Preços Local • Leitor EAN
             </span>
             <h1 className="mt-1 font-heading text-2xl font-extrabold text-brand-navy sm:text-3xl">
               {query
@@ -215,6 +321,15 @@ function BuscarContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(true)}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-brand-yellow shadow-2xs transition hover:bg-brand-blue hover:text-white"
+            >
+              <Camera className="h-4 w-4" />
+              Escanear Código de Barras
+            </button>
+
             <label
               htmlFor="sort-select"
               className="flex items-center gap-1.5 text-xs font-semibold text-slate-600"
@@ -274,7 +389,7 @@ function BuscarContent() {
               </button>
             </div>
 
-            {/* Busca por palavra-chave */}
+            {/* Busca por palavra-chave + Botão Câmera */}
             <div>
               <label
                 htmlFor="sidebar-search"
@@ -282,16 +397,31 @@ function BuscarContent() {
               >
                 Produto, Marca ou EAN
               </label>
-              <div className="relative mt-1.5">
-                <input
-                  id="sidebar-search"
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ex: arroz, leite, 789..."
-                  className="min-h-[44px] w-full rounded-xl border border-slate-200 py-2 pr-8 pl-3 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
-                />
-                <Search className="absolute top-2.5 right-2.5 h-3.5 w-3.5 text-slate-400" />
+              <div className="relative mt-1.5 flex gap-1.5">
+                <div className="relative flex-1">
+                  <input
+                    id="sidebar-search"
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Ex: arroz, leite, 789..."
+                    className="min-h-[44px] w-full rounded-xl border border-slate-200 py-2 pr-8 pl-3 text-xs text-slate-800 focus:border-brand-blue focus:outline-none"
+                  />
+                  {eanLookupLoading ? (
+                    <Loader2 className="absolute top-3.5 right-2.5 h-3.5 w-3.5 animate-spin text-brand-blue" />
+                  ) : (
+                    <Search className="absolute top-3.5 right-2.5 h-3.5 w-3.5 text-slate-400" />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsScannerOpen(true)}
+                  title="Escanear código de barras com câmera"
+                  aria-label="Escanear código de barras com câmera"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-brand-navy text-brand-yellow transition hover:bg-brand-blue hover:text-white"
+                >
+                  <Camera className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
@@ -454,19 +584,17 @@ function BuscarContent() {
               <strong>{filteredResults.length}</strong> produtos encontrados para
               comparação
             </span>
-            {filteredResults.length > 0 && (
+            {finitePrices.length > 0 && (
               <span>
                 Menor preço da página:{" "}
                 <strong className="tabular-price text-emerald-700">
-                  {formatBRL(
-                    Math.min(...filteredResults.map((r) => r.lowestPrice))
-                  )}
+                  {formatBRL(Math.min(...finitePrices))}
                 </strong>
               </span>
             )}
           </div>
 
-          {catalogLoading ? (
+          {catalogLoading || eanLookupLoading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <SkeletonCard />
               <SkeletonCard />
@@ -483,18 +611,26 @@ function BuscarContent() {
                 className="mx-auto h-20 w-20 rounded-full border-2 border-brand-yellow bg-white object-cover shadow-sm"
               />
               <h3 className="mt-3 font-heading text-lg font-bold text-brand-navy">
-                Nenhum produto com preço publicado encontrado
+                Nenhum produto encontrado
               </h3>
               <p className="mx-auto mt-1 max-w-md text-xs text-slate-500">
-                Verifique se o raio de distância configurado (
-                {location.maxRadiusKm} km) possui mercados com ofertas ativas ou
-                limpe os filtros selecionados.
+                Escaneie o código de barras EAN da embalagem ou verifique se o
+                raio de distância configurado ({location.maxRadiusKm} km) possui
+                mercados com ofertas ativas.
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-brand-yellow hover:bg-brand-blue hover:text-white"
+                >
+                  <Camera className="h-4 w-4" />
+                  Escanear Código de Barras
+                </button>
+                <button
+                  type="button"
                   onClick={resetFilters}
-                  className="min-h-[44px] rounded-xl bg-brand-navy px-4 py-2.5 text-xs font-bold text-white hover:bg-brand-blue"
+                  className="min-h-[44px] rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-brand-navy hover:border-brand-blue"
                 >
                   Limpar todos os filtros
                 </button>
